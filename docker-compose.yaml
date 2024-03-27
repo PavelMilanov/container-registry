@@ -8,8 +8,8 @@ services:
      - 5000:5000
     volumes:
       - ./data:/var/lib/registry
-      - ./nginx/htpasswd:/auth/htpasswd
-      - ./nginx/config.yml:/etc/docker/registry/config.yml
+      - ./conf/htpasswd:/auth/htpasswd
+      - ./conf/config.yml:/etc/docker/registry/config.yml
     
   nginx:
     image: nginx:stable
@@ -17,5 +17,5 @@ services:
     ports:
      - 80:80
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./conf/nginx.conf:/etc/nginx/nginx.conf
     
