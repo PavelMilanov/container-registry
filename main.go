@@ -1,35 +1,38 @@
 package main
 
 import (
-	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/PavelMilanov/ContainerRegistry/config"
+	"github.com/PavelMilanov/ContainerRegistry/handlers"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
-	r := gin.Default()
-
-	// Пинг для проверки
-	r.GET("/v2/", func(c *gin.Context) {
-		c.Status(http.StatusOK)
+	logrus.SetLevel(logrus.TraceLevel)
+	logrus.SetReportCaller(true)
+	logrus.SetFormatter(&logrus.TextFormatter{
+		FullTimestamp:   true,
+		TimestampFormat: "2006/01/02 15:04:00",
 	})
 
-	// Загрузка манифеста образа
-	r.PUT("/v2/:name/manifests/:reference", func(c *gin.Context) {
-		imageName := c.Param("name")
-		reference := c.Param("reference")
-		// Обработка загрузки манифеста
-		c.JSON(http.StatusCreated, gin.H{"message": "Manifest uploaded", "image": imageName, "reference": reference})
-	})
+	logrus.Debug("Версия сборки: ", config.VERSION)
 
-	// Получение манифеста
-	r.GET("/v2/:name/manifests/:reference", func(c *gin.Context) {
-		imageName := c.Param("name")
-		reference := c.Param("reference")
-		// Возврат загруженного манифеста
-		c.JSON(http.StatusOK, gin.H{"message": "Manifest retrieved", "image": imageName, "reference": reference})
-	})
-
-	// Запуск сервера
-	r.Run(":5000") // Запуск на порту 5000
+	handler := handlers.NewHandler()
+	srv := new(Server)
+	go func() {
+		if err := srv.Run(handler.InitRouters()); err != nil {
+			logrus.Warn(err)
+		}
+	}()
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	logrus.Infof("Сигнал остановки сервера через %d секунды\n", config.DURATION)
+	if err := srv.Shutdown(time.Duration(config.DURATION)); err != nil {
+		logrus.WithError(err).Error("ошибка при остановке сервера")
+	}
 }
