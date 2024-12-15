@@ -14,7 +14,7 @@ type Server struct {
 
 func (s *Server) Run(handler http.Handler) error {
 	s.httpServer = &http.Server{
-		Addr:         ":5000",
+		Addr:         ":5050",
 		Handler:      handler,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
