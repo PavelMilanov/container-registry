@@ -25,7 +25,7 @@ func logMiddleware() gin.HandlerFunc {
 
 func (h *Handler) InitRouters() *gin.Engine {
 	router := gin.Default()
-	router.Use(logMiddleware())
+	// router.Use(logMiddleware())
 
 	v2 := router.Group("/v2/")
 	{
@@ -41,25 +41,10 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 		// Получение слоя образа
 		v2.GET("/:name/blobs/:uuid", h.getBlobHandler)
-		// v2.HEAD("/:name/blobs/:uuid", func(c *gin.Context) {
-		// 	uuid := c.Param("uuid")
-		// 	blobPath := filepath.Join("data", "blobs", uuid)
-
-		// 	if _, err := os.Stat(blobPath); os.IsNotExist(err) {
-		// 		c.Status(http.StatusNotFound)
-		// 		return
-		// 	}
-
-		// 	c.Status(http.StatusOK)
-		// })
-		// v2.POST("/:name/blobs/uploads/", func(c *gin.Context) {
-		// 	// Создать загрузку слоя
-		// 	uuid := "generated-uuid" // Сгенерируйте UUID для загрузки
-		// 	c.Header("Location", fmt.Sprintf("/v2/%s/blobs/uploads/%s", c.Param("name"), uuid))
-		// 	c.JSON(http.StatusAccepted, gin.H{"uuid": uuid})
-		// })
 		// Загрузка слоев образа
-		v2.PUT("/:name/blobs/uploads/:uuid", h.uploadBlobHandler)
+		v2.POST("/:name/blobs/uploads/", h.startBlobUpload)
+		v2.PATCH("/:name/blobs/uploads/:uuid", h.uploadBlobPart)
+		v2.PUT("/:name/blobs/uploads/:uuid", h.finalizeBlobUpload)
 
 	}
 	return router
