@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,34 +13,17 @@ import (
 	"github.com/google/uuid"
 )
 
-// // Реализация загрузки слоя
-// func (h *Handler) uploadBlobHandler(c *gin.Context) {
-// 	imageName := c.Param("name") // Название образа
-// 	uuid := uuid.New().String()  // Уникальный идентификатор загрузки
-
-// 	// Создаём временный путь для блоба
-// 	tempPath := filepath.Join("data", "blobs", imageName, uuid)
-// 	err := os.MkdirAll(filepath.Dir(tempPath), 0755)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create upload directory"})
-// 		return
-// 	}
-
-// 	// Возвращаем URL для продолжения загрузки
-// 	c.Header("Location", fmt.Sprintf("/v2/%s/blobs/uploads/%s", imageName, uuid))
-// 	c.JSON(http.StatusAccepted, gin.H{
-// 		"uuid":     uuid,
-// 		"location": fmt.Sprintf("/v2/%s/blobs/uploads/%s", imageName, uuid),
-// 	})
-// }
-
 func (h *Handler) getBlobHandler(c *gin.Context) {
 	imageName := c.Param("name")
 	uuid := c.Param("uuid")
+	hash := sha256.Sum256([]byte(uuid))
 
+	// Преобразуем хеш в шестнадцатеричную строку
+	hashHex := fmt.Sprintf("%x", hash)
+	// fmt.Println(hashHex)
 	// Путь к слою
-	blobPath := filepath.Join("data", "blobs", imageName, uuid)
-
+	blobPath := filepath.Join("data", "blobs", imageName, hashHex)
+	fmt.Println(blobPath)
 	// Проверяем, существует ли слой
 	if _, err := os.Stat(blobPath); os.IsNotExist(err) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Blob not found"})
@@ -47,14 +31,13 @@ func (h *Handler) getBlobHandler(c *gin.Context) {
 	}
 
 	// Читаем слой
-	blob, err := os.ReadFile(blobPath)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read blob"})
-		return
-	}
-
-	// Возвращаем слой
-	c.Data(http.StatusOK, "application/octet-stream", blob)
+	// blob, err := os.ReadFile(blobPath)
+	// if err != nil {
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read blob"})
+	// 	return
+	// }
+	// c.Header("Docker-Upload-UUID", parsedUUID.String())
+	c.JSON(http.StatusOK, gin.H{})
 }
 
 func (h *Handler) startBlobUpload(c *gin.Context) {
@@ -73,8 +56,8 @@ func (h *Handler) startBlobUpload(c *gin.Context) {
 
 	// Возвращаем URL для продолжения загрузки
 	c.Header("Location", fmt.Sprintf("/v2/%s/blobs/uploads/%s", imageName, uuid))
+	c.Header("Docker-Upload-UUID", uuid)
 	c.JSON(http.StatusAccepted, gin.H{
-		"uuid":     uuid,
 		"location": fmt.Sprintf("/v2/%s/blobs/uploads/%s", imageName, uuid),
 	})
 }
@@ -89,6 +72,8 @@ func (h *Handler) uploadBlobPart(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read blob part"})
 		return
 	}
+
+	fmt.Println("range:", len(file))
 
 	// Путь к временному файлу
 	tempPath := filepath.Join("data", "blobs", imageName, uuid)
@@ -105,7 +90,9 @@ func (h *Handler) uploadBlobPart(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write to temporary file"})
 		return
 	}
-
+	// c.Header("Content-Type", "application/octet-stream")
+	c.Header("Docker-Upload-UUID", uuid)
+	c.Header("Range", fmt.Sprintf("%d-%d", 0, len(file)-1))
 	c.JSON(http.StatusNoContent, gin.H{"message": "Blob part uploaded"})
 }
 
@@ -131,8 +118,9 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 		return
 	}
 
-	c.Header("Location", fmt.Sprintf("/v2/%s/blobs/%s", imageName, digest))
+	// c.Header("Location", fmt.Sprintf("/v2/%s/blobs/%s", imageName, digest))
 	c.Header("Docker-Content-Digest", digest)
+	c.Header("Content-Type", "application/octet-stream")
 	c.JSON(http.StatusCreated, gin.H{"message": "Blob finalized", "digest": digest})
 
 }

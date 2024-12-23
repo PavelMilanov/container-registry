@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -16,16 +15,12 @@ func NewHandler() *Handler {
 	return &Handler{}
 }
 
-func logMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		fmt.Printf("Received request: %s %s\n", c.Request.Method, c.Request.URL.Path)
-		c.Next()
-	}
-}
+var (
+	storagePath = "data"
+)
 
 func (h *Handler) InitRouters() *gin.Engine {
 	router := gin.Default()
-	// router.Use(logMiddleware())
 
 	v2 := router.Group("/v2/")
 	{
@@ -33,19 +28,17 @@ func (h *Handler) InitRouters() *gin.Engine {
 		v2.GET("/", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{})
 		})
-
-		// Получение манифеста
+		// Маршруты для реестра
 		v2.GET("/:name/manifests/:reference", h.getManifestHandler)
 		// Загрузка манифеста образа
 		v2.PUT("/:name/manifests/:reference", h.UploadManifestHandler)
 
 		// Получение слоя образа
-		v2.GET("/:name/blobs/:uuid", h.getBlobHandler)
+		v2.HEAD("/:name/blobs/:uuid", h.getBlobHandler)
 		// Загрузка слоев образа
 		v2.POST("/:name/blobs/uploads/", h.startBlobUpload)
 		v2.PATCH("/:name/blobs/uploads/:uuid", h.uploadBlobPart)
 		v2.PUT("/:name/blobs/uploads/:uuid", h.finalizeBlobUpload)
-
 	}
 	return router
 }
