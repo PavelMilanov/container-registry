@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,32 +9,26 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
+	uid "github.com/google/uuid"
 )
 
 func (h *Handler) getBlobHandler(c *gin.Context) {
 	imageName := c.Param("name")
 	uuid := c.Param("uuid")
-	hash := sha256.Sum256([]byte(uuid))
-
-	// Преобразуем хеш в шестнадцатеричную строку
-	hashHex := fmt.Sprintf("%x", hash)
-	// fmt.Println(hashHex)
+	// test, err := uid.MustParse(uuid)
+	if err != nil {
+		fmt.Println(err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid UUID"})
+		return
+	}
 	// Путь к слою
-	blobPath := filepath.Join("data", "blobs", imageName, hashHex)
+	blobPath := filepath.Join("data", "blobs", imageName, test.String())
 	fmt.Println(blobPath)
 	// Проверяем, существует ли слой
 	if _, err := os.Stat(blobPath); os.IsNotExist(err) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Blob not found"})
 		return
 	}
-
-	// Читаем слой
-	// blob, err := os.ReadFile(blobPath)
-	// if err != nil {
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read blob"})
-	// 	return
-	// }
 	// c.Header("Docker-Upload-UUID", parsedUUID.String())
 	c.JSON(http.StatusOK, gin.H{})
 }
@@ -44,7 +37,7 @@ func (h *Handler) startBlobUpload(c *gin.Context) {
 	imageName := c.Param("name") // Название образа
 
 	// Генерируем уникальный UUID для загрузки
-	uuid := uuid.New().String()
+	uuid := uid.New().String()
 
 	// Создаём временный путь для блоба
 	tempPath := filepath.Join("data", "blobs", imageName, uuid)
@@ -72,8 +65,6 @@ func (h *Handler) uploadBlobPart(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read blob part"})
 		return
 	}
-
-	fmt.Println("range:", len(file))
 
 	// Путь к временному файлу
 	tempPath := filepath.Join("data", "blobs", imageName, uuid)
@@ -120,7 +111,7 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 
 	// c.Header("Location", fmt.Sprintf("/v2/%s/blobs/%s", imageName, digest))
 	c.Header("Docker-Content-Digest", digest)
-	c.Header("Content-Type", "application/octet-stream")
+	// c.Header("Content-Type", "application/octet-stream")
 	c.JSON(http.StatusCreated, gin.H{"message": "Blob finalized", "digest": digest})
 
 }
