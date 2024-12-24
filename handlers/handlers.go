@@ -15,10 +15,6 @@ func NewHandler() *Handler {
 	return &Handler{}
 }
 
-var (
-	storagePath = "data"
-)
-
 func (h *Handler) InitRouters() *gin.Engine {
 	router := gin.Default()
 
@@ -28,14 +24,14 @@ func (h *Handler) InitRouters() *gin.Engine {
 		v2.GET("/", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{})
 		})
-		// Маршруты для реестра
+		// manifests
+		// получение
 		v2.GET("/:name/manifests/:reference", h.getManifestHandler)
-		// Загрузка манифеста образа
+		// Загрузка
 		v2.PUT("/:name/manifests/:reference", h.UploadManifestHandler)
 
-		// Получение слоя образа
+		// загрузка blobs
 		v2.HEAD("/:name/blobs/:uuid", h.getBlobHandler)
-		// Загрузка слоев образа
 		v2.POST("/:name/blobs/uploads/", h.startBlobUpload)
 		v2.PATCH("/:name/blobs/uploads/:uuid", h.uploadBlobPart)
 		v2.PUT("/:name/blobs/uploads/:uuid", h.finalizeBlobUpload)

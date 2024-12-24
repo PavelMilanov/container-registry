@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/PavelMilanov/container-registry/config"
 	"github.com/gin-gonic/gin"
 	uid "github.com/google/uuid"
 )
@@ -15,21 +17,14 @@ import (
 func (h *Handler) getBlobHandler(c *gin.Context) {
 	imageName := c.Param("name")
 	uuid := c.Param("uuid")
-	// test, err := uid.MustParse(uuid)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid UUID"})
-	// 	return
-	// }
-	// Путь к слою
-	blobPath := filepath.Join("data", "blobs", imageName, uuid)
-	fmt.Println(blobPath)
+
+	blobPath := filepath.Join(config.STORAGEPATH, config.BLOBSPATH, imageName, strings.Replace(uuid, "sha256:", "", 1))
+
 	// Проверяем, существует ли слой
 	if _, err := os.Stat(blobPath); os.IsNotExist(err) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Blob not found"})
 		return
 	}
-	// c.Header("Docker-Upload-UUID", parsedUUID.String())
 	c.JSON(http.StatusOK, gin.H{})
 }
 
@@ -40,7 +35,7 @@ func (h *Handler) startBlobUpload(c *gin.Context) {
 	uuid := uid.New().String()
 
 	// Создаём временный путь для блоба
-	tempPath := filepath.Join("data", "blobs", imageName, uuid)
+	tempPath := filepath.Join(config.STORAGEPATH, config.BLOBSPATH, imageName, uuid)
 	err := os.MkdirAll(filepath.Dir(tempPath), 0755)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create upload directory"})
@@ -67,7 +62,7 @@ func (h *Handler) uploadBlobPart(c *gin.Context) {
 	}
 
 	// Путь к временному файлу
-	tempPath := filepath.Join("data", "blobs", imageName, uuid)
+	tempPath := filepath.Join(config.STORAGEPATH, config.BLOBSPATH, imageName, uuid)
 	f, err := os.OpenFile(tempPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to open temporary file"})
@@ -99,20 +94,41 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 	}
 
 	// Путь к временному и конечному файлам
-	tempPath := filepath.Join("data", "blobs", imageName, uuid)
-	finalPath := filepath.Join("data", "blobs", imageName, strings.Replace(digest, "sha256:", "", 1))
-	fmt.Println(tempPath, finalPath)
+	tempPath := filepath.Join(config.STORAGEPATH, config.BLOBSPATH, imageName, uuid)
 
-	// // Перемещаем файл
-	// err := os.Rename(tempPath, finalPath)
-	// if err != nil {
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to finalize blob upload"})
-	// 	return
-	// }
+	// Открытие временного файла
+	file, err := os.Open(tempPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Temporary file not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	}
+	defer file.Close()
 
-	c.Header("Location", fmt.Sprintf("/v2/%s/blobs/%s", imageName, digest))
-	c.Header("Docker-Content-Digest", digest)
-	// c.Header("Content-Type", "application/octet-stream")
+	// Вычисление хеша от содержимого файла
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, file); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	calculatedDigest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
+
+	// сравнение хешей
+	if calculatedDigest != digest {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Digest mismatch", "digest": digest, "calculatedDigest": calculatedDigest})
+		return
+	}
+
+	// переименование временного файла в итоговый файл
+	finalPath := filepath.Join(config.STORAGEPATH, config.BLOBSPATH, imageName, strings.Replace(digest, "sha256:", "", 1))
+	fmt.Println(finalPath)
+	err = os.Rename(tempPath, finalPath)
+	if err != nil {
+		fmt.Println(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to finalize blob upload"})
+		return
+	}
 	c.JSON(http.StatusCreated, gin.H{"message": "Blob finalized", "digest": digest})
-
 }
