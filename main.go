@@ -6,8 +6,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/PavelMilanov/ContainerRegistry/config"
-	"github.com/PavelMilanov/ContainerRegistry/handlers"
+	"github.com/PavelMilanov/container-registry/config"
+	"github.com/PavelMilanov/container-registry/handlers"
 	"github.com/sirupsen/logrus"
 )
 
