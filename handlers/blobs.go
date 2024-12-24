@@ -14,7 +14,7 @@ import (
 	uid "github.com/google/uuid"
 )
 
-func (h *Handler) getBlobHandler(c *gin.Context) {
+func (h *Handler) checkBlob(c *gin.Context) {
 	imageName := c.Param("name")
 	uuid := c.Param("uuid")
 
@@ -123,7 +123,7 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 
 	// переименование временного файла в итоговый файл
 	finalPath := filepath.Join(config.STORAGEPATH, config.BLOBSPATH, imageName, strings.Replace(digest, "sha256:", "", 1))
-	fmt.Println(finalPath)
+
 	err = os.Rename(tempPath, finalPath)
 	if err != nil {
 		fmt.Println(err)
