@@ -16,13 +16,13 @@ func (h *Handler) getBlobHandler(c *gin.Context) {
 	imageName := c.Param("name")
 	uuid := c.Param("uuid")
 	// test, err := uid.MustParse(uuid)
-	if err != nil {
-		fmt.Println(err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid UUID"})
-		return
-	}
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid UUID"})
+	// 	return
+	// }
 	// Путь к слою
-	blobPath := filepath.Join("data", "blobs", imageName, test.String())
+	blobPath := filepath.Join("data", "blobs", imageName, uuid)
 	fmt.Println(blobPath)
 	// Проверяем, существует ли слой
 	if _, err := os.Stat(blobPath); os.IsNotExist(err) {
@@ -101,15 +101,16 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 	// Путь к временному и конечному файлам
 	tempPath := filepath.Join("data", "blobs", imageName, uuid)
 	finalPath := filepath.Join("data", "blobs", imageName, strings.Replace(digest, "sha256:", "", 1))
+	fmt.Println(tempPath, finalPath)
 
-	// Перемещаем файл
-	err := os.Rename(tempPath, finalPath)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to finalize blob upload"})
-		return
-	}
+	// // Перемещаем файл
+	// err := os.Rename(tempPath, finalPath)
+	// if err != nil {
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to finalize blob upload"})
+	// 	return
+	// }
 
-	// c.Header("Location", fmt.Sprintf("/v2/%s/blobs/%s", imageName, digest))
+	c.Header("Location", fmt.Sprintf("/v2/%s/blobs/%s", imageName, digest))
 	c.Header("Docker-Content-Digest", digest)
 	// c.Header("Content-Type", "application/octet-stream")
 	c.JSON(http.StatusCreated, gin.H{"message": "Blob finalized", "digest": digest})
