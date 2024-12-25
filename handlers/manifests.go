@@ -11,6 +11,7 @@ import (
 
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 func (h *Handler) uploadManifest(c *gin.Context) {
@@ -18,6 +19,7 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 	reference := c.Param("reference") // Тег или SHA-256 хэш манифеста
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
+		logrus.Error(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read request body"})
 		return
 	}
@@ -41,12 +43,14 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 	manifestPath := filepath.Join(config.STORAGEPATH, config.MANIFESTSPATH, imageName, calculatedDigest)
 	err = os.MkdirAll(filepath.Dir(manifestPath), 0755)
 	if err != nil {
+		logrus.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create manifest directory"})
 		return
 	}
 
 	err = os.WriteFile(manifestPath, body, 0644)
 	if err != nil {
+		logrus.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save manifest"})
 		return
 	}
@@ -56,20 +60,21 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 		tagPath := filepath.Join(config.STORAGEPATH, config.MANIFESTSPATH, imageName, "tags", reference)
 		err = os.MkdirAll(filepath.Dir(tagPath), 0755)
 		if err != nil {
+			logrus.Error(err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create tag directory"})
 			return
 		}
 
 		err = os.WriteFile(tagPath, []byte(calculatedDigest), 0644)
 		if err != nil {
+			logrus.Error(err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save tag reference"})
 			return
 		}
 	}
-
 	c.Header("Docker-Content-Digest", calculatedDigest)
 	c.JSON(http.StatusCreated, gin.H{"message": "Manifest uploaded", "digest": calculatedDigest})
-
+	logrus.Infof("Загружен образ %s:%s | %s", imageName, reference, calculatedDigest)
 }
 
 func (h *Handler) getManifest(c *gin.Context) {
@@ -95,15 +100,17 @@ func (h *Handler) getManifest(c *gin.Context) {
 	// Читаем содержимое манифеста
 	manifest, err := os.ReadFile(manifestPath)
 	if err != nil {
+		logrus.Error(err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Manifest not found"})
 		return
 	}
 	hasher := sha256.New()
 	hasher.Write(manifest) // manifest - содержимое манифеста
 	calculatedDigest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
-	fmt.Println(calculatedDigest)
+
 	// Возвращаем манифест клиенту
 	c.Header("Content-Type", "application/vnd.docker.distribution.manifest.v2+json")
 	c.Header("Docker-Content-Digest", calculatedDigest)
 	c.Data(http.StatusOK, "application/vnd.docker.distribution.manifest.v2+json", manifest)
+	logrus.Infof("Скачан образ %s:%s | %s", imageName, reference, calculatedDigest)
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/gin-gonic/gin"
 	uid "github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 func (h *Handler) checkBlob(c *gin.Context) {
@@ -22,6 +23,7 @@ func (h *Handler) checkBlob(c *gin.Context) {
 
 	// Проверяем, существует ли слой
 	if _, err := os.Stat(blobPath); os.IsNotExist(err) {
+		logrus.Error(err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Blob not found"})
 		return
 	}
@@ -38,6 +40,7 @@ func (h *Handler) startBlobUpload(c *gin.Context) {
 	tempPath := filepath.Join(config.STORAGEPATH, config.BLOBSPATH, imageName, uuid)
 	err := os.MkdirAll(filepath.Dir(tempPath), 0755)
 	if err != nil {
+		logrus.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create upload directory"})
 		return
 	}
@@ -57,6 +60,7 @@ func (h *Handler) uploadBlobPart(c *gin.Context) {
 	// Читаем тело запроса (часть блоба в бинарном формате)
 	file, err := io.ReadAll(c.Request.Body)
 	if err != nil {
+		logrus.Error(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read blob part"})
 		return
 	}
@@ -65,6 +69,7 @@ func (h *Handler) uploadBlobPart(c *gin.Context) {
 	tempPath := filepath.Join(config.STORAGEPATH, config.BLOBSPATH, imageName, uuid)
 	f, err := os.OpenFile(tempPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
+		logrus.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to open temporary file"})
 		return
 	}
@@ -73,6 +78,7 @@ func (h *Handler) uploadBlobPart(c *gin.Context) {
 	// Записываем данные во временный файл
 	_, err = f.Write(file)
 	if err != nil {
+		logrus.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write to temporary file"})
 		return
 	}
@@ -99,6 +105,7 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 	// Открытие временного файла
 	file, err := os.Open(tempPath)
 	if err != nil {
+		logrus.Error(err)
 		if os.IsNotExist(err) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Temporary file not found"})
 			return
@@ -110,6 +117,7 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 	// Вычисление хеша от содержимого файла
 	hasher := sha256.New()
 	if _, err := io.Copy(hasher, file); err != nil {
+		logrus.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -126,11 +134,12 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 
 	err = os.Rename(tempPath, finalPath)
 	if err != nil {
+		logrus.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to finalize blob upload"})
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"message": "Blob finalized", "digest": digest})
-
+	logrus.Infof("Загружен слой %s", digest)
 }
 
 func (h *Handler) getBlob(c *gin.Context) {
@@ -139,10 +148,11 @@ func (h *Handler) getBlob(c *gin.Context) {
 
 	// Определяем путь к блобу
 	blobPath := filepath.Join(config.STORAGEPATH, config.BLOBSPATH, imageName, strings.Replace(digest, "sha256:", "", 1))
-	fmt.Println(blobPath)
+
 	// Открываем файл блоба
 	file, err := os.Open(blobPath)
 	if err != nil {
+		logrus.Error(err)
 		if os.IsNotExist(err) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Blob not found"})
 			return
@@ -155,6 +165,7 @@ func (h *Handler) getBlob(c *gin.Context) {
 	// Получаем информацию о файле
 	fileInfo, err := file.Stat()
 	if err != nil {
+		logrus.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to stat blob file"})
 		return
 	}
