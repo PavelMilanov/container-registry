@@ -24,19 +24,22 @@ func (h *Handler) InitRouters() *gin.Engine {
 		v2.GET("/", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{})
 		})
-		// manifests
-		// получение
-		// v2.GET("/:name/manifests/:reference", h.getManifestHandler)
+		// docker pull
+		// получение manifest
 		v2.HEAD("/:name/manifests/:reference", h.getManifest)
 		v2.GET("/:name/manifests/:reference", h.getManifest)
-		// Загрузка
-		v2.PUT("/:name/manifests/:reference", h.uploadManifest)
+		// скачивание blobs
+		v2.GET("/:name/blobs/:digest", h.getBlob)
 
+		// docker push
 		// загрузка blobs
 		v2.HEAD("/:name/blobs/:uuid", h.checkBlob)
 		v2.POST("/:name/blobs/uploads/", h.startBlobUpload)
 		v2.PATCH("/:name/blobs/uploads/:uuid", h.uploadBlobPart)
 		v2.PUT("/:name/blobs/uploads/:uuid", h.finalizeBlobUpload)
+		// получение манифеста
+		v2.PUT("/:name/manifests/:reference", h.uploadManifest)
+
 	}
 	return router
 }

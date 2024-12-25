@@ -67,46 +67,43 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 		}
 	}
 
-	// Возвращаем успешный ответ
 	c.Header("Docker-Content-Digest", calculatedDigest)
 	c.JSON(http.StatusCreated, gin.H{"message": "Manifest uploaded", "digest": calculatedDigest})
 
 }
 
 func (h *Handler) getManifest(c *gin.Context) {
-	imageName := c.Param("name") // Имя репозитория
+	imageName := c.Param("name")
 	reference := c.Param("reference")
 
-	// Путь к манифесту
-	manifestPath := filepath.Join(config.STORAGEPATH, "manifests", imageName, reference+".json")
-
-	// Проверяем, существует ли файл манифеста
-	if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
+	// Определяем путь к файлу манифеста
+	manifestPath := ""
+	if strings.HasPrefix(reference, "sha256:") {
+		// Если reference — это digest
+		manifestPath = filepath.Join(config.STORAGEPATH, config.MANIFESTSPATH, imageName, reference)
+	} else {
+		// Если reference — это тег
+		tagPath := filepath.Join(config.STORAGEPATH, config.MANIFESTSPATH, imageName, "tags", reference)
+		tagData, err := os.ReadFile(tagPath)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Tag not found"})
+			return
+		}
+		manifestDigest := string(tagData)
+		manifestPath = filepath.Join(config.STORAGEPATH, config.MANIFESTSPATH, imageName, manifestDigest)
+	}
+	// Читаем содержимое манифеста
+	manifest, err := os.ReadFile(manifestPath)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Manifest not found"})
 		return
 	}
-
-	// Для HEAD-запроса просто возвращаем статус 200
-	if c.Request.Method == "HEAD" {
-		c.Status(http.StatusOK)
-		return
-	}
-
-	// Открываем и возвращаем содержимое манифеста
-	file, err := os.Open(manifestPath)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to open manifest file"})
-		return
-	}
-	defer file.Close()
-
-	// Устанавливаем заголовки
+	hasher := sha256.New()
+	hasher.Write(manifest) // manifest - содержимое манифеста
+	calculatedDigest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
+	fmt.Println(calculatedDigest)
+	// Возвращаем манифест клиенту
 	c.Header("Content-Type", "application/vnd.docker.distribution.manifest.v2+json")
-
-	// Передаём содержимое файла в ответ
-	_, err = io.Copy(c.Writer, file)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send manifest data"})
-		return
-	}
+	c.Header("Docker-Content-Digest", calculatedDigest)
+	c.Data(http.StatusOK, "application/vnd.docker.distribution.manifest.v2+json", manifest)
 }

@@ -132,3 +132,36 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "Blob finalized", "digest": digest})
 
 }
+
+func (h *Handler) getBlob(c *gin.Context) {
+	imageName := c.Param("name")
+	digest := c.Param("digest")
+
+	// Определяем путь к блобу
+	blobPath := filepath.Join(config.STORAGEPATH, config.BLOBSPATH, imageName, strings.Replace(digest, "sha256:", "", 1))
+	fmt.Println(blobPath)
+	// Открываем файл блоба
+	file, err := os.Open(blobPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Blob not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer file.Close()
+
+	// Получаем информацию о файле
+	fileInfo, err := file.Stat()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to stat blob file"})
+		return
+	}
+
+	// Возвращаем блоб клиенту
+	c.Header("Content-Type", "application/octet-stream")
+	c.Header("Content-Length", fmt.Sprintf("%d", fileInfo.Size()))
+	c.Header("Docker-Content-Digest", digest)
+	c.File(blobPath)
+}
