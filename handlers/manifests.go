@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/gin-gonic/gin"
@@ -21,44 +22,55 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 		return
 	}
 	defer c.Request.Body.Close()
-	manifestPath := filepath.Join("data", "manifests", imageName, reference)
-	// Создаём директорию, если её нет
-	err = os.MkdirAll(filepath.Dir(manifestPath), 0755)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create directory"})
-		return
-	}
-	x := string(body)
-	manifest := config.NewManifest()
-	manifest.Print()
-
-	// fmt.Println(string(body))
-	// // Сохраняем манифест
-	// err = os.WriteFile(manifestPath, body, 0644)
-	// if err != nil {
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save manifest"})
-	// 	return
-	// }
-
-	// file, err := os.Open(manifestPath)
-	// if err != nil {
-	// 	if os.IsNotExist(err) {
-	// 		c.JSON(http.StatusNotFound, gin.H{"error": "Temporary file not found"})
-	// 		return
-	// 	}
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-	// }
-	// defer file.Close()
-
 	// Вычисление хеша от содержимого файла
 	hasher := sha256.New()
-	if _, err := io.Copy(hasher, file); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	hasher.Write(body)
+	calculatedDigest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
+
+	// Проверяем, что клиент передал digest как reference, если это digest (а не тег)
+	if strings.HasPrefix(reference, "sha256:") && reference != calculatedDigest {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":             "Manifest digest mismatch",
+			"calculatedDigest":  calculatedDigest,
+			"providedReference": reference,
+		})
 		return
 	}
-	calculatedDigest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
-	fmt.Println(calculatedDigest)
-	c.JSON(http.StatusCreated, gin.H{"message": "Manifest uploaded", "image": imageName, "reference": calculatedDigest})
+
+	// Сохраняем манифест в хранилище
+	manifestPath := filepath.Join(config.STORAGEPATH, config.MANIFESTSPATH, imageName, calculatedDigest)
+	err = os.MkdirAll(filepath.Dir(manifestPath), 0755)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create manifest directory"})
+		return
+	}
+
+	err = os.WriteFile(manifestPath, body, 0644)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save manifest"})
+		return
+	}
+
+	// Если это тег (а не digest), создаём символическую ссылку
+	if !strings.HasPrefix(reference, "sha256:") {
+		tagPath := filepath.Join(config.STORAGEPATH, config.MANIFESTSPATH, imageName, "tags", reference)
+		err = os.MkdirAll(filepath.Dir(tagPath), 0755)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create tag directory"})
+			return
+		}
+
+		err = os.WriteFile(tagPath, []byte(calculatedDigest), 0644)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save tag reference"})
+			return
+		}
+	}
+
+	// Возвращаем успешный ответ
+	c.Header("Docker-Content-Digest", calculatedDigest)
+	c.JSON(http.StatusCreated, gin.H{"message": "Manifest uploaded", "digest": calculatedDigest})
+
 }
 
 func (h *Handler) getManifest(c *gin.Context) {

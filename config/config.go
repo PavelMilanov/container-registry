@@ -4,6 +4,7 @@ var (
 	DURATION = 3
 	VERSION  = 0.1
 
-	STORAGEPATH = "data"
-	BLOBSPATH   = "blob"
+	STORAGEPATH   = "data"
+	MANIFESTSPATH = "manifests"
+	BLOBSPATH     = "blobs"
 )
