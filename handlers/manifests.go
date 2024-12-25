@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,48 +20,46 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read request body"})
 		return
 	}
-	manifestPath := filepath.Join("data", "manifests", imageName, reference+".json")
-
+	defer c.Request.Body.Close()
+	manifestPath := filepath.Join("data", "manifests", imageName, reference)
 	// Создаём директорию, если её нет
 	err = os.MkdirAll(filepath.Dir(manifestPath), 0755)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create directory"})
 		return
 	}
+	x := string(body)
+	manifest := config.NewManifest()
+	manifest.Print()
 
-	// Сохраняем манифест
-	err = os.WriteFile(manifestPath, body, 0644)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save manifest"})
+	// fmt.Println(string(body))
+	// // Сохраняем манифест
+	// err = os.WriteFile(manifestPath, body, 0644)
+	// if err != nil {
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save manifest"})
+	// 	return
+	// }
+
+	// file, err := os.Open(manifestPath)
+	// if err != nil {
+	// 	if os.IsNotExist(err) {
+	// 		c.JSON(http.StatusNotFound, gin.H{"error": "Temporary file not found"})
+	// 		return
+	// 	}
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	// }
+	// defer file.Close()
+
+	// Вычисление хеша от содержимого файла
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, file); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
-	c.JSON(http.StatusCreated, gin.H{"message": "Manifest uploaded", "image": imageName, "reference": reference})
+	calculatedDigest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
+	fmt.Println(calculatedDigest)
+	c.JSON(http.StatusCreated, gin.H{"message": "Manifest uploaded", "image": imageName, "reference": calculatedDigest})
 }
-
-// func (h *Handler) getManifestHandler(c *gin.Context) {
-// 	imageName := c.Param("name")
-// 	reference := c.Param("reference")
-
-// 	// Путь к манифесту
-// 	manifestPath := filepath.Join("data", "manifests", imageName, reference+".json")
-// 	fmt.Println(manifestPath)
-// 	// Проверяем, существует ли манифест
-// 	if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
-// 		c.JSON(http.StatusNotFound, gin.H{"error": "Manifest not found"})
-// 		return
-// 	}
-
-// 	// Читаем содержимое манифеста
-// 	manifest, err := os.ReadFile(manifestPath)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read manifest"})
-// 		return
-// 	}
-
-// 	// Возвращаем манифест
-// 	c.Data(http.StatusOK, "application/json", manifest)
-// }
 
 func (h *Handler) getManifest(c *gin.Context) {
 	imageName := c.Param("name") // Имя репозитория
@@ -68,7 +67,7 @@ func (h *Handler) getManifest(c *gin.Context) {
 
 	// Путь к манифесту
 	manifestPath := filepath.Join(config.STORAGEPATH, "manifests", imageName, reference+".json")
-	fmt.Println(manifestPath)
+
 	// Проверяем, существует ли файл манифеста
 	if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Manifest not found"})

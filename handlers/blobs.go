@@ -126,9 +126,9 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 
 	err = os.Rename(tempPath, finalPath)
 	if err != nil {
-		fmt.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to finalize blob upload"})
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"message": "Blob finalized", "digest": digest})
+
 }
