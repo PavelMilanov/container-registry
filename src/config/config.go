@@ -7,4 +7,6 @@ var (
 	STORAGE_PATH  = "data"
 	MANIFEST_PATH = "manifests"
 	BLOBS_PATH    = "blobs"
+
+	HOST = "*"
 )
