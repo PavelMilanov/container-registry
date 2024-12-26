@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/PavelMilanov/container-registry/config"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -40,7 +39,7 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 	}
 
 	// Сохраняем манифест в хранилище
-	manifestPath := filepath.Join(config.STORAGEPATH, config.MANIFESTSPATH, imageName, calculatedDigest)
+	manifestPath := filepath.Join(h.STORAGE.ManifestPath, imageName, calculatedDigest)
 	err = os.MkdirAll(filepath.Dir(manifestPath), 0755)
 	if err != nil {
 		logrus.Error(err)
@@ -57,7 +56,7 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 
 	// Если это тег (а не digest), создаём символическую ссылку
 	if !strings.HasPrefix(reference, "sha256:") {
-		tagPath := filepath.Join(config.STORAGEPATH, config.MANIFESTSPATH, imageName, "tags", reference)
+		tagPath := filepath.Join(h.STORAGE.ManifestPath, imageName, "tags", reference)
 		err = os.MkdirAll(filepath.Dir(tagPath), 0755)
 		if err != nil {
 			logrus.Error(err)
@@ -85,17 +84,17 @@ func (h *Handler) getManifest(c *gin.Context) {
 	manifestPath := ""
 	if strings.HasPrefix(reference, "sha256:") {
 		// Если reference — это digest
-		manifestPath = filepath.Join(config.STORAGEPATH, config.MANIFESTSPATH, imageName, reference)
+		manifestPath = filepath.Join(h.STORAGE.ManifestPath, imageName, reference)
 	} else {
 		// Если reference — это тег
-		tagPath := filepath.Join(config.STORAGEPATH, config.MANIFESTSPATH, imageName, "tags", reference)
+		tagPath := filepath.Join(h.STORAGE.ManifestPath, imageName, "tags", reference)
 		tagData, err := os.ReadFile(tagPath)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Tag not found"})
 			return
 		}
 		manifestDigest := string(tagData)
-		manifestPath = filepath.Join(config.STORAGEPATH, config.MANIFESTSPATH, imageName, manifestDigest)
+		manifestPath = filepath.Join(h.STORAGE.ManifestPath, imageName, manifestDigest)
 	}
 	// Читаем содержимое манифеста
 	manifest, err := os.ReadFile(manifestPath)
@@ -105,7 +104,7 @@ func (h *Handler) getManifest(c *gin.Context) {
 		return
 	}
 	hasher := sha256.New()
-	hasher.Write(manifest) // manifest - содержимое манифеста
+	hasher.Write(manifest)
 	calculatedDigest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
 
 	// Возвращаем манифест клиенту

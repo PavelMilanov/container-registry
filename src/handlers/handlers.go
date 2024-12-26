@@ -3,19 +3,22 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/PavelMilanov/container-registry/storage"
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
 	// DB   *db.SQLite
 	// CRON *cron.Cron
+	STORAGE *storage.Storage
 }
 
-func NewHandler() *Handler {
-	return &Handler{}
+func NewHandler(storage *storage.Storage) *Handler {
+	return &Handler{STORAGE: storage}
 }
 
 func (h *Handler) InitRouters() *gin.Engine {
+
 	router := gin.Default()
 
 	v2 := router.Group("/v2/")

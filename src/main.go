@@ -3,13 +3,24 @@ package main
 import (
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/handlers"
+	"github.com/PavelMilanov/container-registry/storage"
 	"github.com/sirupsen/logrus"
 )
+
+func init() {
+	storage := storage.NewStorage()
+	blobPath := filepath.Join(storage.BlobPath)
+	manifestPath := filepath.Join(storage.ManifestPath)
+	os.MkdirAll(blobPath, 0755)
+	os.MkdirAll(manifestPath, 0755)
+
+}
 
 func main() {
 	logrus.SetLevel(logrus.TraceLevel)
@@ -18,10 +29,11 @@ func main() {
 		FullTimestamp:   true,
 		TimestampFormat: "2006/01/02 15:04:00",
 	})
+	storage := storage.NewStorage()
 
 	logrus.Debug("Версия сборки: ", config.VERSION)
 
-	handler := handlers.NewHandler()
+	handler := handlers.NewHandler(storage)
 	srv := new(Server)
 	go func() {
 		if err := srv.Run(handler.InitRouters()); err != nil {

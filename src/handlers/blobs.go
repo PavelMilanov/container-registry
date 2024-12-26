@@ -16,10 +16,10 @@ import (
 )
 
 func (h *Handler) checkBlob(c *gin.Context) {
-	imageName := c.Param("name")
+	// imageName := c.Param("name")
 	uuid := c.Param("uuid")
 
-	blobPath := filepath.Join(config.STORAGEPATH, config.BLOBSPATH, imageName, strings.Replace(uuid, "sha256:", "", 1))
+	blobPath := filepath.Join(config.STORAGE_PATH, config.BLOBS_PATH, strings.Replace(uuid, "sha256:", "", 1))
 
 	// Проверяем, существует ли слой
 	if _, err := os.Stat(blobPath); os.IsNotExist(err) {
@@ -36,14 +36,14 @@ func (h *Handler) startBlobUpload(c *gin.Context) {
 	// Генерируем уникальный UUID для загрузки
 	uuid := uid.New().String()
 
-	// Создаём временный путь для блоба
-	tempPath := filepath.Join(config.STORAGEPATH, config.BLOBSPATH, imageName, uuid)
-	err := os.MkdirAll(filepath.Dir(tempPath), 0755)
-	if err != nil {
-		logrus.Error(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create upload directory"})
-		return
-	}
+	// // Создаём временный путь для блоба
+	// tempPath := filepath.Join(config.STORAGE_PATH, config.BLOBS_PATH)
+	// err := os.MkdirAll(filepath.Dir(tempPath), 0755)
+	// if err != nil {
+	// 	logrus.Error(err)
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create upload directory"})
+	// 	return
+	// }
 
 	// Возвращаем URL для продолжения загрузки
 	c.Header("Location", fmt.Sprintf("/v2/%s/blobs/uploads/%s", imageName, uuid))
@@ -54,8 +54,8 @@ func (h *Handler) startBlobUpload(c *gin.Context) {
 }
 
 func (h *Handler) uploadBlobPart(c *gin.Context) {
-	imageName := c.Param("name") // Название образа
-	uuid := c.Param("uuid")      // Уникальный идентификатор загрузки
+	// imageName := c.Param("name") // Название образа
+	uuid := c.Param("uuid") // Уникальный идентификатор загрузки
 
 	// Читаем тело запроса (часть блоба в бинарном формате)
 	file, err := io.ReadAll(c.Request.Body)
@@ -66,7 +66,8 @@ func (h *Handler) uploadBlobPart(c *gin.Context) {
 	}
 
 	// Путь к временному файлу
-	tempPath := filepath.Join(config.STORAGEPATH, config.BLOBSPATH, imageName, uuid)
+	tempPath := filepath.Join(h.STORAGE.BlobPath, uuid)
+	logrus.Debug(tempPath)
 	f, err := os.OpenFile(tempPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		logrus.Error(err)
@@ -100,7 +101,7 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 	}
 
 	// Путь к временному и конечному файлам
-	tempPath := filepath.Join(config.STORAGEPATH, config.BLOBSPATH, imageName, uuid)
+	tempPath := filepath.Join(h.STORAGE.BlobPath, uuid)
 
 	// Открытие временного файла
 	file, err := os.Open(tempPath)
@@ -130,7 +131,7 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 	}
 
 	// переименование временного файла в итоговый файл
-	finalPath := filepath.Join(config.STORAGEPATH, config.BLOBSPATH, imageName, strings.Replace(digest, "sha256:", "", 1))
+	finalPath := filepath.Join(h.STORAGE.BlobPath, strings.Replace(digest, "sha256:", "", 1))
 
 	err = os.Rename(tempPath, finalPath)
 	if err != nil {
@@ -139,15 +140,15 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"message": "Blob finalized", "digest": digest})
-	logrus.Infof("Загружен слой %s", digest)
+	logrus.Infof("Загружен слой %s:%s", imageName, digest)
 }
 
 func (h *Handler) getBlob(c *gin.Context) {
-	imageName := c.Param("name")
+	// imageName := c.Param("name")
 	digest := c.Param("digest")
 
 	// Определяем путь к блобу
-	blobPath := filepath.Join(config.STORAGEPATH, config.BLOBSPATH, imageName, strings.Replace(digest, "sha256:", "", 1))
+	blobPath := filepath.Join(h.STORAGE.BlobPath, strings.Replace(digest, "sha256:", "", 1))
 
 	// Открываем файл блоба
 	file, err := os.Open(blobPath)
