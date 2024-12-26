@@ -50,8 +50,8 @@ func (h *Handler) settingsView(c *gin.Context) {
 		// 	Type:    config.NOTIFY_STATUS["инфо"],
 		// },
 		"pages": []web.Page{
-			{Name: "Главная", URL: "/", IsVisible: false},
-			{Name: "Репозиторий", URL: "/registry", IsVisible: false},
+			// {Name: "Главная", URL: "/", IsVisible: false},
+			{Name: "Реестры", URL: "/", IsVisible: false},
 			{Name: "Настройки", URL: "/settings", IsVisible: true},
 		}})
 	// }

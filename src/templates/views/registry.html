@@ -1,0 +1,97 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .header }}</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="stylesheet/less" href="/static/css/styles.less" />
+    <link rel="stylesheet/less" href="/static/css/registry.less" />
+    <script src="https://cdn.jsdelivr.net/npm/less"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+</head>
+<body>
+<header>
+    <h1>Container Registry</h1>
+</header>
+<nav>
+    {{ range .pages }}
+    {{ if .IsVisible }}
+    <a href="{{ .URL }}" class="active">{{ .Name }}</a>
+    {{ else }}
+    <a href="{{ .URL }}">{{ .Name }}</a>
+    {{ end }}
+    {{ end }}
+    <a href="/logout">Выйти</a>
+</nav>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<div class="container" id="app">
+<h2>Реестры</h2>
+    <div class="card">
+<div class="search-filter">
+    <input type="text" placeholder="Search by image name or tag..." />
+    <select>
+        <option value="">Sort By</option>
+        <option value="name">Name</option>
+        <option value="tag">Tag</option>
+        <option value="date">Date</option>
+    </select>
+</div>
+
+<!-- Image List Table -->
+<table>
+    <thead>
+        <tr>
+            <th>Repository</th>
+            <th>Image Name</th>
+            <th>Tag</th>
+            <th>Size</th>
+            <th>Created At</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>library</td>
+            <td>nginx</td>
+            <td>latest</td>
+            <td>23 MB</td>
+            <td>2023-05-01</td>
+            <td>
+                <button class="action-btn">Pull</button>
+                <button class="action-btn">Delete</button>
+            </td>
+        </tr>
+        <tr>
+            <td>library</td>
+            <td>ubuntu</td>
+            <td>20.04</td>
+            <td>72 MB</td>
+            <td>2023-04-28</td>
+            <td>
+                <button class="action-btn">Pull</button>
+                <button class="action-btn">Delete</button>
+            </td>
+        </tr>
+        <!-- Add more rows as needed -->
+    </tbody>
+</table>
+    </div>
+</div>
+{{ template "github-link"}}
+<!-- Модальное окно для подтверждения восстановления -->
+<!-- <div id="restoreModal" class="modal">
+<div class="modal-content">
+    <span class="close">&times;</span>
+    <h2>Подтверждение восстановления</h2>
+    <p>Вы уверены, что хотите восстановить базу данных  из бэкапа от ?</p>
+    <p><strong>Внимание:</strong> Это действие перезапишет текущую базу данных!</p>
+    <button class="btn btn-primary">Подтвердить восстановление</button>
+    <button class="btn btn-secondary">Отмена</button>
+</div>
+</div> -->
+
+<script src="/static/js/main.js"></script>
+</body>
+
+</html>

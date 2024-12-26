@@ -43,7 +43,7 @@ func (h *Handler) mainView(c *gin.Context) {
 		// "schedules_count": countSchedules,
 		"pages": []web.Page{
 			{Name: "Главная", URL: "/", IsVisible: true},
-			{Name: "Репозиторий", URL: "/registry", IsVisible: false},
+			{Name: "Реестры", URL: "/registry", IsVisible: false},
 			{Name: "Настройки", URL: "/settings", IsVisible: false},
 		}})
 }
