@@ -23,7 +23,6 @@ func (h *Handler) checkBlob(c *gin.Context) {
 
 	// Проверяем, существует ли слой
 	if _, err := os.Stat(blobPath); os.IsNotExist(err) {
-		logrus.Error(err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Blob not found"})
 		return
 	}
@@ -35,15 +34,6 @@ func (h *Handler) startBlobUpload(c *gin.Context) {
 
 	// Генерируем уникальный UUID для загрузки
 	uuid := uid.New().String()
-
-	// // Создаём временный путь для блоба
-	// tempPath := filepath.Join(config.STORAGE_PATH, config.BLOBS_PATH)
-	// err := os.MkdirAll(filepath.Dir(tempPath), 0755)
-	// if err != nil {
-	// 	logrus.Error(err)
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create upload directory"})
-	// 	return
-	// }
 
 	// Возвращаем URL для продолжения загрузки
 	c.Header("Location", fmt.Sprintf("/v2/%s/blobs/uploads/%s", imageName, uuid))
