@@ -14,6 +14,7 @@ import (
 )
 
 func (h *Handler) uploadManifest(c *gin.Context) {
+	repository := c.Param("repository")
 	imageName := c.Param("name")      // название образа
 	reference := c.Param("reference") // Тег или SHA-256 хэш манифеста
 	body, err := io.ReadAll(c.Request.Body)
@@ -39,7 +40,7 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 	}
 
 	// Сохраняем манифест в хранилище
-	manifestPath := filepath.Join(h.STORAGE.ManifestPath, imageName, calculatedDigest)
+	manifestPath := filepath.Join(h.STORAGE.ManifestPath, repository, imageName, calculatedDigest)
 	err = os.MkdirAll(filepath.Dir(manifestPath), 0755)
 	if err != nil {
 		logrus.Error(err)
@@ -56,7 +57,7 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 
 	// Если это тег (а не digest), создаём символическую ссылку
 	if !strings.HasPrefix(reference, "sha256:") {
-		tagPath := filepath.Join(h.STORAGE.ManifestPath, imageName, "tags", reference)
+		tagPath := filepath.Join(h.STORAGE.ManifestPath, repository, imageName, "tags", reference)
 		err = os.MkdirAll(filepath.Dir(tagPath), 0755)
 		if err != nil {
 			logrus.Error(err)
@@ -77,6 +78,7 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 }
 
 func (h *Handler) getManifest(c *gin.Context) {
+	repository := c.Param("repository")
 	imageName := c.Param("name")
 	reference := c.Param("reference")
 
@@ -84,17 +86,17 @@ func (h *Handler) getManifest(c *gin.Context) {
 	manifestPath := ""
 	if strings.HasPrefix(reference, "sha256:") {
 		// Если reference — это digest
-		manifestPath = filepath.Join(h.STORAGE.ManifestPath, imageName, reference)
+		manifestPath = filepath.Join(h.STORAGE.ManifestPath, repository, imageName, reference)
 	} else {
 		// Если reference — это тег
-		tagPath := filepath.Join(h.STORAGE.ManifestPath, imageName, "tags", reference)
+		tagPath := filepath.Join(h.STORAGE.ManifestPath, repository, imageName, "tags", reference)
 		tagData, err := os.ReadFile(tagPath)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Tag not found"})
 			return
 		}
 		manifestDigest := string(tagData)
-		manifestPath = filepath.Join(h.STORAGE.ManifestPath, imageName, manifestDigest)
+		manifestPath = filepath.Join(h.STORAGE.ManifestPath, repository, imageName, manifestDigest)
 	}
 	// Читаем содержимое манифеста
 	manifest, err := os.ReadFile(manifestPath)
@@ -111,5 +113,5 @@ func (h *Handler) getManifest(c *gin.Context) {
 	c.Header("Content-Type", "application/vnd.docker.distribution.manifest.v2+json")
 	c.Header("Docker-Content-Digest", calculatedDigest)
 	c.Data(http.StatusOK, "application/vnd.docker.distribution.manifest.v2+json", manifest)
-	logrus.Infof("Скачан образ %s:%s | %s", imageName, reference, calculatedDigest)
+	logrus.Infof("Скачан образ %s/%s:%s | %s", repository, imageName, reference, calculatedDigest)
 }

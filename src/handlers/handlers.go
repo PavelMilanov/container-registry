@@ -29,19 +29,19 @@ func (h *Handler) InitRouters() *gin.Engine {
 		})
 		// docker pull
 		// получение manifest
-		v2.HEAD("/:name/manifests/:reference", h.getManifest)
-		v2.GET("/:name/manifests/:reference", h.getManifest)
+		v2.HEAD("/:repository/:name/manifests/:reference", h.getManifest)
+		v2.GET("/:repository/:name/manifests/:reference", h.getManifest)
 		// скачивание blobs
-		v2.GET("/:name/blobs/:digest", h.getBlob)
+		v2.GET("/:repository/:name/blobs/:digest", h.getBlob)
 
 		// docker push
 		// загрузка blobs
-		v2.HEAD("/:name/blobs/:uuid", h.checkBlob)
-		v2.POST("/:name/blobs/uploads/", h.startBlobUpload)
-		v2.PATCH("/:name/blobs/uploads/:uuid", h.uploadBlobPart)
-		v2.PUT("/:name/blobs/uploads/:uuid", h.finalizeBlobUpload)
+		v2.HEAD("/:repository/:name/blobs/:uuid", h.checkBlob)
+		v2.POST("/:repository/:name/blobs/uploads/", h.startBlobUpload)
+		v2.PATCH("/:repository/:name/blobs/uploads/:uuid", h.uploadBlobPart)
+		v2.PUT("/:repository/:name/blobs/uploads/:uuid", h.finalizeBlobUpload)
 		// получение манифеста
-		v2.PUT("/:name/manifests/:reference", h.uploadManifest)
+		v2.PUT("/:repository/:name/manifests/:reference", h.uploadManifest)
 
 	}
 	return router

@@ -30,16 +30,17 @@ func (h *Handler) checkBlob(c *gin.Context) {
 }
 
 func (h *Handler) startBlobUpload(c *gin.Context) {
-	imageName := c.Param("name") // Название образа
+	repository := c.Param("repository")
+	imageName := c.Param("name")
 
 	// Генерируем уникальный UUID для загрузки
 	uuid := uid.New().String()
 
 	// Возвращаем URL для продолжения загрузки
-	c.Header("Location", fmt.Sprintf("/v2/%s/blobs/uploads/%s", imageName, uuid))
+	c.Header("Location", fmt.Sprintf("/v2/%s/%s/blobs/uploads/%s", repository, imageName, uuid))
 	c.Header("Docker-Upload-UUID", uuid)
 	c.JSON(http.StatusAccepted, gin.H{
-		"location": fmt.Sprintf("/v2/%s/blobs/uploads/%s", imageName, uuid),
+		// "location": fmt.Sprintf("/v2/%s/%s/blobs/uploads/%s", repository, imageName, uuid),
 	})
 }
 
