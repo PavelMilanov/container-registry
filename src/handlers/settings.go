@@ -43,7 +43,7 @@ func (h *Handler) settingsView(c *gin.Context) {
 	// 			}})
 	// 	}
 	c.HTML(http.StatusOK, "settings.html", gin.H{
-		// "header": "Настройки | PgBackup",
+		"header": "Настройки | Container Registry",
 		// "config": settings,
 		// "notification": web.Notify{
 		// 	Message: "Настройки обновлены!",

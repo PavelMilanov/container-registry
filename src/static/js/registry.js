@@ -8,8 +8,8 @@ $(window).on('click', function (event) {
     }
 })
 
-$('#app').on('click', '#dbMenu-btn', function () {
-    $('#databaseModal').show()
+$('#app').on('click', '#repo-btn', function () {
+    $('#repositoryModal').show()
 })
 
 $('#app').on('click', '#backupMenu-btn', function () {

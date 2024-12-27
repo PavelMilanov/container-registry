@@ -26,56 +26,29 @@
 </nav>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <div class="container" id="app">
-<h2>Реестры</h2>
+    <h2>Реестры</h2>
     <div class="card">
-<div class="search-filter">
-    <input type="text" placeholder="Search by image name or tag..." />
-    <select>
-        <option value="">Sort By</option>
-        <option value="name">Name</option>
-        <option value="tag">Tag</option>
-        <option value="date">Date</option>
-    </select>
-</div>
-
-<!-- Image List Table -->
-<table>
-    <thead>
-        <tr>
-            <th>Repository</th>
-            <th>Image Name</th>
-            <th>Tag</th>
-            <th>Size</th>
-            <th>Created At</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>library</td>
-            <td>nginx</td>
-            <td>latest</td>
-            <td>23 MB</td>
-            <td>2023-05-01</td>
-            <td>
-                <button class="action-btn">Pull</button>
-                <button class="action-btn">Delete</button>
-            </td>
-        </tr>
-        <tr>
-            <td>library</td>
-            <td>ubuntu</td>
-            <td>20.04</td>
-            <td>72 MB</td>
-            <td>2023-04-28</td>
-            <td>
-                <button class="action-btn">Pull</button>
-                <button class="action-btn">Delete</button>
-            </td>
-        </tr>
-        <!-- Add more rows as needed -->
-    </tbody>
-</table>
+        <button id="repo-btn" class="btn btn-primary">Добавить репозиторий</button>
+    {{ template "modals/add_repo"}}
+    <table>
+        <tbody>
+            {{ range .repos }}
+            <tr>
+                <td>{{.Name}}</td>
+                <td>test</td>
+                <td>test</td>
+                <td>
+                    <form class="btn-form btn btn-primary" action="/databases/backup/download" method="get">
+                        <button type="submit" name="ID" value="test" class="btn btn-primary">скачать</button>
+                    </form>
+                    <form class="btn-form btn btn-secondary" action="/databases/backup/delete" method="post">
+                        <button type="submit" name="ID" value="test" class="btn btn-secondary">удалить</button>
+                    </form>
+                </td>
+            </tr>
+            {{ end }}
+        </tbody>
+    </table>
     </div>
 </div>
 {{ template "github-link"}}
@@ -91,7 +64,7 @@
 </div>
 </div> -->
 
-<script src="/static/js/main.js"></script>
+<script src="/static/js/registry.js"></script>
 </body>
 
 </html>

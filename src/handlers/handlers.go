@@ -82,8 +82,8 @@ func (h *Handler) InitRouters() *gin.Engine {
 	{
 		web.GET("/logout", h.logoutView)
 		web.POST("/logout", h.logoutView)
-		// web.GET("/", h.mainView)
 		web.GET("/", h.registryView)
+		web.POST("/repository/add", h.addRepositoryView)
 		web.GET("/settings", h.settingsView)
 		web.POST("/settings", h.settingsView)
 	}

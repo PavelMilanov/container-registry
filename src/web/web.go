@@ -6,3 +6,7 @@ type Page struct {
 	URL       string
 	IsVisible bool
 }
+
+type Repository struct {
+	Name string
+}
