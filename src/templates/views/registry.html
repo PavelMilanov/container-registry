@@ -24,26 +24,30 @@
     {{ end }}
     <a href="/logout">Выйти</a>
 </nav>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <div class="container" id="app">
     <h2>Реестры</h2>
     <div class="card">
-        <button id="repo-btn" class="btn btn-primary">Добавить репозиторий</button>
+        <button id="repo-btn" class="btn btn-primary">Добавить реестр</button>
     {{ template "modals/add_repo"}}
     <table>
+        <thead>
+            <tr>
+                <th>Имя реестра</th>
+                <th>Размер</th>
+                <th>Создан</th>
+                <th></th>
+            </tr>
+        </thead>
         <tbody>
             {{ range .repos }}
             <tr>
-                <td>{{.Name}}</td>
-                <td>test</td>
-                <td>test</td>
                 <td>
-                    <form class="btn-form btn btn-primary" action="/databases/backup/download" method="get">
-                        <button type="submit" name="ID" value="test" class="btn btn-primary">скачать</button>
-                    </form>
-                    <form class="btn-form btn btn-secondary" action="/databases/backup/delete" method="post">
-                        <button type="submit" name="ID" value="test" class="btn btn-secondary">удалить</button>
-                    </form>
+                    <a href="/registry/{{.Name}}">{{.Name}}</a>
+                </td>
+                <td>{{.Size}}</td>
+                <td>{{.CreatedAt}}</td>
+                <td>
+                    <button id="btn" class="btn btn-primary"></button>
                 </td>
             </tr>
             {{ end }}
@@ -52,19 +56,6 @@
     </div>
 </div>
 {{ template "github-link"}}
-<!-- Модальное окно для подтверждения восстановления -->
-<!-- <div id="restoreModal" class="modal">
-<div class="modal-content">
-    <span class="close">&times;</span>
-    <h2>Подтверждение восстановления</h2>
-    <p>Вы уверены, что хотите восстановить базу данных  из бэкапа от ?</p>
-    <p><strong>Внимание:</strong> Это действие перезапишет текущую базу данных!</p>
-    <button class="btn btn-primary">Подтвердить восстановление</button>
-    <button class="btn btn-secondary">Отмена</button>
-</div>
-</div> -->
-
 <script src="/static/js/registry.js"></script>
 </body>
-
 </html>

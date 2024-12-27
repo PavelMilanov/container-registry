@@ -4,19 +4,19 @@ import (
 	"net/http"
 
 	"github.com/PavelMilanov/container-registry/config"
+	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
 
 type Handler struct {
-	// DB   *db.SQLite
-	// CRON *cron.Cron
+	DB      *db.SQLite
 	STORAGE *storage.Storage
 }
 
-func NewHandler(storage *storage.Storage) *Handler {
-	return &Handler{STORAGE: storage}
+func NewHandler(storage *storage.Storage, db *db.SQLite) *Handler {
+	return &Handler{STORAGE: storage, DB: db}
 }
 
 // Базовый middleware безопасности.
@@ -83,7 +83,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 		web.GET("/logout", h.logoutView)
 		web.POST("/logout", h.logoutView)
 		web.GET("/", h.registryView)
-		web.POST("/repository/add", h.addRepositoryView)
+		web.POST("/repository/add", h.addRegistryView)
 		web.GET("/settings", h.settingsView)
 		web.POST("/settings", h.settingsView)
 	}

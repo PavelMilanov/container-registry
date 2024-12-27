@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/PavelMilanov/container-registry/db"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -17,6 +18,10 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 	repository := c.Param("repository")
 	imageName := c.Param("name")      // название образа
 	reference := c.Param("reference") // Тег или SHA-256 хэш манифеста
+
+	registry := db.Registry{}
+	registry.Get(repository, h.DB.Sql)
+
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		logrus.Error(err)
@@ -74,6 +79,14 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 	}
 	c.Header("Docker-Content-Digest", calculatedDigest)
 	c.JSON(http.StatusCreated, gin.H{"message": "Manifest uploaded", "digest": calculatedDigest})
+
+	image := db.Image{
+		Name:       imageName,
+		Tag:        reference,
+		Hash:       calculatedDigest,
+		RegistryID: registry.ID,
+	}
+	image.Add(h.DB.Sql)
 	logrus.Infof("Загружен образ %s:%s | %s", imageName, reference, calculatedDigest)
 }
 

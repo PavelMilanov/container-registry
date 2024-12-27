@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/web"
 	"github.com/gin-gonic/gin"
 )
@@ -10,34 +11,27 @@ import (
 func (h *Handler) registryView(c *gin.Context) {
 	c.HTML(http.StatusOK, "registry.html", gin.H{
 		"header": "Реестры | Container Registry",
-		// "storage":         storage,
-		// "count":           count,
-		// "system":          system,
-		// "backups":         lastBackups,
-		// "backups_count":   countBackups,
-		// "schedules_count": countSchedules,
+		"repos":  db.GetRegistires(h.DB.Sql),
 		"pages": []web.Page{
-			// {Name: "Главная", URL: "/", IsVisible: false},
 			{Name: "Реестры", URL: "/", IsVisible: true},
 			{Name: "Настройки", URL: "/settings", IsVisible: false},
 		}})
 }
 
-func (h *Handler) addRepositoryView(c *gin.Context) {
+func (h *Handler) addRegistryView(c *gin.Context) {
 	var data web.Repository
 	if err := c.ShouldBind(&data); err != nil {
 		return
 	}
+	registry := db.Registry{Name: data.Name}
+	if err := registry.Add(h.DB.Sql); err != nil {
+		c.HTML(http.StatusBadRequest, "registry.html", gin.H{"error": err.Error()})
+		return
+	}
 	c.HTML(http.StatusOK, "registry.html", gin.H{
 		"header": "Реестры | Container Registry",
-		// "storage":         storage,
-		// "count":           count,
-		// "system":          system,
-		"repos": []web.Repository{data},
-		// "backups_count":   countBackups,
-		// "schedules_count": countSchedules,
+		"repos":  db.GetRegistires(h.DB.Sql),
 		"pages": []web.Page{
-			// {Name: "Главная", URL: "/", IsVisible: false},
 			{Name: "Реестры", URL: "/", IsVisible: true},
 			{Name: "Настройки", URL: "/settings", IsVisible: false},
 		}})

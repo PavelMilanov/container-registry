@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/PavelMilanov/container-registry/config"
+	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/handlers"
 	"github.com/PavelMilanov/container-registry/storage"
 	"github.com/sirupsen/logrus"
@@ -31,9 +33,12 @@ func main() {
 	})
 	storage := storage.NewStorage()
 
+	sqliteFIle := fmt.Sprintf("%s/registry.db", config.DATA_PATH)
+	sqlite := db.NewDatabase(sqliteFIle)
+	defer db.CloseDatabase(sqlite.Sql)
 	logrus.Debug("Версия сборки: ", config.VERSION)
 
-	handler := handlers.NewHandler(storage)
+	handler := handlers.NewHandler(storage, &sqlite)
 	srv := new(Server)
 	go func() {
 		if err := srv.Run(handler.InitRouters()); err != nil {

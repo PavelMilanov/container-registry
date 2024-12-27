@@ -8,5 +8,7 @@ var (
 	MANIFEST_PATH = "manifests"
 	BLOBS_PATH    = "blobs"
 
+	DATA_PATH = "var"
+
 	HOST = "*"
 )
