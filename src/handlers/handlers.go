@@ -8,6 +8,7 @@ import (
 	"github.com/PavelMilanov/container-registry/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 )
 
 type Handler struct {
@@ -40,6 +41,20 @@ func baseSecurityMiddleware(host string) gin.HandlerFunc {
 	}
 }
 
+func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		registry := db.Registry{}
+		repository := c.Param("repository")
+		if err := registry.Get(repository, sql); err != nil {
+			logrus.Error(err)
+			c.Header("Docker-Distribution-API-Version", "registry/2.0")
+			c.JSON(http.StatusNotFound, gin.H{"error": "Failed to get registry"})
+			c.Abort()
+		}
+		c.Next()
+	}
+}
+
 func (h *Handler) InitRouters() *gin.Engine {
 
 	router := gin.Default()
@@ -54,7 +69,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 	router.GET("/login", h.loginView)
 	router.POST("/login", h.loginView)
 
-	v2 := router.Group("/v2/")
+	v2 := router.Group("/v2/", baseRegistryMiddleware(h.DB.Sql))
 	{
 		// Пинг для проверки
 		v2.GET("/", func(c *gin.Context) {
@@ -82,8 +97,9 @@ func (h *Handler) InitRouters() *gin.Engine {
 	{
 		web.GET("/logout", h.logoutView)
 		web.POST("/logout", h.logoutView)
-		web.GET("/", h.registryView)
+		web.GET("/", h.repositoryView)
 		web.POST("/repository/add", h.addRegistryView)
+		web.GET("/repository/:name", h.registryView)
 		web.GET("/settings", h.settingsView)
 		web.POST("/settings", h.settingsView)
 	}

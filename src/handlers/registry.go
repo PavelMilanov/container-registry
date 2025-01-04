@@ -8,10 +8,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (h *Handler) registryView(c *gin.Context) {
+func (h *Handler) repositoryView(c *gin.Context) {
 	c.HTML(http.StatusOK, "registry.html", gin.H{
-		"header": "Реестры | Container Registry",
-		"repos":  db.GetRegistires(h.DB.Sql),
+		"header":     "Реестры | Container Registry",
+		"registries": db.GetRegistires(h.DB.Sql),
 		"pages": []web.Page{
 			{Name: "Реестры", URL: "/", IsVisible: true},
 			{Name: "Настройки", URL: "/settings", IsVisible: false},
@@ -29,8 +29,21 @@ func (h *Handler) addRegistryView(c *gin.Context) {
 		return
 	}
 	c.HTML(http.StatusOK, "registry.html", gin.H{
-		"header": "Реестры | Container Registry",
-		"repos":  db.GetRegistires(h.DB.Sql),
+		"header":     "Реестры | Container Registry",
+		"registries": db.GetRegistires(h.DB.Sql),
+		"pages": []web.Page{
+			{Name: "Реестры", URL: "/", IsVisible: true},
+			{Name: "Настройки", URL: "/settings", IsVisible: false},
+		}})
+}
+
+func (h *Handler) registryView(c *gin.Context) {
+	registryName := c.Param("name")
+	registry := db.Registry{Name: registryName}
+	registry.GetImages(h.DB.Sql)
+	c.HTML(http.StatusOK, "registry.html", gin.H{
+		"header":     "Реестры | Container Registry",
+		"repository": registry,
 		"pages": []web.Page{
 			{Name: "Реестры", URL: "/", IsVisible: true},
 			{Name: "Настройки", URL: "/settings", IsVisible: false},

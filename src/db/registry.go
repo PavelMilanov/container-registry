@@ -8,8 +8,8 @@ import (
 
 type Registry struct {
 	gorm.Model
-	ID        int `gorm:"primaryKey"`
-	Name      string
+	ID        int    `gorm:"primaryKey"`
+	Name      string `gorm:"unique"`
 	Size      string
 	CreatedAt string
 	UpdatedAt time.Time `gorm:"autoUpdateTime:false"`
@@ -32,7 +32,18 @@ func GetRegistires(sql *gorm.DB) []Registry {
 	return r
 }
 
-func (r *Registry) Get(name string, sql *gorm.DB) *Registry {
-	sql.Where("name = ?", name).First(&r)
-	return r
+func (r *Registry) Get(name string, sql *gorm.DB) error {
+	result := sql.Where("name = ?", name).First(&r)
+	if result.RowsAffected == 0 {
+		return result.Error
+	}
+	return nil
+}
+
+func (r *Registry) GetImages(sql *gorm.DB) error {
+	result := sql.Preload("Images").Where("name = ?", r.Name).First(&r)
+	if result.Error != nil {
+		return result.Error
+	}
+	return nil
 }
