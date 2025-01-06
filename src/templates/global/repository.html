@@ -1,29 +1,26 @@
 {{ define "repository" }}
-    <h2>Реестр {{.Name}}</h2>
-    <div class="card">
-        <table>
-            <thead>
-                <tr>
-                    <th>Образ</th>
-                    <th>Размер</th>
-                    <th>Создан</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                {{ range .Images }}
-                <tr>
-                    <td>
-                        <a href="/repository/image/{{.Name}}">{{.Name}}</a>
-                    </td>
-                    <td>{{.Size}}</td>
-                    <td>{{.CreatedAt}}</td>
-                    <td>
-                        <button id="btn" class="btn btn-primary"></button>
-                    </td>
-                </tr>
-                {{ end }}
-            </tbody>
-        </table>
-    </div>
+<table>
+    <thead>
+        <tr>
+            <th>Образ</th>
+            <th>Тег</th>
+            <th>Размер</th>
+            <th>Создан</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {{ range .Images }}
+        <tr>
+            <td>{{.Name}}</td>
+            <td>{{.Tag}}</td>
+            <td>{{.Size}}</td>
+            <td>{{.CreatedAt}}</td>
+            <td>
+                :
+            </td>
+        </tr>
+        {{ end }}
+    </tbody>
+</table>
 {{ end}}

@@ -10,7 +10,7 @@ type Registry struct {
 	gorm.Model
 	ID        int    `gorm:"primaryKey"`
 	Name      string `gorm:"unique"`
-	Size      string
+	Size      int
 	CreatedAt string
 	UpdatedAt time.Time `gorm:"autoUpdateTime:false"`
 	Images    []Image   `gorm:"constraint:OnDelete:CASCADE;"`

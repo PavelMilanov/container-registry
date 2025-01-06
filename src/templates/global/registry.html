@@ -1,31 +1,26 @@
 {{ define "registry" }}
-    <h2>Реестры</h2>
-    <div class="card">
-        <button id="repo-btn" class="btn btn-primary">Добавить реестр</button>
-        {{ template "modals/add_repo"}}
-        <table>
-            <thead>
-                <tr>
-                    <th>Имя реестра</th>
-                    <th>Размер</th>
-                    <th>Создан</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                {{ range . }}
-                <tr>
-                    <td>
-                        <a href="/repository/{{.Name}}">{{.Name}}</a>
-                    </td>
-                    <td>{{.Size}}</td>
-                    <td>{{.CreatedAt}}</td>
-                    <td>
-                        <button id="btn" class="btn btn-primary"></button>
-                    </td>
-                </tr>
-                {{ end }}
-            </tbody>
-        </table>
-    </div>
+<table>
+    <thead>
+        <tr>
+            <th>Имя реестра</th>
+            <th>Размер</th>
+            <th>Создан</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {{ range . }}
+        <tr>
+            <td>
+                <a href="/repository/{{.Name}}">{{.Name}}</a>
+            </td>
+            <td>{{.Size}}</td>
+            <td>{{.CreatedAt}}</td>
+            <td>
+                :
+            </td>
+        </tr>
+        {{ end }}
+    </tbody>
+</table>
 {{ end}}

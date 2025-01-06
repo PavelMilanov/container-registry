@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -28,6 +29,7 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read request body"})
 		return
 	}
+
 	defer c.Request.Body.Close()
 	// Вычисление хеша от содержимого файла
 	hasher := sha256.New()
@@ -80,10 +82,25 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 	c.Header("Docker-Content-Digest", calculatedDigest)
 	c.JSON(http.StatusCreated, gin.H{"message": "Manifest uploaded", "digest": calculatedDigest})
 
+	// Считаем размер
+	type layers struct {
+		Size int `json:"size"`
+	}
+	type manifest struct {
+		Layers []layers `json:"layers"`
+	}
+
+	data := manifest{}
+	json.Unmarshal(body, &data)
+	var size int
+	for _, layer := range data.Layers {
+		size += layer.Size
+	}
 	image := db.Image{
 		Name:       imageName,
-		Tag:        reference,
 		Hash:       calculatedDigest,
+		Tag:        reference,
+		Size:       size,
 		RegistryID: registry.ID,
 	}
 	image.Add(h.DB.Sql)
