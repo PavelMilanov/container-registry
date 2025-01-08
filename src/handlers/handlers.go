@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
-	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/storage"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -18,27 +19,6 @@ type Handler struct {
 
 func NewHandler(storage *storage.Storage, db *db.SQLite) *Handler {
 	return &Handler{STORAGE: storage, DB: db}
-}
-
-// Базовый middleware безопасности.
-func baseSecurityMiddleware(host string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if host == "*" {
-			return
-		} else if c.Request.Host != host {
-			logrus.Debug("Host invalid: ", c.Request.Host)
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Invalid host header"})
-			return
-		}
-		c.Header("X-Frame-Options", "DENY")
-		c.Header("Content-Security-Policy", "default-src 'self'; connect-src *; font-src *; script-src-elem * 'unsafe-inline'; img-src * data:; style-src * 'unsafe-inline';")
-		c.Header("X-XSS-Protection", "1; mode=block")
-		c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
-		c.Header("Referrer-Policy", "strict-origin")
-		c.Header("X-Content-Type-Options", "nosniff")
-		c.Header("Permissions-Policy", "geolocation=(),midi=(),sync-xhr=(),microphone=(),camera=(),magnetometer=(),gyroscope=(),fullscreen=(self),payment=()")
-		c.Next()
-	}
 }
 
 func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
@@ -58,9 +38,14 @@ func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 func (h *Handler) InitRouters() *gin.Engine {
 
 	router := gin.Default()
-
-	router.Use(baseSecurityMiddleware(config.HOST))
-
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*", "http://localhost:3000"},
+		AllowMethods:     []string{"GET", "POST", "DELETE"},
+		AllowHeaders:     []string{"Origin"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 	router.LoadHTMLGlob("templates/**/*")
 	router.Static("/static/", "./static")
 
@@ -93,13 +78,14 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	}
 
-	web := router.Group("/")
+	web := router.Group("/api/")
 	{
 		web.GET("/logout", h.logoutView)
 		web.POST("/logout", h.logoutView)
-		web.GET("/", h.repositoryView)
-		web.POST("/repository/add", h.addRegistryView)
-		web.GET("/repository/:name", h.registryView)
+		// web.GET("/", h.repositoryView)
+		web.POST("/repository/add/:name", h.addRepository)
+		web.GET("/repository/all", h.getRepository)
+		// web.GET("/repository/:name", h.registryView)
 		web.GET("/settings", h.settingsView)
 		web.POST("/settings", h.settingsView)
 	}

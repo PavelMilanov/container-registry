@@ -4,48 +4,34 @@ import (
 	"net/http"
 
 	"github.com/PavelMilanov/container-registry/db"
-	"github.com/PavelMilanov/container-registry/web"
 	"github.com/gin-gonic/gin"
 )
 
-func (h *Handler) repositoryView(c *gin.Context) {
-	c.HTML(http.StatusOK, "registry.html", gin.H{
-		"header":     "Реестры | Container Registry",
-		"registries": db.GetRegistires(h.DB.Sql),
-		"pages": []web.Page{
-			{Name: "Реестры", URL: "/", IsVisible: true},
-			{Name: "Настройки", URL: "/settings", IsVisible: false},
-		}})
+func (h *Handler) getRepository(c *gin.Context) {
+	data := db.GetRegistires(h.DB.Sql)
+	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
-func (h *Handler) addRegistryView(c *gin.Context) {
-	var data web.Repository
-	if err := c.ShouldBind(&data); err != nil {
+func (h *Handler) addRepository(c *gin.Context) {
+	data := c.Param("name")
+
+	repo := db.Registry{Name: data}
+	if err := repo.Add(h.DB.Sql); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": err.Error()})
 		return
 	}
-	registry := db.Registry{Name: data.Name}
-	if err := registry.Add(h.DB.Sql); err != nil {
-		c.HTML(http.StatusBadRequest, "registry.html", gin.H{"error": err.Error()})
-		return
-	}
-	c.HTML(http.StatusOK, "registry.html", gin.H{
-		"header":     "Реестры | Container Registry",
-		"registries": db.GetRegistires(h.DB.Sql),
-		"pages": []web.Page{
-			{Name: "Реестры", URL: "/", IsVisible: true},
-			{Name: "Настройки", URL: "/settings", IsVisible: false},
-		}})
+	c.JSON(http.StatusCreated, gin.H{"data": repo})
 }
 
-func (h *Handler) registryView(c *gin.Context) {
-	registryName := c.Param("name")
-	registry := db.Registry{Name: registryName}
-	registry.GetImages(h.DB.Sql)
-	c.HTML(http.StatusOK, "registry.html", gin.H{
-		"header":     "Реестры | Container Registry",
-		"repository": registry,
-		"pages": []web.Page{
-			{Name: "Реестры", URL: "/", IsVisible: true},
-			{Name: "Настройки", URL: "/settings", IsVisible: false},
-		}})
-}
+// func (h *Handler) registryView(c *gin.Context) {
+// 	registryName := c.Param("name")
+// 	registry := db.Registry{Name: registryName}
+// 	registry.GetImages(h.DB.Sql)
+// 	c.HTML(http.StatusOK, "registry.html", gin.H{
+// 		"header":     "Реестры | Container Registry",
+// 		"repository": registry,
+// 		"pages": []web.Page{
+// 			{Name: "Реестры", URL: "/", IsVisible: true},
+// 			{Name: "Настройки", URL: "/settings", IsVisible: false},
+// 		}})
+// }

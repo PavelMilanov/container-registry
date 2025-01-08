@@ -3,6 +3,7 @@ package db
 import (
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -21,8 +22,10 @@ func (r *Registry) Add(sql *gorm.DB) error {
 	r.CreatedAt = now.Format("2006-01-02 15:04:05")
 	result := sql.Create(&r)
 	if result.Error != nil {
+		logrus.Error(result.Error)
 		return result.Error
 	}
+	logrus.Infof("Создан новый реестр %v", r)
 	return nil
 }
 
