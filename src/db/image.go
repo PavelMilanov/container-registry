@@ -28,14 +28,14 @@ func (i *Image) Add(sql *gorm.DB) {
 	// }
 }
 
-func GetRepositoryImages(sql *gorm.DB, id int, name string) []Image {
-	var r []Image
-	sql.Where("registry_id =? AND name =?", id, name).Find(&r)
-	return r
-}
+// func GetRepositoryImages(sql *gorm.DB, id int, name string) []Image {
+// 	var r []Image
+// 	sql.Where("registry_id =? AND name =?", id, name).Find(&r)
+// 	return r
+// }
 
-func GetImages(sql *gorm.DB) []Registry {
-	var r []Registry
-	sql.Find(&r)
-	return r
+func GetImages(sql *gorm.DB) []Image {
+	var i []Image
+	sql.Find(&i)
+	return i
 }

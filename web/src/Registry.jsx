@@ -1,7 +1,8 @@
 import { createSignal, onMount } from "solid-js";
+import { A } from "@solidjs/router";
 import axios from 'axios'
 
-import AddRepo from "./modal/addRepo";
+import AddRepo from "./modal/AddRepo";
 
 function Registry() {
 
@@ -21,7 +22,7 @@ function Registry() {
 
 
     onMount(async () => { 
-        const response = await axios.get(API_URL + `repository/all`)
+        const response = await axios.get(API_URL + `registry/all`)
         console.log(response.data.data) // в ответе приходит массив "data"
         setRepoList(response.data.data)
     })
@@ -45,7 +46,7 @@ function Registry() {
                         <For each={repoList()} >{(repo, i) =>
                             <tr>
                                 <td>
-                                    <a href="">{repo.Name}</a>
+                                    <A href={repo.Name}>{repo.Name}</A>
                                 </td>
                                 <td>{repo.Size}</td>
                                 <td>{repo.CreatedAt}</td>

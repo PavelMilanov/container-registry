@@ -1,23 +1,31 @@
-// import logo from './logo.svg';
-// import styles from './App.module.css';
-import { createSignal, Show } from 'solid-js';
+import { createSignal, lazy } from "solid-js";
+import { Router, Route } from "@solidjs/router";
 
 
 import Registry from "./Registry";
+const Repo = lazy(() => import("./Repo"));
 
 
 function App() {
+
   const [loggedIn, setLoggedIn] = createSignal(false)
   // const toggle = () => setLoggedIn(!loggedIn())
 
   return (
     <div>
       <nav>
-        <a>Реестры</a>
-        <a>Настройки</a>
-        <a>Выйти</a>
+        <a href="/registy">Реестры</a>
+        <a href="/settings">Настройки</a>
+        <a href="/logout">Выйти</a>
       </nav>
-     <Registry />
+      <Router>
+        {/* <Route path={["login", "register"]} component={Login} /> */}
+        
+        <Route path="/registy">
+          <Route path="/" component={Registry}/>
+          <Route path="/:name" component={Repo} />
+        </Route>
+      </Router>
     </div>
   );
 }
