@@ -46,9 +46,10 @@ func (h *Handler) InitRouters() *gin.Engine {
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
-	router.LoadHTMLGlob("templates/**/*")
+	router.LoadHTMLGlob("templates/*")
 	router.Static("/static/", "./static")
 
+	router.GET("/", h.webView)
 	router.GET("/registration", h.registrationView)
 	router.POST("/registration", h.registrationView)
 	router.GET("/login", h.loginView)
@@ -78,16 +79,16 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	}
 
-	web := router.Group("/api/")
+	api := router.Group("/api/")
 	{
-		web.GET("/logout", h.logoutView)
-		web.POST("/logout", h.logoutView)
+		api.GET("/logout", h.logoutView)
+		api.POST("/logout", h.logoutView)
 		// web.GET("/", h.repositoryView)
-		web.POST("/repository/add/:name", h.addRegistry)
-		web.GET("/registry/:name/tags", h.getRepositoryTags)
-		web.GET("/registry/all", h.getRegistry)
-		web.GET("/settings", h.settingsView)
-		web.POST("/settings", h.settingsView)
+		api.POST("/repository/add/:name", h.addRegistry)
+		api.GET("/registry/:name/tags", h.getRepositoryTags)
+		api.GET("/registry/all", h.getRegistry)
+		api.GET("/settings", h.settingsView)
+		api.POST("/settings", h.settingsView)
 	}
 	return router
 }
