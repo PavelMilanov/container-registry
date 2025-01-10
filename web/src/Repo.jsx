@@ -14,7 +14,7 @@ function Repo() {
     })
     return (
         <div class="container">
-            <h2>Реестры > {params.name} </h2>
+            <h2>Реестры {'>'} Репозитории {'>'} {params.name} </h2>
             <div class="card">
                 <table>
                     <thead>
@@ -30,7 +30,6 @@ function Repo() {
                             <tr>
                                 <td>
                                     {image.Name}
-                                    {/* <A href={repo.Name}>{repo.Name}</A> */}
                                 </td>
                                 <td>{image.Size}</td>
                                 <td>{image.CreatedAt}</td>

@@ -29,7 +29,7 @@ function Registry() {
 
     return (
         <div class="container">
-            <h2>Реестры</h2>
+            <h2>Реестры {'>'} Репозитории</h2>
             <div class="card">
                 <button class="btn btn-primary" onClick={openModal}>Добавить реестр</button>
                 <AddRepo isOpen={isModalOpen()} newRepo={addRepo} url={API_URL} onClose={closeModal} />
