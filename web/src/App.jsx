@@ -4,6 +4,7 @@ import { Router, Route } from "@solidjs/router";
 
 import Registry from "./Registry";
 const Repo = lazy(() => import("./Repo"));
+const Image = lazy(() => import("./Image"));
 
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
         <Route path="/registy">
           <Route path="/" component={Registry}/>
           <Route path="/:name" component={Repo} />
+          <Route path="/:name/:image" component={Image} />
         </Route>
       </Router>
     </div>

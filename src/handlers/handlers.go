@@ -23,13 +23,13 @@ func NewHandler(storage *storage.Storage, db *db.SQLite) *Handler {
 
 func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		registry := db.Registry{}
 		repository := c.Param("repository")
+		var registry db.Registry
 		if err := registry.Get(repository, sql); err != nil {
 			logrus.Error(err)
-			c.Header("Docker-Distribution-API-Version", "registry/2.0")
-			c.JSON(http.StatusNotFound, gin.H{"error": "Failed to get registry"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get registry"})
 			c.Abort()
+			return
 		}
 		c.Next()
 	}
@@ -55,7 +55,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 	router.GET("/login", h.loginView)
 	router.POST("/login", h.loginView)
 
-	v2 := router.Group("/v2/", baseRegistryMiddleware(h.DB.Sql))
+	v2 := router.Group("/v2/")
 	{
 		// Пинг для проверки
 		v2.GET("/", func(c *gin.Context) {
@@ -70,7 +70,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 		// docker push
 		// загрузка blobs
-		v2.HEAD("/:repository/:name/blobs/:uuid", h.checkBlob)
+		v2.HEAD("/:repository/:name/blobs/:uuid", h.checkBlob, baseRegistryMiddleware(h.DB.Sql))
 		v2.POST("/:repository/:name/blobs/uploads/", h.startBlobUpload)
 		v2.PATCH("/:repository/:name/blobs/uploads/:uuid", h.uploadBlobPart)
 		v2.PUT("/:repository/:name/blobs/uploads/:uuid", h.finalizeBlobUpload)
@@ -84,9 +84,10 @@ func (h *Handler) InitRouters() *gin.Engine {
 		api.GET("/logout", h.logoutView)
 		api.POST("/logout", h.logoutView)
 		// web.GET("/", h.repositoryView)
-		api.POST("/repository/add/:name", h.addRegistry)
-		api.GET("/registry/:name/tags", h.getRepositoryTags)
-		api.GET("/registry/all", h.getRegistry)
+		api.GET("/registry", h.getRegistry)
+		api.GET("/registry/:name/:image", h.getImage)
+		api.GET("/registry/:name", h.getRepository)
+		api.POST("/registry/add/:name", h.addRegistry)
 		api.GET("/settings", h.settingsView)
 		api.POST("/settings", h.settingsView)
 	}

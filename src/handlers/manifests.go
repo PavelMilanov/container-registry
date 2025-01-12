@@ -20,9 +20,6 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 	imageName := c.Param("name")      // название образа
 	reference := c.Param("reference") // Тег или SHA-256 хэш манифеста
 
-	registry := db.Registry{}
-	registry.Get(repository, h.DB.Sql)
-
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		logrus.Error(err)
@@ -96,12 +93,20 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 	for _, layer := range data.Layers {
 		size += layer.Size
 	}
-	image := db.Image{
+	registy := db.Registry{}
+	registy.Get(repository, h.DB.Sql)
+
+	repo := db.Repository{
 		Name:       imageName,
-		Hash:       calculatedDigest,
-		Tag:        reference,
-		Size:       size,
-		RegistryID: registry.ID,
+		RegistryID: registy.ID,
+	}
+	repo.Add(h.DB.Sql)
+	image := db.Image{
+		Name:         imageName,
+		Hash:         calculatedDigest,
+		Tag:          reference,
+		Size:         size,
+		RepositoryID: repo.ID,
 	}
 	image.Add(h.DB.Sql)
 	logrus.Infof("Загружен образ %s:%s | %s", imageName, reference, calculatedDigest)

@@ -2,29 +2,27 @@ import { createSignal, onMount } from "solid-js";
 import { A } from "@solidjs/router";
 import axios from 'axios'
 
-import AddRepo from "./modal/AddRepo";
+import AddRegistry from "./modal/AddRegistry";
 
 function Registry() {
 
     const API_URL = "http://localhost:5050/api/"
 
     const [isModalOpen, setModalOpen] = createSignal(false)
-    const [repoList, setRepoList] = createSignal([])
+    const [registryList, setRegistryList] = createSignal([])
 
     const openModal = () => setModalOpen(true)
     const closeModal = () => setModalOpen(false)
 
     // функция передается в компонент AddRepo для добавления последнего элемента
-    function addRepo(item) {
-        setRepoList([...repoList(), item])
-        console.log(repoList())
+    function addRegistry(item) {
+        setRegistryList([...registryList(), item])
     }
 
 
     onMount(async () => { 
-        const response = await axios.get(API_URL + `registry/all`)
-        console.log(response.data.data) // в ответе приходит массив "data"
-        setRepoList(response.data.data)
+        const response = await axios.get(API_URL + `registry`)
+        setRegistryList(response.data.data)// в ответе приходит массив "data"
     })
 
     return (
@@ -32,24 +30,24 @@ function Registry() {
             <h2>Реестры {'>'} Репозитории</h2>
             <div class="card">
                 <button class="btn btn-primary" onClick={openModal}>Добавить реестр</button>
-                <AddRepo isOpen={isModalOpen()} newRepo={addRepo} url={API_URL} onClose={closeModal} />
+                <AddRegistry isOpen={isModalOpen()} newRegistry={addRegistry} url={API_URL} onClose={closeModal} />
                 <table>
                     <thead>
                         <tr>
-                            <th>Имя реестра</th>
+                            <th>Реестр</th>
                             <th>Размер</th>
                             <th>Создан</th>
                             <th></th>
                         </tr>
                     </thead>
                     <tbody>
-                        <For each={repoList()} >{(repo, i) =>
+                        <For each={registryList()} >{(registy, i) =>
                             <tr>
                                 <td>
-                                    <A href={repo.Name}>{repo.Name}</A>
+                                    <A href={registy.Name}>{registy.Name}</A>
                                 </td>
-                                <td>{repo.Size}</td>
-                                <td>{repo.CreatedAt}</td>
+                                <td>{registy.Size}</td>
+                                <td>{registy.CreatedAt}</td>
                                 <td>
                                     :
                                 </td>

@@ -9,24 +9,26 @@ import (
 
 type Registry struct {
 	gorm.Model
-	ID        int    `gorm:"primaryKey"`
-	Name      string `gorm:"unique"`
-	Size      int
-	CreatedAt string
-	UpdatedAt time.Time `gorm:"autoUpdateTime:false"`
-	Images    []Image   `gorm:"constraint:OnDelete:CASCADE;"`
+	ID           int    `gorm:"primaryKey"`
+	Name         string `gorm:"unique"`
+	Size         int
+	CreatedAt    string
+	UpdatedAt    time.Time    `gorm:"autoUpdateTime:false"`
+	Repositories []Repository `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
-func (r *Registry) Add(sql *gorm.DB) error {
+func (r *Registry) Add(sql *gorm.DB) {
 	now := time.Now()
 	r.CreatedAt = now.Format("2006-01-02 15:04:05")
-	result := sql.Create(&r)
-	if result.Error != nil {
-		logrus.Error(result.Error)
-		return result.Error
+	if sql.Model(&r).Where("name = ?", r.Name).Updates(&r).RowsAffected == 0 {
+		sql.Create(&r)
+		logrus.Infof("Создан новый реестр %v", r)
 	}
-	logrus.Infof("Создан новый реестр %v", r)
-	return nil
+	// result := sql.Create(&r)
+	// if result.Error != nil {
+	// 	logrus.Error(result.Error)
+	// 	return result.Error
+	// }
 }
 
 func GetRegistires(sql *gorm.DB) []Registry {

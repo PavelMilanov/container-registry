@@ -15,15 +15,19 @@ func (h *Handler) getRegistry(c *gin.Context) {
 func (h *Handler) addRegistry(c *gin.Context) {
 	data := c.Param("name")
 
-	repo := db.Registry{Name: data}
-	if err := repo.Add(h.DB.Sql); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"status": err.Error()})
-		return
-	}
-	c.JSON(http.StatusCreated, gin.H{"data": repo})
+	registy := db.Registry{Name: data}
+	registy.Add(h.DB.Sql)
+	c.JSON(http.StatusCreated, gin.H{"data": registy})
 }
 
-func (h *Handler) getRepositoryTags(c *gin.Context) {
-	data := db.GetImages(h.DB.Sql)
+func (h *Handler) getRepository(c *gin.Context) {
+	data := db.GetRepositories(h.DB.Sql)
+	c.JSON(http.StatusOK, gin.H{"data": data})
+}
+
+func (h *Handler) getImage(c *gin.Context) {
+	ImageName := c.Param("image")
+	repo := db.GetRepository(h.DB.Sql, ImageName)
+	data := db.GetImageTags(h.DB.Sql, repo.ID, ImageName)
 	c.JSON(http.StatusOK, gin.H{"data": data})
 }

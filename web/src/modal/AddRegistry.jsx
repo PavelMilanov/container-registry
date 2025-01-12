@@ -1,15 +1,15 @@
 import { createSignal, Show } from "solid-js";
 import axios from 'axios'
 
-function AddRepo(props) {
+function AddRegistry(props) {
     const closeModal = () => props.onClose()
 
-    const [repo, setRepo] = createSignal('')
+    const [registy, setRegisty] = createSignal('')
 
     // делает запрос к API и возвращает в родительский созданный элемент
     async function createRegistry() {
-        axios.post(props.url + `repository/add/${repo()}`,)
-            .then(res => props.newRepo(res.data.data))
+        axios.post(props.url + `registry/add/${registy()}`,)
+            .then(res => props.newRegistry(res.data.data))
             .catch(err => console.error(err))
         closeModal()
     }
@@ -22,7 +22,7 @@ function AddRepo(props) {
                     <h2>Добавить реестр docker</h2>
                     <div class="form-group">
                         <label for="RepoName">Название:</label>
-                        <input value="" type="text" id="RepoName" required onInput={(e) => {setRepo(e.target.value)}}/>
+                        <input value="" type="text" id="RepoName" required onInput={(e) => { setRegisty(e.target.value)}}/>
                     </div>
                     <button class="btn btn-primary" onclick={createRegistry}>Добавить</button>
                 </div>
@@ -31,4 +31,4 @@ function AddRepo(props) {
     );
 };
 
-export default AddRepo;
+export default AddRegistry;

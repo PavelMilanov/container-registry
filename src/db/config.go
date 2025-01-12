@@ -34,7 +34,7 @@ func CloseDatabase(db *gorm.DB) {
 }
 
 func automigrate(db *gorm.DB) {
-	if err := db.AutoMigrate(&Registry{}, &Image{}); err != nil {
+	if err := db.AutoMigrate(&Registry{}, &Repository{}, &Image{}); err != nil {
 		logrus.Fatalf("%s", err)
 		return
 	}
