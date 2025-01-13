@@ -14,8 +14,7 @@ type Image struct {
 	Tag          string
 	Size         int
 	CreatedAt    string
-	UpdatedAt    time.Time `gorm:"autoUpdateTime:false"`
-	RepositoryID int
+	RepositoryID int `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
 func (i *Image) Add(sql *gorm.DB) {
@@ -25,10 +24,6 @@ func (i *Image) Add(sql *gorm.DB) {
 		sql.Create(&i)
 		logrus.Infof("Добавлен новый образ %v", i)
 	}
-	// result := sql.Create(&i)
-	// if result.Error != nil {
-	// 	logrus.Error(result.Error)
-	// }
 }
 
 func GetImageTags(sql *gorm.DB, id int, name string) []Image {

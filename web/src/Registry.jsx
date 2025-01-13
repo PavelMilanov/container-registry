@@ -19,6 +19,13 @@ function Registry() {
         setRegistryList([...registryList(), item])
     }
 
+    async function deleteRegistry(item) { 
+        console.log("Deleting registry", item)
+        await axios.delete(API_URL + `registry/delete/${item}`,)
+            .then(res => console.log(res.data.data))
+            .catch(err => console.log(err))
+
+    }
 
     onMount(async () => { 
         const response = await axios.get(API_URL + `registry`)
@@ -49,7 +56,7 @@ function Registry() {
                                 <td>{registy.Size}</td>
                                 <td>{registy.CreatedAt}</td>
                                 <td>
-                                    :
+                                    <button class="btn btn-secondary" onClick={() => deleteRegistry(registy.Name)}>Удалить реестр</button>
                                 </td>
                             </tr>
                         }</For>

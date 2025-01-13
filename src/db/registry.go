@@ -13,7 +13,6 @@ type Registry struct {
 	Name         string `gorm:"unique"`
 	Size         int
 	CreatedAt    string
-	UpdatedAt    time.Time    `gorm:"autoUpdateTime:false"`
 	Repositories []Repository `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
@@ -24,11 +23,14 @@ func (r *Registry) Add(sql *gorm.DB) {
 		sql.Create(&r)
 		logrus.Infof("Создан новый реестр %v", r)
 	}
-	// result := sql.Create(&r)
-	// if result.Error != nil {
-	// 	logrus.Error(result.Error)
-	// 	return result.Error
-	// }
+}
+
+func (r *Registry) Delete(sql *gorm.DB) {
+	result := sql.Select("Repositories", "Images").Where("name = ?", r.Name).Delete(&r)
+	if result.Error != nil {
+		logrus.Error(result.Error)
+	}
+	logrus.Debug(r)
 }
 
 func GetRegistires(sql *gorm.DB) []Registry {

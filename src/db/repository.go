@@ -11,8 +11,7 @@ type Repository struct {
 	ID         int    `gorm:"primaryKey"`
 	Name       string `gorm:"unique"`
 	CreatedAt  string
-	UpdatedAt  time.Time `gorm:"autoUpdateTime:false"`
-	Images     []Image   `gorm:"constraint:OnDelete:CASCADE;"`
+	Images     []Image `gorm:"constraint:OnDelete:CASCADE;"`
 	RegistryID int
 }
 

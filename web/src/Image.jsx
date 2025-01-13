@@ -12,7 +12,7 @@ function Image() {
     })
     return (
         <div class="container">
-            <h2><a href="/registry">Репозитории</a> {'>'} <A href={"/registry/" + params.name}>{params.name}</A> {'>'} {params.image} </h2>
+            <h2><a href="/registry">Репозитории</a> {'/'} <A href={"/registry/" + params.name}>{params.name}</A> {'/'} {params.image} </h2>
             <div class="card">
                 <table>
                     <thead>

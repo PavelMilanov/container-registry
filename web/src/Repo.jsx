@@ -13,7 +13,7 @@ function Repo() {
     })
     return (
         <div class="container">
-            <h2><a href="/registry">Репозитории</a> {'>'} {params.name}</h2>
+            <h2><a href="/registry">Репозитории</a> {'/'} {params.name}</h2>
             <div class="card">
                 <table>
                     <thead>
