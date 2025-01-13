@@ -3,13 +3,23 @@ import { A, useParams } from "@solidjs/router"
 import axios from "axios"
 
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 function Repo() {
     const [imageList, setImageList] = createSignal([])
     const params = useParams()
-    const API_URL = "http://localhost:5050/api/"
-    onMount(async () => {
+
+    async function deleteRepo(item) {
+        await axios.delete(API_URL + `registry/${params.name}/${item}`)
+        await getRepo()  // после удаления, получаем список репозиториев заново
+    }
+
+    async function getRepo() {
         const response = await axios.get(API_URL + `registry/${params.name}`)
         setImageList(response.data.data)  // в ответе приходит массив "data"
+    }
+    onMount(async () => {
+        await getRepo()
     })
     return (
         <div class="container">
@@ -33,7 +43,7 @@ function Repo() {
                                 {/* <td>{repo.Size}</td> */}
                                 <td>{image.CreatedAt}</td>
                                 <td>
-                                    :
+                                    <button class="btn btn-secondary" onClick={() => deleteRepo(image.Name)}>Удалить репозиторий</button>
                                 </td>
                             </tr>
                         }</For>

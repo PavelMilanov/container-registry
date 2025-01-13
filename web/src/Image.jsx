@@ -2,10 +2,13 @@ import { createSignal, onMount } from "solid-js"
 import { A, useParams } from "@solidjs/router"
 import axios from "axios"
 
+
+const API_URL = import.meta.env.VITE_API_URL;
+
 function Image() {
     const [tagList, setTagList] = createSignal([])
     const params = useParams()
-    const API_URL = "http://localhost:5050/api/"
+    
     onMount(async () => {
         const response = await axios.get(API_URL + `registry/${params.name}/${params.image}`)
         setTagList(response.data.data)// в ответе приходит массив "data"

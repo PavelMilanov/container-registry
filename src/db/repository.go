@@ -23,16 +23,17 @@ func (r *Repository) Add(sql *gorm.DB) {
 		sql.Create(&r)
 		logrus.Infof("Создан новый репозиторий %v", r)
 	}
-	// if result.Error != nil {
-	// 	return result.Error
-	// }
 }
 
-// func GetRepositoryImages(sql *gorm.DB, id int, name string) []Image {
-// 	var r []Image
-// 	sql.Where("registry_id =? AND name =?", id, name).Find(&r)
-// 	return r
-// }
+func (r *Repository) Delete(sql *gorm.DB) error {
+	result := sql.Raw("DELETE FROM repositories WHERE name = ?", r.Name).Scan(&r)
+	if result.Error != nil {
+		logrus.Error(result.Error)
+		return result.Error
+	}
+	logrus.Infof("Удален репозиторий %v", r)
+	return nil
+}
 
 func GetRepositories(sql *gorm.DB) []Repository {
 	var r []Repository

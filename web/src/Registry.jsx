@@ -4,9 +4,10 @@ import axios from 'axios'
 
 import AddRegistry from "./modal/AddRegistry";
 
-function Registry() {
 
-    const API_URL = "http://localhost:5050/api/"
+const API_URL = import.meta.env.VITE_API_URL;
+
+function Registry() {
 
     const [isModalOpen, setModalOpen] = createSignal(false)
     const [registryList, setRegistryList] = createSignal([])
@@ -20,16 +21,17 @@ function Registry() {
     }
 
     async function deleteRegistry(item) { 
-        console.log("Deleting registry", item)
-        await axios.delete(API_URL + `registry/${item}`,)
-            .then(res => console.log(res.data.data))
-            .catch(err => console.log(err))
+        await axios.delete(API_URL + `registry/${item}`)
+        await getRegistry()
+    }
 
+    async function getRegistry() {
+        const response = await axios.get(API_URL + "registry")
+        setRegistryList(response.data.data)// в ответе приходит массив "data"
     }
 
     onMount(async () => { 
-        const response = await axios.get(API_URL + `registry`)
-        setRegistryList(response.data.data)// в ответе приходит массив "data"
+        await getRegistry()
     })
 
     return (
