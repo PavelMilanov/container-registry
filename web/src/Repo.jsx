@@ -9,11 +9,11 @@ function Repo() {
     const API_URL = "http://localhost:5050/api/"
     onMount(async () => {
         const response = await axios.get(API_URL + `registry/${params.name}`)
-        setImageList(response.data.data)// в ответе приходит массив "data"
+        setImageList(response.data.data)  // в ответе приходит массив "data"
     })
     return (
         <div class="container">
-            <h2>Реестры {'>'} <a href="/registy">Репозитории</a> {'>'} <a href={params.name}>{params.name}</a></h2>
+            <h2><a href="/registry">Репозитории</a> {'>'} {params.name}</h2>
             <div class="card">
                 <table>
                     <thead>

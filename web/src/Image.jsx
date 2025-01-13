@@ -1,5 +1,5 @@
 import { createSignal, onMount } from "solid-js"
-import { useParams } from "@solidjs/router"
+import { A, useParams } from "@solidjs/router"
 import axios from "axios"
 
 function Image() {
@@ -12,7 +12,7 @@ function Image() {
     })
     return (
         <div class="container">
-            <h2>Реестры {'>'} <a href="/registy">Репозитории</a> {'>'} <a href={params.name}>{params.name}</a> {'>'} {params.image} </h2>
+            <h2><a href="/registry">Репозитории</a> {'>'} <A href={"/registry/" + params.name}>{params.name}</A> {'>'} {params.image} </h2>
             <div class="card">
                 <table>
                     <thead>

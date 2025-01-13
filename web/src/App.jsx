@@ -15,14 +15,14 @@ function App() {
   return (
     <div>
       <nav>
-        <a href="/registy">Реестры</a>
+        <a href="/registry">Реестры</a>
         <a href="/settings">Настройки</a>
         <a href="/logout">Выйти</a>
       </nav>
       <Router>
         {/* <Route path={["login", "register"]} component={Login} /> */}
         
-        <Route path="/registy">
+        <Route path="/registry">
           <Route path="/" component={Registry}/>
           <Route path="/:name" component={Repo} />
           <Route path="/:name/:image" component={Image} />
