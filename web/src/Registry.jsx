@@ -21,7 +21,7 @@ function Registry() {
 
     async function deleteRegistry(item) { 
         console.log("Deleting registry", item)
-        await axios.delete(API_URL + `registry/delete/${item}`,)
+        await axios.delete(API_URL + `registry/${item}`,)
             .then(res => console.log(res.data.data))
             .catch(err => console.log(err))
 

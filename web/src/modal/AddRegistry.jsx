@@ -8,7 +8,7 @@ function AddRegistry(props) {
 
     // делает запрос к API и возвращает в родительский созданный элемент
     async function createRegistry() {
-        await axios.post(props.url + `registry/add/${registy()}`,)
+        await axios.post(props.url + `registry/${registy()}`,)
             .then(res => props.newRegistry(res.data.data))
             .catch(err => console.error(err))
         closeModal()

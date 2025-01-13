@@ -87,8 +87,8 @@ func (h *Handler) InitRouters() *gin.Engine {
 		api.GET("/registry", h.getRegistry)
 		api.GET("/registry/:name/:image", h.getImage)
 		api.GET("/registry/:name", h.getRepository)
-		api.POST("/registry/add/:name", h.addRegistry)
-		api.DELETE("/registry/delete/:name", h.deleteRegistry)
+		api.POST("/registry/:name", h.addRegistry)
+		api.DELETE("/registry/:name", h.deleteRegistry)
 		api.GET("/settings", h.settingsView)
 		api.POST("/settings", h.settingsView)
 	}

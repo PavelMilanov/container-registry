@@ -15,15 +15,21 @@ func (h *Handler) getRegistry(c *gin.Context) {
 func (h *Handler) addRegistry(c *gin.Context) {
 	data := c.Param("name")
 	registy := db.Registry{Name: data}
-	registy.Add(h.DB.Sql)
+	if err := registy.Add(h.DB.Sql); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+		return
+	}
 	c.JSON(http.StatusCreated, gin.H{"data": registy})
 }
 
 func (h *Handler) deleteRegistry(c *gin.Context) {
 	data := c.Param("name")
 	registy := db.Registry{Name: data}
-	registy.Delete(h.DB.Sql)
-	c.JSON(http.StatusAccepted, gin.H{"data": "success"})
+	if err := registy.Delete(h.DB.Sql); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+		return
+	}
+	c.JSON(http.StatusAccepted, gin.H{"data": registy})
 }
 
 func (h *Handler) getRepository(c *gin.Context) {

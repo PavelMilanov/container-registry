@@ -16,26 +16,36 @@ type Registry struct {
 	Repositories []Repository `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
-func (r *Registry) Add(sql *gorm.DB) {
+func (r *Registry) Add(sql *gorm.DB) error {
 	now := time.Now()
 	r.CreatedAt = now.Format("2006-01-02 15:04:05")
 	if sql.Model(&r).Where("name = ?", r.Name).Updates(&r).RowsAffected == 0 {
-		sql.Create(&r)
+		result := sql.Create(&r)
+		if result.Error != nil {
+			logrus.Error(result.Error)
+			return result.Error
+		}
 		logrus.Infof("Создан новый реестр %v", r)
 	}
+	return nil
 }
 
-func (r *Registry) Delete(sql *gorm.DB) {
-	result := sql.Select("Repositories", "Images").Where("name = ?", r.Name).Delete(&r)
+func (r *Registry) Delete(sql *gorm.DB) error {
+	result := sql.Raw("DELETE FROM registries WHERE name = ?", r.Name).Scan(&r)
 	if result.Error != nil {
 		logrus.Error(result.Error)
+		return result.Error
 	}
-	logrus.Debug(r)
+	logrus.Infof("Удален реестр %v", r)
+	return nil
 }
 
 func GetRegistires(sql *gorm.DB) []Registry {
 	var r []Registry
-	sql.Find(&r)
+	result := sql.Find(&r)
+	if result.Error != nil {
+		logrus.Error(result.Error)
+	}
 	return r
 }
 
@@ -50,6 +60,7 @@ func (r *Registry) Get(name string, sql *gorm.DB) error {
 func (r *Registry) GetImages(sql *gorm.DB) error {
 	result := sql.Preload("Images").Where("name = ?", r.Name).First(&r)
 	if result.Error != nil {
+		logrus.Error(result.Error)
 		return result.Error
 	}
 	return nil

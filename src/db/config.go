@@ -20,7 +20,6 @@ func NewDatabase(sql string) SQLite {
 	}
 	var mutex sync.Mutex
 	db := SQLite{Sql: conn, Mutex: &mutex}
-
 	logrus.Info("Соединение с базой данных установлено")
 	automigrate(db.Sql)
 	return db
