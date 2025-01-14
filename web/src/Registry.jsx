@@ -1,11 +1,11 @@
-import { createSignal, onMount, createEffect } from "solid-js";
+import { createSignal, onMount } from "solid-js";
 import { A } from "@solidjs/router";
 import axios from 'axios'
 
-import AddRegistry from "./modal/AddRegistry";
+import AddRegistry from "./modal/AddRegistry"
 
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = window.API_URL
 
 function Registry() {
 
