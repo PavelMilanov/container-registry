@@ -11,42 +11,28 @@ function Registry() {
 
     const [isModalOpen, setModalOpen] = createSignal(false)
     const [registryList, setRegistryList] = createSignal([])
-    const [submitModal, setSubmitModal] = createSignal(false)
+    const [registry, setRegistry] = createSignal('')
 
     const openModal = () => setModalOpen(true)
-    const closeModal = () => setModalOpen(false)
-
-    const submit = () => setSubmitModal(true)
-
-
-
-    function checkModal() {
-        console.log("Checking modal", submitModal())
+    const closeModal = () => {
+        setModalOpen(false)
+        axios.post(API_URL + `registry/${registry()}`,)
+            .then(res => setRegistryList([...registryList(), res.data.data]))
+            .catch(err => console.error(err))
     }
 
-    // функция передается в компонент AddRepo для добавления последнего элемента
-    async function addRegistry(item) {
-        if (submitModal()) { 
-            await axios.post(props.url + `registry/${item}`,)
-        }
-        //     .then(res => props.newRegistry(res.data.data))
-        //     .catch(err => console.error(err))
-    }
-
-    async function deleteRegistry(item) {
-        if (submitModal() === true) {
-            await axios.delete(API_URL + `registry/${item}`)
-            await getRegistry()
-        }
-    }
+    const newRegistry = (value) => setRegistry(value)
 
     async function getRegistry() {
         const response = await axios.get(API_URL + "registry")
         setRegistryList(response.data.data)// в ответе приходит массив "data"
     }
-    createEffect(() => {
-        console.log("The count is now", submitModal());
-    });
+
+    async function deleteRegistry(item) {
+        const response = await axios.delete(API_URL + `registry/${item}`)
+        setRegistryList(registryList().filter((newItem) => newItem.Name !== response.data.data["Name"]))
+    }
+
     onMount(async () => { 
         await getRegistry()
     })
@@ -55,9 +41,8 @@ function Registry() {
         <div class="container">
             <h2>Репозитории</h2>
             <div class="card">
-                <p>{ submitModal() }</p>
                 <button class="btn btn-primary" onClick={openModal}>Добавить реестр</button>
-                <AddRegistry isOpen={isModalOpen()} onCheck={submit} onClose={closeModal} />
+                <AddRegistry isOpen={isModalOpen()} onNewRegistry={newRegistry} onClose={closeModal} />
                 <table>
                     <thead>
                         <tr>

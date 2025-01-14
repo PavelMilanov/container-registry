@@ -9,15 +9,16 @@ function Repo() {
     const [imageList, setImageList] = createSignal([])
     const params = useParams()
 
-    async function deleteRepo(item) {
-        await axios.delete(API_URL + `registry/${params.name}/${item}`)
-        await getRepo()  // после удаления, получаем список репозиториев заново
-    }
-
     async function getRepo() {
         const response = await axios.get(API_URL + `registry/${params.name}`)
         setImageList(response.data.data)  // в ответе приходит массив "data"
     }
+
+    async function deleteRepo(item) {
+        const response = await axios.delete(API_URL + `registry/${params.name}/${item}`)
+        setImageList(imageList().filter((newItem) => newItem.Name !== response.data.data["Name"]))
+    }
+
     onMount(async () => {
         await getRepo()
     })

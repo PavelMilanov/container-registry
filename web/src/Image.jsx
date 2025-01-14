@@ -9,18 +9,17 @@ function Image() {
     const [tagList, setTagList] = createSignal([])
     const params = useParams()
     
+    async function getImages() {
+        const response = await axios.get(API_URL + `registry/${params.name}/${params.image}`)
+        setTagList(response.data.data)// в ответе приходит массив "data"
+    }
 
     async function deleteImage(image, tag) {
         // const headers = {
         //     'Authorization': `Bearer ${TOKEN}`
         // }
-        await axios.delete(API_URL + `registry/${params.name}/${image}`, { params: { "tag": tag } })
-        await getImages()
-    }
-
-    async function getImages() {
-        const response = await axios.get(API_URL + `registry/${params.name}/${params.image}`)
-        setTagList(response.data.data)// в ответе приходит массив "data"
+        const response = await axios.delete(API_URL + `registry/${params.name}/${image}`, { params: { "tag": tag } })
+        setTagList(tagList().filter((newItem) => newItem.Name !== response.data.data["Name"]))
     }
 
     onMount(async () => {
