@@ -7,5 +7,5 @@ import (
 )
 
 func (h *Handler) webView(c *gin.Context) {
-	c.HTML(http.StatusOK, "index.html", gin.H{})
+	c.HTML(http.StatusOK, "index.html", gin.H{"WEB_API_URL": "http://localhost"})
 }

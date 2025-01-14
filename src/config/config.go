@@ -10,5 +10,5 @@ var (
 
 	DATA_PATH = "var"
 
-	HOST = "*"
+	WEB_API_URL string
 )
