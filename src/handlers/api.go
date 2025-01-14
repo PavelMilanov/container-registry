@@ -44,13 +44,27 @@ func (h *Handler) getRepository(c *gin.Context) {
 }
 
 func (h *Handler) deleteRepository(c *gin.Context) {
-	name := c.Param("image")
-	repo := db.Repository{Name: name}
-	if err := repo.Delete(h.DB.Sql); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
-		return
+	name := c.Param("name")
+	image := c.Param("image")
+	tag := c.Query("tag")
+	if tag != "" { // удаляется только образ
+		img := db.Image{Name: image, Tag: tag}
+		if err := img.Delete(h.DB.Sql); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+			return
+		}
+		os.Remove(filepath.Join(h.STORAGE.ManifestPath, name, img.Name, "tags", img.Tag))
+		os.Remove(filepath.Join(h.STORAGE.ManifestPath, name, img.Name, img.Hash))
+		c.JSON(http.StatusAccepted, gin.H{"data": img})
+	} else { // удаляется весь репозиторий
+		repo := db.Repository{Name: image}
+		if err := repo.Delete(h.DB.Sql); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+			return
+		}
+		os.RemoveAll(filepath.Join(h.STORAGE.ManifestPath, name, image))
+		c.JSON(http.StatusAccepted, gin.H{"data": repo})
 	}
-	c.JSON(http.StatusAccepted, gin.H{"data": repo})
 }
 
 func (h *Handler) getImage(c *gin.Context) {

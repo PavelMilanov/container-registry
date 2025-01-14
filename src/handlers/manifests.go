@@ -109,7 +109,6 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 		RepositoryID: repo.ID,
 	}
 	image.Add(h.DB.Sql)
-	logrus.Infof("Загружен образ %s:%s | %s", imageName, reference, calculatedDigest)
 }
 
 func (h *Handler) getManifest(c *gin.Context) {
@@ -148,5 +147,4 @@ func (h *Handler) getManifest(c *gin.Context) {
 	c.Header("Content-Type", "application/vnd.docker.distribution.manifest.v2+json")
 	c.Header("Docker-Content-Digest", calculatedDigest)
 	c.Data(http.StatusOK, "application/vnd.docker.distribution.manifest.v2+json", manifest)
-	logrus.Infof("Скачан образ %s/%s:%s | %s", repository, imageName, reference, calculatedDigest)
 }

@@ -26,6 +26,17 @@ func (i *Image) Add(sql *gorm.DB) {
 	}
 }
 
+func (i *Image) Delete(sql *gorm.DB) error {
+	sql.Where("name = ? AND tag = ?", i.Name, i.Tag).First(&i)
+	result := sql.Delete(&i)
+	if result.Error != nil {
+		logrus.Error(result.Error)
+		return result.Error
+	}
+	logrus.Infof("Удален образ %v", i)
+	return nil
+}
+
 func GetImageTags(sql *gorm.DB, id int, name string) []Image {
 	var i []Image
 	sql.Where("repository_id =? AND name =?", id, name).Find(&i)

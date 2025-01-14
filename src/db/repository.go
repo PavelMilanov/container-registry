@@ -26,12 +26,18 @@ func (r *Repository) Add(sql *gorm.DB) {
 }
 
 func (r *Repository) Delete(sql *gorm.DB) error {
-	result := sql.Raw("DELETE FROM repositories WHERE name = ?", r.Name).Scan(&r)
+	sql.Preload("Images").Where("name = ?", r.Name).First(&r)
+	result := sql.Delete(&r)
 	if result.Error != nil {
 		logrus.Error(result.Error)
 		return result.Error
 	}
 	logrus.Infof("Удален репозиторий %v", r)
+	go func() {
+		for _, image := range r.Images {
+			sql.Delete(&image)
+		}
+	}()
 	return nil
 }
 

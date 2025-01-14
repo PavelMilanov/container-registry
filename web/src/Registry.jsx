@@ -11,18 +11,32 @@ function Registry() {
 
     const [isModalOpen, setModalOpen] = createSignal(false)
     const [registryList, setRegistryList] = createSignal([])
+    const [submitModal, setSubmitModal] = createSignal(false)
 
     const openModal = () => setModalOpen(true)
     const closeModal = () => setModalOpen(false)
 
-    // функция передается в компонент AddRepo для добавления последнего элемента
-    function addRegistry(item) {
-        setRegistryList([...registryList(), item])
+    const submit = () => setSubmitModal(true)
+    const check = () => setSubmitModal(false)
+
+    function checkModal() {
+        console.log("Checking modal", submitModal())
     }
 
-    async function deleteRegistry(item) { 
-        await axios.delete(API_URL + `registry/${item}`)
-        await getRegistry()
+    // функция передается в компонент AddRepo для добавления последнего элемента
+    async function addRegistry(item) {
+        if (submitModal()) { 
+            await axios.post(props.url + `registry/${item}`,)
+        }
+        //     .then(res => props.newRegistry(res.data.data))
+        //     .catch(err => console.error(err))
+    }
+
+    async function deleteRegistry(item) {
+        if (submitModal() === true) {
+            await axios.delete(API_URL + `registry/${item}`)
+            await getRegistry()
+        }
     }
 
     async function getRegistry() {
@@ -39,7 +53,7 @@ function Registry() {
             <h2>Репозитории</h2>
             <div class="card">
                 <button class="btn btn-primary" onClick={openModal}>Добавить реестр</button>
-                <AddRegistry isOpen={isModalOpen()} newRegistry={addRegistry} url={API_URL} onClose={closeModal} />
+                <AddRegistry isOpen={isModalOpen()} onCheck={submit} url={API_URL} onClose={closeModal} />
                 <table>
                     <thead>
                         <tr>

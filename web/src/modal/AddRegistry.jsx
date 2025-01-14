@@ -3,14 +3,16 @@ import axios from 'axios'
 
 function AddRegistry(props) {
     const closeModal = () => props.onClose()
-
+    const submit = () => props.onCheck()
     const [registy, setRegisty] = createSignal('')
 
     // делает запрос к API и возвращает в родительский созданный элемент
-    async function createRegistry() {
-        await axios.post(props.url + `registry/${registy()}`,)
-            .then(res => props.newRegistry(res.data.data))
-            .catch(err => console.error(err))
+    function createRegistry() {
+        // await axios.post(props.url + `registry/${registy()}`,)
+        //     .then(res => props.newRegistry(res.data.data))
+        //     .catch(err => console.error(err))
+        console.log(registy())
+        console.log(submit())
         closeModal()
     }
 
