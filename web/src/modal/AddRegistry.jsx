@@ -11,8 +11,8 @@ function AddRegistry(props) {
         // await axios.post(props.url + `registry/${registy()}`,)
         //     .then(res => props.newRegistry(res.data.data))
         //     .catch(err => console.error(err))
-        console.log(registy())
-        console.log(submit())
+        props.onCheck()
+        // console.log(submit())
         closeModal()
     }
 

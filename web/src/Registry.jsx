@@ -1,4 +1,4 @@
-import { createSignal, onMount } from "solid-js";
+import { createSignal, onMount, createEffect } from "solid-js";
 import { A } from "@solidjs/router";
 import axios from 'axios'
 
@@ -17,7 +17,8 @@ function Registry() {
     const closeModal = () => setModalOpen(false)
 
     const submit = () => setSubmitModal(true)
-    const check = () => setSubmitModal(false)
+
+
 
     function checkModal() {
         console.log("Checking modal", submitModal())
@@ -43,7 +44,9 @@ function Registry() {
         const response = await axios.get(API_URL + "registry")
         setRegistryList(response.data.data)// в ответе приходит массив "data"
     }
-
+    createEffect(() => {
+        console.log("The count is now", submitModal());
+    });
     onMount(async () => { 
         await getRegistry()
     })
@@ -52,8 +55,9 @@ function Registry() {
         <div class="container">
             <h2>Репозитории</h2>
             <div class="card">
+                <p>{ submitModal() }</p>
                 <button class="btn btn-primary" onClick={openModal}>Добавить реестр</button>
-                <AddRegistry isOpen={isModalOpen()} onCheck={submit} url={API_URL} onClose={closeModal} />
+                <AddRegistry isOpen={isModalOpen()} onCheck={submit} onClose={closeModal} />
                 <table>
                     <thead>
                         <tr>
