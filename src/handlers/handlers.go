@@ -50,17 +50,11 @@ func (h *Handler) InitRouters() *gin.Engine {
 	router.Static("/static/", "./static")
 
 	router.GET("/", h.webView)
-	router.GET("/registration", h.registrationView)
-	router.POST("/registration", h.registrationView)
-	router.GET("/login", h.loginView)
-	router.POST("/login", h.loginView)
 
 	v2 := router.Group("/v2/")
 	{
 		// Пинг для проверки
-		v2.GET("/", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{})
-		})
+		v2.GET("/", h.authHandler)
 		// docker pull
 		// получение manifest
 		v2.HEAD("/:repository/:name/manifests/:reference", h.getManifest)
@@ -81,8 +75,8 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	api := router.Group("/api/")
 	{
-		api.GET("/logout", h.logoutView)
-		api.POST("/logout", h.logoutView)
+		// api.GET("/logout", h.logoutView)
+		// api.POST("/logout", h.logoutView)
 		// web.GET("/", h.repositoryView)
 		api.GET("/registry", h.getRegistry)
 		api.GET("/registry/:name/:image", h.getImage)
