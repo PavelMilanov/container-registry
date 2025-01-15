@@ -1,4 +1,4 @@
-import { Show } from "solid-js";
+import { Show } from "solid-js"
 
 function AddRegistry(props) {
     return (
@@ -11,11 +11,11 @@ function AddRegistry(props) {
                         <label for="RepoName">Название:</label>
                         <input value="" type="text" id="RepoName" required onInput={(e) => { props.onNewRegistry(e.target.value)}}/>
                     </div>
-                    <button class="btn btn-primary" onclick={props.onClose}>Добавить</button>
+                    <button class="btn btn-primary" onclick={props.onSubmit}>Добавить</button>
                 </div>
             </div>
         </Show>
-    );
-};
+    )
+}
 
-export default AddRegistry;
+export default AddRegistry
