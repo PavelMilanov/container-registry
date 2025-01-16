@@ -2,6 +2,7 @@ import { createSignal, onMount, lazy } from "solid-js"
 import { A } from "@solidjs/router"
 import axios from 'axios'
 
+import NavBar from "./NavBar"
 const AddRegistry = lazy(() => import("./modal/AddRegistry"))
 const Delete = lazy(() => import("./modal/Delete"))
 
@@ -45,6 +46,8 @@ function Registry() {
     })
 
     return (
+        <>
+        <NavBar />
         <div class="container">
             <h2>Репозитории</h2>
             <div class="card">
@@ -76,8 +79,9 @@ function Registry() {
                     </tbody>
                 </table>
             </div>
-        </div>
-    );
+            </div>
+        </>
+    )
 }
 
 export default Registry

@@ -4,7 +4,7 @@ import { Router, Route } from "@solidjs/router"
 import Registry from "./Registry"
 const Repo = lazy(() => import("./Repo"))
 const Image = lazy(() => import("./Image"))
-
+const Login = lazy(() => import("./Login"))
 
 function App() {
 
@@ -13,14 +13,8 @@ function App() {
 
   return (
     <div>
-      <nav>
-        <a href="/registry">Реестры</a>
-        <a href="/settings">Настройки</a>
-        <a href="/logout">Выйти</a>
-      </nav>
       <Router>
-        {/* <Route path={["login", "register"]} component={Login} /> */}
-        
+        <Route path={["login", "register"]} component={Login} />
         <Route path="/registry">
           <Route path="/" component={Registry}/>
           <Route path="/:name" component={Repo} />
@@ -28,7 +22,7 @@ function App() {
         </Route>
       </Router>
     </div>
-  );
+  )
 }
 
-export default App;
+export default App

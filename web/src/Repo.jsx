@@ -2,6 +2,7 @@ import { createSignal, onMount, lazy } from "solid-js"
 import { A, useParams } from "@solidjs/router"
 import axios from "axios"
 
+import NavBar from "./NavBar"
 const Delete = lazy(() => import("./modal/Delete"))
 
 const API_URL = window.API_URL
@@ -33,6 +34,8 @@ function Repo() {
         await getRepo()
     })
     return (
+        <>
+        <NavBar />
         <div class="container">
             <h2><a href="/registry">Репозитории</a> {'/'} {params.name}</h2>
             <div class="card">
@@ -62,7 +65,8 @@ function Repo() {
                     </tbody>
                 </table>
             </div>
-        </div>
+            </div>
+        </>
     )
 }
 

@@ -2,6 +2,7 @@ import { createSignal, onMount, lazy } from "solid-js"
 import { A, useParams } from "@solidjs/router"
 import axios from "axios"
 
+import NavBar from "./NavBar"
 const Delete = lazy(() => import("./modal/Delete"))
 
 const API_URL = window.API_URL
@@ -38,6 +39,8 @@ function Image() {
         await getImages()
     })
     return (
+        <>
+        <NavBar />
         <div class="container">
             <h2><a href="/registry">Репозитории</a> {'/'} <A href={"/registry/" + params.name}>{params.name}</A> {'/'} {params.image} </h2>
             <div class="card">
@@ -68,6 +71,7 @@ function Image() {
                 </table>
             </div>
         </div>
+        </>
     )
 }
 
