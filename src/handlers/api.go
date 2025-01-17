@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -72,4 +73,18 @@ func (h *Handler) getImage(c *gin.Context) {
 	repo := db.GetRepository(h.DB.Sql, ImageName)
 	data := db.GetImageTags(h.DB.Sql, repo.ID, ImageName)
 	c.JSON(http.StatusOK, gin.H{"data": data})
+}
+
+func (h *Handler) registration(c *gin.Context) {
+	type userRegisterData struct {
+		Username        string `json:"username" binding:"required"`
+		Password        string `json:"password" binding:"required"`
+		ConfirmPassword string `json:"confirmPassword" binding:"required"`
+	}
+	data := userRegisterData{}
+	if err := c.BindJSON(&data); err != nil {
+		fmt.Println(err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	}
+	fmt.Println(data)
 }

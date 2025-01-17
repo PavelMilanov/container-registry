@@ -78,6 +78,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 		// api.GET("/logout", h.logoutView)
 		// api.POST("/logout", h.logoutView)
 		// web.GET("/", h.repositoryView)
+		api.POST("/registration", h.registration)
 		api.GET("/registry", h.getRegistry)
 		api.GET("/registry/:name/:image", h.getImage)
 		api.DELETE("/registry/:name/:image", h.deleteRepository)
