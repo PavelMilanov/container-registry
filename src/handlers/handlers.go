@@ -75,6 +75,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	api := router.Group("/api/")
 	{
+		api.POST("/login", h.login)
 		api.POST("/registration", h.registration)
 		api.GET("/registry", h.getRegistry)
 		api.GET("/registry/:name/:image", h.getImage)

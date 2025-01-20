@@ -21,7 +21,7 @@ func (r *Repository) Add(sql *gorm.DB) {
 	// result := sql.Create(&i)
 	if sql.Model(&r).Where("name = ?", r.Name).First(&r).RowsAffected == 0 {
 		sql.Create(&r)
-		logrus.Infof("Создан новый репозиторий %v", r)
+		logrus.Infof("Создан новый репозиторий %+v", r)
 	}
 }
 
@@ -32,7 +32,7 @@ func (r *Repository) Delete(sql *gorm.DB) error {
 		logrus.Error(result.Error)
 		return result.Error
 	}
-	logrus.Infof("Удален репозиторий %v", r)
+	logrus.Infof("Удален репозиторий %+v", r)
 	go func() {
 		for _, image := range r.Images {
 			sql.Delete(&image)

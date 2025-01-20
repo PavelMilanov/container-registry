@@ -5,13 +5,10 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
+	"github.com/PavelMilanov/container-registry/secure"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 )
-
-var jwtSecret = []byte("super-secret-key")
 
 func (h *Handler) authHandler(c *gin.Context) {
 	data := c.GetHeader("Authorization")
@@ -31,7 +28,7 @@ func (h *Handler) authHandler(c *gin.Context) {
 
 	// Generate JWT Token
 	credentials := strings.Split(decoded, ":") //["username", "password"]
-	token, err := generateJWT(credentials[0], credentials[1])
+	token, err := secure.GenerateJWT(credentials[0], credentials[1])
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
@@ -59,12 +56,12 @@ func validateCredentials(decoded string) bool {
 	// return ok && password == parts[1]
 }
 
-// generateJWT creates a JWT token for the user
-func generateJWT(username string, password string) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"username": username,
-		"password": password,
-		"exp":      time.Now().Add(1 * time.Hour).Unix(),
-	})
-	return token.SignedString(jwtSecret)
-}
+// // generateJWT creates a JWT token for the user
+// func generateJWT(username string, password string) (string, error) {
+// 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+// 		"username": username,
+// 		"password": password,
+// 		"exp":      time.Now().Add(1 * time.Hour).Unix(),
+// 	})
+// 	return token.SignedString(jwtSecret)
+// }

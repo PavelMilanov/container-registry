@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/PavelMilanov/container-registry/db"
+	"github.com/PavelMilanov/container-registry/secure"
 	"github.com/gin-gonic/gin"
 )
 
@@ -80,7 +81,7 @@ func (h *Handler) registration(c *gin.Context) {
 		Password        string `json:"password" binding:"required"`
 		ConfirmPassword string `json:"confirmPassword" binding:"required"`
 	}
-	req := userRegisterData{}
+	var req userRegisterData
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
@@ -95,4 +96,27 @@ func (h *Handler) registration(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"data": user})
+}
+
+func (h *Handler) login(c *gin.Context) {
+	type userLoginData struct {
+		Username string `json:"username" binding:"required"`
+		Password string `json:"password" binding:"required"`
+	}
+	var req userLoginData
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		return
+	}
+	user := db.User{Name: req.Username, Password: req.Password}
+	if err := user.Login(h.DB.Sql); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	token, err := secure.GenerateJWT(user.Name, user.Password)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"token": token})
 }

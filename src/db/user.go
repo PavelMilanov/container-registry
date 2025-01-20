@@ -10,7 +10,7 @@ import (
 
 type User struct {
 	ID       int    `gorm:"primaryKey"`
-	Name     string `gorm:"not null"`
+	Name     string `gorm:"not null,unique"`
 	Password string `gorm:"not null"`
 }
 
@@ -20,14 +20,20 @@ func (u *User) Add(sql *gorm.DB) error {
 		hash := secure.Hashed(u.Password)
 		u.Password = hash
 		sql.Create(&u)
-		logrus.Infof("Создан новый пользователь %v", u)
+		logrus.Infof("Создан новый пользователь %+v", u)
 	} else {
-		logrus.Errorf("пользователь %v уже существует", u)
+		logrus.Errorf("пользователь %+v уже существует", u)
 		return errors.New("пользователь уже существует")
 	}
 	return nil
 }
 
-func (u *User) Check(sql *gorm.DB) error {
+func (u *User) Login(sql *gorm.DB) error {
+	pwd := u.Password
+	result := sql.Where("name = ?", u.Name).First(&u)
+	if result.RowsAffected == 0 || secure.ValidateHash(pwd, []byte(u.Password)) != nil {
+		logrus.Error("неверные логин или пароль")
+		return errors.New("неверные логин или пароль")
+	}
 	return nil
 }
