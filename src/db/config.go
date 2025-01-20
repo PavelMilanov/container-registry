@@ -20,7 +20,6 @@ func NewDatabase(sql string) SQLite {
 	}
 	var mutex sync.Mutex
 	db := SQLite{Sql: conn, Mutex: &mutex}
-
 	logrus.Info("Соединение с базой данных установлено")
 	automigrate(db.Sql)
 	return db
@@ -34,7 +33,7 @@ func CloseDatabase(db *gorm.DB) {
 }
 
 func automigrate(db *gorm.DB) {
-	if err := db.AutoMigrate(&Registry{}, &Image{}); err != nil {
+	if err := db.AutoMigrate(&Registry{}, &Repository{}, &Image{}, &User{}); err != nil {
 		logrus.Fatalf("%s", err)
 		return
 	}

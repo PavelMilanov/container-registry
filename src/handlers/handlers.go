@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
-	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/storage"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -20,36 +21,15 @@ func NewHandler(storage *storage.Storage, db *db.SQLite) *Handler {
 	return &Handler{STORAGE: storage, DB: db}
 }
 
-// Базовый middleware безопасности.
-func baseSecurityMiddleware(host string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if host == "*" {
-			return
-		} else if c.Request.Host != host {
-			logrus.Debug("Host invalid: ", c.Request.Host)
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Invalid host header"})
-			return
-		}
-		c.Header("X-Frame-Options", "DENY")
-		c.Header("Content-Security-Policy", "default-src 'self'; connect-src *; font-src *; script-src-elem * 'unsafe-inline'; img-src * data:; style-src * 'unsafe-inline';")
-		c.Header("X-XSS-Protection", "1; mode=block")
-		c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
-		c.Header("Referrer-Policy", "strict-origin")
-		c.Header("X-Content-Type-Options", "nosniff")
-		c.Header("Permissions-Policy", "geolocation=(),midi=(),sync-xhr=(),microphone=(),camera=(),magnetometer=(),gyroscope=(),fullscreen=(self),payment=()")
-		c.Next()
-	}
-}
-
 func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		registry := db.Registry{}
 		repository := c.Param("repository")
+		var registry db.Registry
 		if err := registry.Get(repository, sql); err != nil {
 			logrus.Error(err)
-			c.Header("Docker-Distribution-API-Version", "registry/2.0")
-			c.JSON(http.StatusNotFound, gin.H{"error": "Failed to get registry"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get registry"})
 			c.Abort()
+			return
 		}
 		c.Next()
 	}
@@ -58,23 +38,23 @@ func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 func (h *Handler) InitRouters() *gin.Engine {
 
 	router := gin.Default()
-
-	router.Use(baseSecurityMiddleware(config.HOST))
-
-	router.LoadHTMLGlob("templates/**/*")
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*", "http://localhost:3000"},
+		AllowMethods:     []string{"GET", "POST", "DELETE"},
+		AllowHeaders:     []string{"Origin", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+	router.LoadHTMLGlob("templates/*")
 	router.Static("/static/", "./static")
 
-	router.GET("/registration", h.registrationView)
-	router.POST("/registration", h.registrationView)
-	router.GET("/login", h.loginView)
-	router.POST("/login", h.loginView)
+	router.GET("/", h.webView)
 
-	v2 := router.Group("/v2/", baseRegistryMiddleware(h.DB.Sql))
+	v2 := router.Group("/v2/")
 	{
 		// Пинг для проверки
-		v2.GET("/", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{})
-		})
+		v2.GET("/", h.authHandler)
 		// docker pull
 		// получение manifest
 		v2.HEAD("/:repository/:name/manifests/:reference", h.getManifest)
@@ -84,7 +64,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 		// docker push
 		// загрузка blobs
-		v2.HEAD("/:repository/:name/blobs/:uuid", h.checkBlob)
+		v2.HEAD("/:repository/:name/blobs/:uuid", h.checkBlob, baseRegistryMiddleware(h.DB.Sql))
 		v2.POST("/:repository/:name/blobs/uploads/", h.startBlobUpload)
 		v2.PATCH("/:repository/:name/blobs/uploads/:uuid", h.uploadBlobPart)
 		v2.PUT("/:repository/:name/blobs/uploads/:uuid", h.finalizeBlobUpload)
@@ -93,15 +73,17 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	}
 
-	web := router.Group("/")
+	api := router.Group("/api/")
 	{
-		web.GET("/logout", h.logoutView)
-		web.POST("/logout", h.logoutView)
-		web.GET("/", h.repositoryView)
-		web.POST("/repository/add", h.addRegistryView)
-		web.GET("/repository/:name", h.registryView)
-		web.GET("/settings", h.settingsView)
-		web.POST("/settings", h.settingsView)
+		api.POST("/registration", h.registration)
+		api.GET("/registry", h.getRegistry)
+		api.GET("/registry/:name/:image", h.getImage)
+		api.DELETE("/registry/:name/:image", h.deleteRepository)
+		api.GET("/registry/:name", h.getRepository)
+		api.POST("/registry/:name", h.addRegistry)
+		api.DELETE("/registry/:name", h.deleteRegistry)
+		api.GET("/settings", h.settingsView)
+		api.POST("/settings", h.settingsView)
 	}
 	return router
 }

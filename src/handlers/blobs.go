@@ -81,7 +81,7 @@ func (h *Handler) uploadBlobPart(c *gin.Context) {
 }
 
 func (h *Handler) finalizeBlobUpload(c *gin.Context) {
-	imageName := c.Param("name")
+	// imageName := c.Param("name")
 	uuid := c.Param("uuid")
 
 	// Получаем digest из query параметров
@@ -131,7 +131,6 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"message": "Blob finalized", "digest": digest})
-	logrus.Infof("Загружен слой %s:%s", imageName, digest)
 }
 
 func (h *Handler) getBlob(c *gin.Context) {
