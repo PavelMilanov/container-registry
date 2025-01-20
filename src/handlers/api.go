@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -81,10 +80,19 @@ func (h *Handler) registration(c *gin.Context) {
 		Password        string `json:"password" binding:"required"`
 		ConfirmPassword string `json:"confirmPassword" binding:"required"`
 	}
-	data := userRegisterData{}
-	if err := c.BindJSON(&data); err != nil {
-		fmt.Println(err)
+	req := userRegisterData{}
+	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		return
 	}
-	fmt.Println(data)
+	if req.Password != req.ConfirmPassword {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "пароли не совпадают"})
+		return
+	}
+	user := db.User{Name: req.Username, Password: req.Password}
+	if err := user.Add(h.DB.Sql); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"data": user})
 }

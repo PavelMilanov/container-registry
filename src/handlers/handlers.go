@@ -41,7 +41,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*", "http://localhost:3000"},
 		AllowMethods:     []string{"GET", "POST", "DELETE"},
-		AllowHeaders:     []string{"Origin"},
+		AllowHeaders:     []string{"Origin", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
@@ -75,9 +75,6 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	api := router.Group("/api/")
 	{
-		// api.GET("/logout", h.logoutView)
-		// api.POST("/logout", h.logoutView)
-		// web.GET("/", h.repositoryView)
 		api.POST("/registration", h.registration)
 		api.GET("/registry", h.getRegistry)
 		api.GET("/registry/:name/:image", h.getImage)

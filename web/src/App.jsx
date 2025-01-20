@@ -14,7 +14,7 @@ function App() {
   return (
     <div>
       <Router>
-        <Route path={["login", "register"]} component={Login} />
+        <Route path="/login" component={Login} />
         <Route path="/registry">
           <Route path="/" component={Registry}/>
           <Route path="/:name" component={Repo} />

@@ -10,17 +10,17 @@ function Login() {
     const [confirmPassword, setConfirmPassword] = createSignal('')
 
     async function register() {
-        // let data = {
-        //     username: username(),
-        //     password: password(),
-        //     confirmPassword: confirmPassword(),
-        // }
-        const response = await axios.post(API_URL + "registration", {
+        let data = {
             username: username(),
             password: password(),
             confirmPassword: confirmPassword(),
-        })
-        console.log(response.data)
+        }
+        try {
+            const response = await axios.post(API_URL + "registration", JSON.stringify(data))
+            console.log(response.data)
+        } catch (error) { 
+            console.log("ошибка", error)
+        }
     }
 
     return (
