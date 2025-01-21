@@ -49,12 +49,11 @@ func loginRegistryMiddleware() gin.HandlerFunc {
 		}
 		// Decode Basic Auth
 		payload := strings.TrimPrefix(data, "Basic ")
-		fmt.Println(payload)
 		decoded, err := base64.StdEncoding.DecodeString(payload)
 		fmt.Println(string(decoded))
-		// decoded, err := decodeBase64(payload)
+
 		token := strings.Split(string(decoded), ":")[1]
-		// fmt.Println(token)
+		fmt.Println(token)
 		if err != nil || !secure.ValidateJWT(token) {
 			c.Header("WWW-Authenticate", `Basic realm="Docker Registry"`)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
