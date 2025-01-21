@@ -6,34 +6,35 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/PavelMilanov/container-registry/secure"
 	"github.com/gin-gonic/gin"
 )
 
 func (h *Handler) authHandler(c *gin.Context) {
-	data := c.GetHeader("Authorization")
-	if data == "" || !strings.HasPrefix(data, "Basic ") {
-		c.Header("WWW-Authenticate", `Basic realm="Docker Registry"`)
-		c.JSON(http.StatusUnauthorized, gin.H{"err": "invalid credentials"})
-		return
-	}
-	// Decode Basic Auth
-	payload := strings.TrimPrefix(data, "Basic ")
-	decoded, err := decodeBase64(payload)
-	if err != nil || !validateCredentials(decoded) {
-		c.Header("WWW-Authenticate", `Basic realm="Docker Registry"`)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
-		return
-	}
+	// data := c.GetHeader("Authorization")
+	// if data == "" || !strings.HasPrefix(data, "Basic ") {
+	// 	c.Header("WWW-Authenticate", `Basic realm="Docker Registry"`)
+	// 	c.JSON(http.StatusUnauthorized, gin.H{"err": "invalid credentials"})
+	// 	return
+	// }
+	// // Decode Basic Auth
+	// payload := strings.TrimPrefix(data, "Basic ")
+	// decoded, err := decodeBase64(payload)
+	// token := strings.Split(decoded, ":")[1]
+	// if err != nil || !secure.ValidateJWT(token) {
+	// 	c.Header("WWW-Authenticate", `Basic realm="Docker Registry"`)
+	// 	c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
+	// 	return
+	// }
 
+	// fmt.Println(strings.Split(decoded, ":"))
 	// Generate JWT Token
-	credentials := strings.Split(decoded, ":") //["username", "password"]
-	token, err := secure.GenerateJWT(credentials[0], credentials[1])
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	// credentials := strings.Split(decoded, ":") //["username", "password"]
+	// token, err := secure.GenerateJWT(credentials[0], credentials[1])
+	// if err != nil {
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+	// 	return
+	// }
+	c.JSON(http.StatusOK, gin.H{"token": "token"})
 }
 
 // decodeBase64 decodes a Base64 string
@@ -55,13 +56,3 @@ func validateCredentials(decoded string) bool {
 	// password, ok := users[parts[0]]
 	// return ok && password == parts[1]
 }
-
-// // generateJWT creates a JWT token for the user
-// func generateJWT(username string, password string) (string, error) {
-// 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-// 		"username": username,
-// 		"password": password,
-// 		"exp":      time.Now().Add(1 * time.Hour).Unix(),
-// 	})
-// 	return token.SignedString(jwtSecret)
-// }

@@ -1,10 +1,14 @@
 package handlers
 
 import (
+	"encoding/base64"
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/PavelMilanov/container-registry/db"
+	"github.com/PavelMilanov/container-registry/secure"
 	"github.com/PavelMilanov/container-registry/storage"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -35,6 +39,31 @@ func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 	}
 }
 
+func loginRegistryMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		data := c.GetHeader("Authorization")
+		if data == "" || !strings.HasPrefix(data, "Basic ") {
+			c.Header("WWW-Authenticate", `Basic realm="Docker Registry"`)
+			c.JSON(http.StatusUnauthorized, gin.H{"err": "invalid credentials"})
+			return
+		}
+		// Decode Basic Auth
+		payload := strings.TrimPrefix(data, "Basic ")
+		fmt.Println(payload)
+		decoded, err := base64.StdEncoding.DecodeString(payload)
+		fmt.Println(string(decoded))
+		// decoded, err := decodeBase64(payload)
+		token := strings.Split(string(decoded), ":")[1]
+		// fmt.Println(token)
+		if err != nil || !secure.ValidateJWT(token) {
+			c.Header("WWW-Authenticate", `Basic realm="Docker Registry"`)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
+			return
+		}
+		c.Next()
+	}
+}
+
 func (h *Handler) InitRouters() *gin.Engine {
 
 	router := gin.Default()
@@ -51,7 +80,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	router.GET("/", h.webView)
 
-	v2 := router.Group("/v2/")
+	v2 := router.Group("/v2/", loginRegistryMiddleware())
 	{
 		// Пинг для проверки
 		v2.GET("/", h.authHandler)
