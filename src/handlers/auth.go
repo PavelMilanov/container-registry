@@ -6,35 +6,33 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/PavelMilanov/container-registry/secure"
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 func (h *Handler) authHandler(c *gin.Context) {
-	// data := c.GetHeader("Authorization")
-	// if data == "" || !strings.HasPrefix(data, "Basic ") {
-	// 	c.Header("WWW-Authenticate", `Basic realm="Docker Registry"`)
-	// 	c.JSON(http.StatusUnauthorized, gin.H{"err": "invalid credentials"})
-	// 	return
-	// }
-	// // Decode Basic Auth
-	// payload := strings.TrimPrefix(data, "Basic ")
-	// decoded, err := decodeBase64(payload)
-	// token := strings.Split(decoded, ":")[1]
-	// if err != nil || !secure.ValidateJWT(token) {
-	// 	c.Header("WWW-Authenticate", `Basic realm="Docker Registry"`)
-	// 	c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
-	// 	return
-	// }
-
-	// fmt.Println(strings.Split(decoded, ":"))
-	// Generate JWT Token
-	// credentials := strings.Split(decoded, ":") //["username", "password"]
-	// token, err := secure.GenerateJWT(credentials[0], credentials[1])
-	// if err != nil {
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
-	// 	return
-	// }
-	c.JSON(http.StatusOK, gin.H{"token": "token"})
+	data := c.GetHeader("Authorization")
+	fmt.Println(data)
+	if data == "" || !strings.HasPrefix(data, "Basic ") {
+		c.Header("WWW-Authenticate", `Basic realm="Docker Registry"`)
+		c.JSON(http.StatusUnauthorized, gin.H{"err": "invalid credentials"})
+		return
+	}
+	payload := strings.TrimPrefix(data, "Basic ")
+	decoded, err := base64.StdEncoding.DecodeString(payload)
+	if err != nil {
+		logrus.Debug(err)
+		return
+	}
+	username := strings.Split(string(decoded), ":")[0]
+	//password := strings.Split(string(decoded), ":")[1]
+	token, err := secure.GenerateJWT(username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
 // decodeBase64 decodes a Base64 string

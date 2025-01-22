@@ -29,9 +29,9 @@ func (u *User) Add(sql *gorm.DB) error {
 }
 
 func (u *User) Login(sql *gorm.DB) error {
-	pwd := u.Password
-	result := sql.Where("name = ?", u.Name).First(&u)
-	if result.RowsAffected == 0 || secure.ValidateHash(pwd, []byte(u.Password)) != nil {
+	pwd := secure.Hashed(u.Password)
+	result := sql.Where("name = ? AND password = ?", u.Name, pwd).First(&u)
+	if result.RowsAffected == 0 {
 		logrus.Error("неверные логин или пароль")
 		return errors.New("неверные логин или пароль")
 	}
