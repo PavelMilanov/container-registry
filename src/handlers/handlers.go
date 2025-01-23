@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/base64"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -51,6 +52,7 @@ func loginRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 			logrus.Debug(err)
 			return
 		}
+		fmt.Println(string(decoded))
 		username := strings.Split(string(decoded), ":")[0]
 		password := strings.Split(string(decoded), ":")[1]
 		user := db.User{Name: username, Password: password}

@@ -13,7 +13,6 @@ import (
 
 func (h *Handler) authHandler(c *gin.Context) {
 	data := c.GetHeader("Authorization")
-	fmt.Println(data)
 	if data == "" || !strings.HasPrefix(data, "Basic ") {
 		c.Header("WWW-Authenticate", `Basic realm="Docker Registry"`)
 		c.JSON(http.StatusUnauthorized, gin.H{"err": "invalid credentials"})
