@@ -30,9 +30,9 @@ func (h *Handler) authHandler(c *gin.Context) {
 	user := db.User{Name: username, Password: password}
 	if err := user.Login(h.DB.Sql); err != nil {
 		c.Header("WWW-Authenticate", `Basic realm="Docker Registry"`)
-		logrus.Error(err)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
 		return
 	}
+	fmt.Println(user.Token)
 	c.JSON(http.StatusOK, gin.H{"token": user.Token})
 }

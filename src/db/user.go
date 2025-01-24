@@ -20,12 +20,12 @@ func (u *User) Add(sql *gorm.DB) error {
 	if result.RowsAffected == 0 {
 		hash := secure.Hashed(u.Password)
 		u.Password = hash
-		token, err := secure.GenerateJWT()
-		if err != nil {
-			logrus.Error(err)
-			return err
-		}
-		u.Token = token
+		// token, err := secure.GenerateJWT()
+		// if err != nil {
+		// 	logrus.Error(err)
+		// 	return err
+		// }
+		// u.Token = token
 		sql.Create(&u)
 		logrus.Infof("Создан новый пользователь %+v", u)
 	} else {
@@ -42,5 +42,12 @@ func (u *User) Login(sql *gorm.DB) error {
 		logrus.Error("неверные логин или пароль")
 		return errors.New("неверные логин или пароль")
 	}
+	newToken, err := secure.GenerateJWT()
+	if err != nil {
+		logrus.Error(err)
+		return err
+	}
+	u.Token = newToken
+	sql.Save(&u)
 	return nil
 }
