@@ -1,8 +1,9 @@
 package config
 
 var (
-	DURATION = 3
-	VERSION  = 0.1
+	DURATION   = 3
+	VERSION    string
+	JWT_SECRET = []byte("super-secret-key")
 
 	STORAGE_PATH  = "data"
 	MANIFEST_PATH = "manifests"

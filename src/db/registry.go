@@ -25,7 +25,7 @@ func (r *Registry) Add(sql *gorm.DB) error {
 			logrus.Error(result.Error)
 			return result.Error
 		}
-		logrus.Infof("Создан новый реестр %v", r)
+		logrus.Infof("Создан новый реестр %+v", r)
 	}
 	return nil
 }
@@ -36,7 +36,7 @@ func (r *Registry) Delete(sql *gorm.DB) error {
 		logrus.Error(result.Error)
 		return result.Error
 	}
-	logrus.Infof("Удален реестр %v", r)
+	logrus.Infof("Удален реестр %+v", r)
 	return nil
 }
 

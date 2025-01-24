@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/PavelMilanov/container-registry/db"
+	"github.com/PavelMilanov/container-registry/secure"
 	"github.com/PavelMilanov/container-registry/storage"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -35,6 +37,24 @@ func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 	}
 }
 
+func loginRegistryMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		data := c.GetHeader("Authorization")
+		// if data == "" || !strings.HasPrefix(data, "Bearer ") {
+		// 	c.Header("WWW-Authenticate", `Bearer realm="http://192.168.64.1:5050/api/auth",service="Docker Registry"`)
+		// 	c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+
+		// }
+		payload := strings.TrimPrefix(data, "Bearer ")
+		valid := secure.ValidateJWT(payload)
+		if !valid {
+			c.Header("WWW-Authenticate", `Bearer realm="http://0.0.0.0:5050/api/auth",service="Docker Registry"`)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		}
+		c.Next()
+	}
+}
+
 func (h *Handler) InitRouters() *gin.Engine {
 
 	router := gin.Default()
@@ -51,10 +71,12 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	router.GET("/", h.webView)
 
-	v2 := router.Group("/v2/")
+	v2 := router.Group("/v2/", loginRegistryMiddleware())
 	{
 		// Пинг для проверки
-		v2.GET("/", h.authHandler)
+		v2.GET("/", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"message": "Docker Registry API"})
+		})
 		// docker pull
 		// получение manifest
 		v2.HEAD("/:repository/:name/manifests/:reference", h.getManifest)
@@ -75,6 +97,8 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	api := router.Group("/api/")
 	{
+		api.POST("/login", h.login)
+		api.GET("/auth", h.authHandler)
 		api.POST("/registration", h.registration)
 		api.GET("/registry", h.getRegistry)
 		api.GET("/registry/:name/:image", h.getImage)

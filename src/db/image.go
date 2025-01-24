@@ -22,7 +22,7 @@ func (i *Image) Add(sql *gorm.DB) {
 	i.CreatedAt = now.Format("2006-01-02 15:04:05")
 	if sql.Model(&i).Where("name = ? AND tag = ?", i.Name, i.Tag).Updates(&i).RowsAffected == 0 {
 		sql.Create(&i)
-		logrus.Infof("Добавлен новый образ %v", i)
+		logrus.Infof("Добавлен новый образ %+v", i)
 	}
 }
 
@@ -33,7 +33,7 @@ func (i *Image) Delete(sql *gorm.DB) error {
 		logrus.Error(result.Error)
 		return result.Error
 	}
-	logrus.Infof("Удален образ %v", i)
+	logrus.Infof("Удален образ %+v", i)
 	return nil
 }
 

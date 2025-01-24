@@ -36,7 +36,6 @@ func main() {
 	sqliteFIle := fmt.Sprintf("%s/registry.db", config.DATA_PATH)
 	sqlite := db.NewDatabase(sqliteFIle)
 	defer db.CloseDatabase(sqlite.Sql)
-	logrus.Debug("Версия сборки: ", config.VERSION)
 
 	handler := handlers.NewHandler(storage, &sqlite)
 	srv := new(Server)
