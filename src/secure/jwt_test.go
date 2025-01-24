@@ -5,7 +5,7 @@ import (
 )
 
 func TestGenerateJWT(t *testing.T) {
-	token, err := GenerateJWT("foo")
+	token, err := GenerateJWT()
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -13,6 +13,6 @@ func TestGenerateJWT(t *testing.T) {
 }
 
 func TestValidateJWT(t *testing.T) {
-	token, _ := GenerateJWT("foo")
+	token, _ := GenerateJWT()
 	ValidateJWT(token)
 }

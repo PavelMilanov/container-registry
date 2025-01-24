@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/PavelMilanov/container-registry/secure"
+	"github.com/PavelMilanov/container-registry/db"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -24,32 +24,15 @@ func (h *Handler) authHandler(c *gin.Context) {
 		logrus.Debug(err)
 		return
 	}
+	fmt.Println(string(decoded))
 	username := strings.Split(string(decoded), ":")[0]
-	//password := strings.Split(string(decoded), ":")[1]
-	token, err := secure.GenerateJWT(username)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+	password := strings.Split(string(decoded), ":")[1]
+	user := db.User{Name: username, Password: password}
+	if err := user.Login(h.DB.Sql); err != nil {
+		c.Header("WWW-Authenticate", `Basic realm="Docker Registry"`)
+		logrus.Error(err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"token": token})
-}
-
-// decodeBase64 decodes a Base64 string
-func decodeBase64(encoded string) (string, error) {
-	data, err := base64.StdEncoding.DecodeString(encoded)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
-}
-
-func validateCredentials(decoded string) bool {
-	parts := strings.Split(decoded, ":")
-	if len(parts) != 2 {
-		return false
-	}
-	fmt.Println(parts)
-	return false
-	// password, ok := users[parts[0]]
-	// return ok && password == parts[1]
+	c.JSON(http.StatusOK, gin.H{"token": user.Token})
 }

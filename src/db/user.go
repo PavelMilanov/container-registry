@@ -12,6 +12,7 @@ type User struct {
 	ID       int    `gorm:"primaryKey"`
 	Name     string `gorm:"not null,unique"`
 	Password string `gorm:"not null"`
+	Token    string
 }
 
 func (u *User) Add(sql *gorm.DB) error {
@@ -19,6 +20,12 @@ func (u *User) Add(sql *gorm.DB) error {
 	if result.RowsAffected == 0 {
 		hash := secure.Hashed(u.Password)
 		u.Password = hash
+		token, err := secure.GenerateJWT()
+		if err != nil {
+			logrus.Error(err)
+			return err
+		}
+		u.Token = token
 		sql.Create(&u)
 		logrus.Infof("Создан новый пользователь %+v", u)
 	} else {

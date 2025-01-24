@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 
 	"github.com/PavelMilanov/container-registry/db"
-	"github.com/PavelMilanov/container-registry/secure"
 	"github.com/gin-gonic/gin"
 )
 
@@ -113,10 +112,5 @@ func (h *Handler) login(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	token, err := secure.GenerateJWT(user.Name)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	c.JSON(http.StatusOK, gin.H{})
 }

@@ -8,10 +8,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func GenerateJWT(username string) (string, error) {
+func GenerateJWT() (string, error) {
 	payload := jwt.MapClaims{
-		"username": username,
-		"exp":      time.Now().Add(1 * time.Hour).Unix(),
+		"exp": time.Now().Add(1 * time.Hour).Unix(),
+		"iat": time.Now().Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, payload)
 	return token.SignedString(config.JWT_SECRET)
@@ -31,11 +31,11 @@ func ValidateJWT(tokenString string) bool {
 		logrus.Debug("Токен не валиден")
 		return false
 	}
-	// fmt.Println(claims["username"])
-	now := time.Now()                                   // 2025-01-21 15:19:21 +0300 MSK
+	iat := time.Unix(int64(claims["iat"].(float64)), 0) // 2025-01-21 15:19:21 +0300 MSK
 	exp := time.Unix(int64(claims["exp"].(float64)), 0) // 2025-01-21 15:19:21 +0300 MSK
-	difference := exp.Sub(now)                          // вычисляем срок действия токена
-	if difference < 0 {
+	// difference := exp.Sub(iat)                          // вычисляем срок действия токена
+	if exp.Sub(iat) < 0 {
+		logrus.Debug("Срок жизни токена истек")
 		return false
 	}
 	return true
