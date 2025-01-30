@@ -1,9 +1,11 @@
 package config
 
+import "os"
+
 var (
 	DURATION   = 3
 	VERSION    string
-	JWT_SECRET = []byte("super-secret-key")
+	JWT_SECRET = []byte(os.Getenv("JWT_KEY"))
 
 	STORAGE_PATH  = "data"
 	MANIFEST_PATH = "manifests"
@@ -11,5 +13,5 @@ var (
 
 	DATA_PATH = "var"
 
-	WEB_API_URL string
+	WEB_API_URL = os.Getenv("API_URL")
 )

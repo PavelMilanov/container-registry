@@ -3,3 +3,4 @@ container-registry
 data
 var
 .DS_Store
+src/assets

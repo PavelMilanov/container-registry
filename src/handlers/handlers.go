@@ -59,15 +59,15 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*", "http://localhost:3000"},
+		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "DELETE"},
 		AllowHeaders:     []string{"Origin", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
-	router.LoadHTMLGlob("templates/*")
-	router.Static("/static/", "./static")
+	router.LoadHTMLGlob("./index.html")
+	router.Static("/assets/", "./assets")
 
 	router.GET("/", h.webView)
 
@@ -108,6 +108,9 @@ func (h *Handler) InitRouters() *gin.Engine {
 		api.DELETE("/registry/:name", h.deleteRegistry)
 		api.GET("/settings", h.settingsView)
 		api.POST("/settings", h.settingsView)
+		api.GET("/check", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		})
 	}
 	return router
 }
