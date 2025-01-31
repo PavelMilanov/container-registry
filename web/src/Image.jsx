@@ -36,8 +36,15 @@ function Image() {
         const headers = {
             'Authorization': `Bearer ${token}`
         }
-        const response = await axios.get(API_URL + `registry/${params.name}/${params.image}`, {headers: headers})
-        setTagList(response.data.data)// в ответе приходит массив "data"
+        try {
+            const response = await axios.get(API_URL + `registry/${params.name}/${params.image}`, {headers: headers})
+            setTagList(response.data.data)// в ответе приходит массив "data"
+        } catch (error) {
+            if (error.response.status) {
+                localStorage.removeItem("token")
+                navigate("/login", { replace: true })
+            }
+        }
     }
 
     onMount(async () => {

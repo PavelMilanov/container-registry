@@ -38,7 +38,10 @@ function Repo() {
             const response = await axios.get(API_URL + `registry/${params.name}`, {headers: headers})
             setImageList(response.data.data)  // в ответе приходит массив "data"
         } catch (error) {
-            console.log(error.response.data.error)
+            if (error.response.status) {
+                localStorage.removeItem("token")
+                navigate("/login", { replace: true })
+            }
         }
     }
 

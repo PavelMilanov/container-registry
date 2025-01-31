@@ -8,13 +8,7 @@ const Image = lazy(() => import("./Image"))
 const Login = lazy(() => import("./Login"))
 
 function App() {
-  onMount(() => {
-    // const navigate = useNavigate()
-    // let token = localStorage.getItem("token")
-   
-    // navigate("/registry")
-  })
-
+  
   return (
     <div>
       <Router>

@@ -1,7 +1,9 @@
 import { createSignal, Show } from 'solid-js'
+import { useNavigate } from '@solidjs/router'
 import axios from 'axios'
 
 function Login() {
+    const navigate = useNavigate()
     const [loggedIn, setLoggedIn] = createSignal(false)
     const toggle = () => setLoggedIn(!loggedIn())
 
@@ -31,7 +33,7 @@ function Login() {
         try {
             const response = await axios.post(API_URL + "login", JSON.stringify(data))
             localStorage.setItem("token", response.data.token)
-
+            navigate("/registry", { replace: true })
         } catch (error) {
             console.log("ошибка", error)
         }

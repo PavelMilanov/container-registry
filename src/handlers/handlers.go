@@ -10,7 +10,6 @@ import (
 	"github.com/PavelMilanov/container-registry/storage"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -28,7 +27,7 @@ func baseApiMiddleware() gin.HandlerFunc {
 		data := c.GetHeader("Authorization")
 		payload := strings.TrimPrefix(data, "Bearer ")
 		if !secure.ValidateJWT(payload) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "token is not valid"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "token is not valid"})
 			c.Abort()
 			return
 		}
@@ -41,7 +40,6 @@ func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 		repository := c.Param("repository")
 		var registry db.Registry
 		if err := registry.Get(repository, sql); err != nil {
-			logrus.Error(err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get registry"})
 			c.Abort()
 			return
@@ -56,8 +54,10 @@ func loginRegistryMiddleware() gin.HandlerFunc {
 		payload := strings.TrimPrefix(data, "Bearer ")
 		valid := secure.ValidateJWT(payload)
 		if !valid {
-			c.Header("WWW-Authenticate", `Bearer realm="http://0.0.0.0:5050/api/auth",service="Docker Registry"`)
+			c.Header("WWW-Authenticate", `Bearer realm="http://0.0.0.0:5050/v2/auth",service="Docker Registry"`)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			c.Abort()
+			return
 		}
 		c.Next()
 	}
@@ -79,6 +79,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	router.GET("/", h.webView)
 
+	router.GET("v2/auth", h.authHandler)
 	v2 := router.Group("/v2/", loginRegistryMiddleware())
 	{
 		// Пинг для проверки
@@ -102,11 +103,9 @@ func (h *Handler) InitRouters() *gin.Engine {
 		v2.PUT("/:repository/:name/manifests/:reference", h.uploadManifest)
 
 	}
-
+	router.POST("/api/login", h.login)
 	api := router.Group("/api/", baseApiMiddleware())
 	{
-		api.POST("/login", h.login)
-		api.GET("/auth", h.authHandler)
 		api.POST("/registration", h.registration)
 		api.GET("/registry", h.getRegistry)
 		api.GET("/registry/:name/:image", h.getImage)

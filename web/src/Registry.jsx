@@ -1,5 +1,5 @@
 import { createSignal, onMount, lazy } from "solid-js"
-import { A } from "@solidjs/router"
+import { A, useNavigate } from "@solidjs/router"
 import axios from 'axios'
 
 import NavBar from "./NavBar"
@@ -9,7 +9,7 @@ const Delete = lazy(() => import("./modal/Delete"))
 const API_URL = window.API_URL
 
 function Registry() {
-
+    const navigate = useNavigate()
     const [isModalOpen, setModalOpen] = createSignal(false)
     const [registryList, setRegistryList] = createSignal([])
     const [registry, setRegistry] = createSignal('')
@@ -50,11 +50,18 @@ function Registry() {
         const headers = {
             'Authorization': `Bearer ${token}`
         }
-        const response = await axios.get(API_URL + "registry", {headers: headers})
-        setRegistryList(response.data.data)// в ответе приходит массив "data"
+        try {
+            const response = await axios.get(API_URL + "registry", {headers: headers})
+            setRegistryList(response.data.data)// в ответе приходит массив "data"
+        } catch (error) {
+            if (error.response.status) {
+                localStorage.removeItem("token")
+                navigate("/login", {replace: true})
+            }
+        }
     }
 
-    onMount(async () => { 
+    onMount(async () => {
         await getRegistry()
     })
 
