@@ -98,6 +98,7 @@ func (h *Handler) registration(c *gin.Context) {
 }
 
 func (h *Handler) login(c *gin.Context) {
+
 	type userLoginData struct {
 		Username string `json:"username" binding:"required"`
 		Password string `json:"password" binding:"required"`
@@ -112,5 +113,5 @@ func (h *Handler) login(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{})
+	c.JSON(http.StatusOK, gin.H{"token": user.Token})
 }

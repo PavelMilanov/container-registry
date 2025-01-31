@@ -18,8 +18,17 @@ function Registry() {
     const closeModal = () => setModalOpen(false)
     const submitAddRegistry = async () => {
         setModalOpen(false)
-        const response = await axios.post(API_URL + `registry/${registry()}`,)
-        setRegistryList([...registryList(), response.data.data])
+        let token = localStorage.getItem('token')
+        const headers = {
+            'Authorization': `Bearer ${token}`
+        }
+        try {
+            const response = await axios.post(API_URL + `registry/${registry()}`, {headers: headers})
+            setRegistryList([...registryList(), response.data.data])
+        } catch (error) {
+            console.log(error.response.data.error)
+            localStorage.removeItem('token')
+        }
     }
     const newRegistry = (value) => setRegistry(value)
 
@@ -37,7 +46,11 @@ function Registry() {
     }
 
     async function getRegistry() {
-        const response = await axios.get(API_URL + "registry")
+        let token = localStorage.getItem('token')
+        const headers = {
+            'Authorization': `Bearer ${token}`
+        }
+        const response = await axios.get(API_URL + "registry", {headers: headers})
         setRegistryList(response.data.data)// в ответе приходит массив "data"
     }
 

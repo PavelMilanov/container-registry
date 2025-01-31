@@ -21,13 +21,25 @@ function Repo() {
     const closeDeleteModal = () => setModalDeleteOpen(false)
     const submitDelete = async () => {
         setModalDeleteOpen(false)
-        const response = await axios.delete(API_URL + `registry/${params.name}/${repo()}`)
+        let token = localStorage.getItem('token')
+        const headers = {
+            'Authorization': `Bearer ${token}`
+        }
+        const response = await axios.delete(API_URL + `registry/${params.name}/${repo()}`, {headers: headers})
         setImageList(imageList().filter((newItem) => newItem.Name !== response.data.data["Name"]))
     }
 
     async function getRepo() {
-        const response = await axios.get(API_URL + `registry/${params.name}`)
-        setImageList(response.data.data)  // в ответе приходит массив "data"
+        let token = localStorage.getItem('token')
+        const headers = {
+            'Authorization': `Bearer ${token}`
+        }
+        try {
+            const response = await axios.get(API_URL + `registry/${params.name}`, {headers: headers})
+            setImageList(response.data.data)  // в ответе приходит массив "data"
+        } catch (error) {
+            console.log(error.response.data.error)
+        }
     }
 
     onMount(async () => {

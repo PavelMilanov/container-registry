@@ -23,15 +23,20 @@ function Image() {
     const closeDeleteModal = () => setModalDeleteOpen(false)
     const submitDelete = async () => {
         setModalDeleteOpen(false)
-        // const headers = {
-        //     'Authorization': `Bearer ${TOKEN}`
-        // }
-        const response = await axios.delete(API_URL + `registry/${params.name}/${image()}`, { params: { "tag": tag() } })
+        let token = localStorage.getItem('token')
+        const headers = {
+            'Authorization': `Bearer ${token}`
+        }
+        const response = await axios.delete(API_URL + `registry/${params.name}/${image()}`, { headers: headers, params: { "tag": tag() } })
         setTagList(tagList().filter((newItem) => newItem.Name !== response.data.data["Name"]))
     }
 
     async function getImages() {
-        const response = await axios.get(API_URL + `registry/${params.name}/${params.image}`)
+        let token = localStorage.getItem('token')
+        const headers = {
+            'Authorization': `Bearer ${token}`
+        }
+        const response = await axios.get(API_URL + `registry/${params.name}/${params.image}`, {headers: headers})
         setTagList(response.data.data)// в ответе приходит массив "data"
     }
 

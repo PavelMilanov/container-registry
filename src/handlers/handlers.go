@@ -23,6 +23,19 @@ func NewHandler(storage *storage.Storage, db *db.SQLite) *Handler {
 	return &Handler{STORAGE: storage, DB: db}
 }
 
+func baseApiMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		data := c.GetHeader("Authorization")
+		payload := strings.TrimPrefix(data, "Bearer ")
+		if !secure.ValidateJWT(payload) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "token is not valid"})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
 func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		repository := c.Param("repository")
@@ -40,11 +53,6 @@ func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 func loginRegistryMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data := c.GetHeader("Authorization")
-		// if data == "" || !strings.HasPrefix(data, "Bearer ") {
-		// 	c.Header("WWW-Authenticate", `Bearer realm="http://192.168.64.1:5050/api/auth",service="Docker Registry"`)
-		// 	c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-
-		// }
 		payload := strings.TrimPrefix(data, "Bearer ")
 		valid := secure.ValidateJWT(payload)
 		if !valid {
@@ -95,7 +103,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	}
 
-	api := router.Group("/api/")
+	api := router.Group("/api/", baseApiMiddleware())
 	{
 		api.POST("/login", h.login)
 		api.GET("/auth", h.authHandler)
