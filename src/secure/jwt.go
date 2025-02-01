@@ -10,7 +10,7 @@ import (
 
 func GenerateJWT() (string, error) {
 	payload := jwt.MapClaims{
-		"exp": time.Now().Add(1 * time.Hour).Unix(),
+		"exp": time.Now().Add(72 * time.Hour).Unix(),
 		"iat": time.Now().Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, payload)

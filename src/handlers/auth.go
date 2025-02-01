@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/base64"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -24,7 +23,6 @@ func (h *Handler) authHandler(c *gin.Context) {
 		logrus.Debug(err)
 		return
 	}
-	fmt.Println(string(decoded))
 	username := strings.Split(string(decoded), ":")[0]
 	password := strings.Split(string(decoded), ":")[1]
 	user := db.User{Name: username, Password: password}
@@ -33,6 +31,5 @@ func (h *Handler) authHandler(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
 		return
 	}
-	fmt.Println(user.Token)
 	c.JSON(http.StatusOK, gin.H{"token": user.Token})
 }

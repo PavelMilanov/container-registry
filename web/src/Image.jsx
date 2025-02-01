@@ -1,5 +1,5 @@
 import { createSignal, onMount, lazy } from "solid-js"
-import { A, useParams } from "@solidjs/router"
+import { A, useParams, useNavigate } from "@solidjs/router"
 import axios from "axios"
 
 import NavBar from "./NavBar"
@@ -8,6 +8,7 @@ const Delete = lazy(() => import("./modal/Delete"))
 const API_URL = window.API_URL
 
 function Image() {
+    const navigate = useNavigate()
     const [tagList, setTagList] = createSignal([])
     const params = useParams()
     const [tag, setTag] = createSignal('')
@@ -23,16 +24,37 @@ function Image() {
     const closeDeleteModal = () => setModalDeleteOpen(false)
     const submitDelete = async () => {
         setModalDeleteOpen(false)
-        // const headers = {
-        //     'Authorization': `Bearer ${TOKEN}`
-        // }
-        const response = await axios.delete(API_URL + `registry/${params.name}/${image()}`, { params: { "tag": tag() } })
+        let token = localStorage.getItem('token')
+        const headers = {
+            'Authorization': `Bearer ${token}`
+        }
+        const response = await axios.delete(
+            API_URL + `/api/registry/${params.name}/${image()}`,
+            {},
+            { headers: headers, params: { "tag": tag() } }
+        )
         setTagList(tagList().filter((newItem) => newItem.Name !== response.data.data["Name"]))
     }
 
     async function getImages() {
-        const response = await axios.get(API_URL + `registry/${params.name}/${params.image}`)
-        setTagList(response.data.data)// в ответе приходит массив "data"
+        let token = localStorage.getItem('token')
+        const headers = {
+            'Authorization': `Bearer ${token}`
+        }
+        try {
+            const response = await axios.get(
+                API_URL + `/api/registry/${params.name}/${params.image}`,
+                {},
+                { headers: headers }
+            )
+            setTagList(response.data.data)// в ответе приходит массив "data"
+        } catch (error) {
+            console.log(error.response.data)
+            if (error.response.status === 401) {
+                localStorage.removeItem("token")
+                navigate("/login", { replace: true })
+            }
+        }
     }
 
     onMount(async () => {

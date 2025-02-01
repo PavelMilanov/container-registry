@@ -5,12 +5,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/secure"
 	"github.com/PavelMilanov/container-registry/storage"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -23,12 +23,24 @@ func NewHandler(storage *storage.Storage, db *db.SQLite) *Handler {
 	return &Handler{STORAGE: storage, DB: db}
 }
 
+func baseApiMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		data := c.GetHeader("Authorization")
+		payload := strings.TrimPrefix(data, "Bearer ")
+		if !secure.ValidateJWT(payload) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "token is not valid"})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
 func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		repository := c.Param("repository")
 		var registry db.Registry
 		if err := registry.Get(repository, sql); err != nil {
-			logrus.Error(err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get registry"})
 			c.Abort()
 			return
@@ -40,16 +52,13 @@ func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 func loginRegistryMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data := c.GetHeader("Authorization")
-		// if data == "" || !strings.HasPrefix(data, "Bearer ") {
-		// 	c.Header("WWW-Authenticate", `Bearer realm="http://192.168.64.1:5050/api/auth",service="Docker Registry"`)
-		// 	c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-
-		// }
 		payload := strings.TrimPrefix(data, "Bearer ")
 		valid := secure.ValidateJWT(payload)
 		if !valid {
-			c.Header("WWW-Authenticate", `Bearer realm="http://0.0.0.0:5050/api/auth",service="Docker Registry"`)
+			c.Header("WWW-Authenticate", `Bearer realm="http://0.0.0.0:5050/v2/auth",service="Docker Registry"`)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			c.Abort()
+			return
 		}
 		c.Next()
 	}
@@ -59,17 +68,26 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*", "http://localhost:3000"},
+		AllowOrigins:     []string{config.URL},
 		AllowMethods:     []string{"GET", "POST", "DELETE"},
-		AllowHeaders:     []string{"Origin", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Authorization", "Content-Type"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
-	router.LoadHTMLGlob("templates/*")
-	router.Static("/static/", "./static")
+	router.LoadHTMLGlob("./index.html")
+	router.Static("/assets/", "./assets")
 
-	router.GET("/", h.webView)
+	router.NoRoute(func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.html", gin.H{"URL": config.URL})
+	})
+
+	router.POST("/login", h.login)
+	router.GET("/check", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+	router.POST("/registration", h.registration)
+	router.GET("v2/auth", h.authHandler)
 
 	v2 := router.Group("/v2/", loginRegistryMiddleware())
 	{
@@ -95,11 +113,8 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	}
 
-	api := router.Group("/api/")
+	api := router.Group("/api/", baseApiMiddleware())
 	{
-		api.POST("/login", h.login)
-		api.GET("/auth", h.authHandler)
-		api.POST("/registration", h.registration)
 		api.GET("/registry", h.getRegistry)
 		api.GET("/registry/:name/:image", h.getImage)
 		api.DELETE("/registry/:name/:image", h.deleteRepository)

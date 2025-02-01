@@ -1,5 +1,5 @@
 import { createSignal, onMount, lazy } from "solid-js"
-import { A, useParams } from "@solidjs/router"
+import { A, useParams, useNavigate } from "@solidjs/router"
 import axios from "axios"
 
 import NavBar from "./NavBar"
@@ -8,6 +8,7 @@ const Delete = lazy(() => import("./modal/Delete"))
 const API_URL = window.API_URL
 
 function Repo() {
+    const navigate = useNavigate()
     const [imageList, setImageList] = createSignal([])
     const params = useParams()
     const [repo, setRepo] = createSignal('')
@@ -21,13 +22,29 @@ function Repo() {
     const closeDeleteModal = () => setModalDeleteOpen(false)
     const submitDelete = async () => {
         setModalDeleteOpen(false)
-        const response = await axios.delete(API_URL + `registry/${params.name}/${repo()}`)
+        let token = localStorage.getItem('token')
+        const headers = {
+            'Authorization': `Bearer ${token}`
+        }
+        const response = await axios.delete(API_URL + `/api/registry/${params.name}/${repo()}`, {headers: headers})
         setImageList(imageList().filter((newItem) => newItem.Name !== response.data.data["Name"]))
     }
 
     async function getRepo() {
-        const response = await axios.get(API_URL + `registry/${params.name}`)
-        setImageList(response.data.data)  // в ответе приходит массив "data"
+        let token = localStorage.getItem('token')
+        const headers = {
+            'Authorization': `Bearer ${token}`
+        }
+        try {
+            const response = await axios.get(API_URL + `/api/registry/${params.name}`, {headers: headers})
+            setImageList(response.data.data)  // в ответе приходит массив "data"
+        } catch (error) {
+            console.log(error.response.data)
+            if (error.response.status === 401) {
+                localStorage.removeItem("token")
+                navigate("/login", { replace: true })
+            }
+        }
     }
 
     onMount(async () => {
