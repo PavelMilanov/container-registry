@@ -11,7 +11,7 @@ ARG VERSION
 ENV VERSION="${VERSION}"
 ENV CGO_ENABLED=1
 
-RUN go build -ldflags="-s -w -X 'github.com/PavelMilanov/container-registry/config.VERSION=${VERSION}'"
+RUN go build -ldflags="-s -w -X 'github.com/PavelMilanov/container-registry/config.VERSION=${VERSION}'" -o ./registry
 
 
 FROM node:22 AS web
@@ -40,23 +40,22 @@ ENV GIN_MODE=release
 
 WORKDIR /registry
 
-COPY --from=app /build/container-registry /registry/
+COPY --from=app /build/registry /registry/
 COPY --from=web /app/dist /registry/
 
-# VOLUME [ "/app/dumps" ]
-# VOLUME [ "/app/data" ]
-
 RUN apk --update --no-cache add tzdata sqlite-libs curl && \
-    rm -rf /var/cache/apk/ && \
-    addgroup -g ${UID_DOCKER} ${USER_DOCKER} && \
-    adduser -u ${UID_DOCKER} -G ${USER_DOCKER} -s /bin/sh -D -H ${USER_DOCKER} && \
-    chown -R ${USER_DOCKER}:${USER_DOCKER} /registry
+rm -rf /var/cache/apk/ && \
+addgroup -g ${UID_DOCKER} ${USER_DOCKER} && \
+adduser -u ${UID_DOCKER} -G ${USER_DOCKER} -s /bin/sh -D -H ${USER_DOCKER} && \
+chown -R ${USER_DOCKER}:${USER_DOCKER} /registry
 
 
 EXPOSE 5050/tcp
 
+VOLUME [ "/registry/data" ]
+
 HEALTHCHECK --interval=1m --timeout=2s --start-period=2s --retries=3 CMD curl -f http://localhost:5050/api/check || exit 1
 
-ENTRYPOINT ["./container-registry" ]
+ENTRYPOINT ["./registry" ]
 
 USER ${USER_DOCKER}:${USER_DOCKER}

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/secure"
 	"github.com/PavelMilanov/container-registry/storage"
@@ -77,9 +78,11 @@ func (h *Handler) InitRouters() *gin.Engine {
 	router.LoadHTMLGlob("./index.html")
 	router.Static("/assets/", "./assets")
 
-	router.GET("/", h.webView)
-
+	router.NoRoute(func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.html", gin.H{"WEB_API_URL": config.WEB_API_URL})
+	})
 	router.GET("v2/auth", h.authHandler)
+
 	v2 := router.Group("/v2/", loginRegistryMiddleware())
 	{
 		// Пинг для проверки
@@ -104,9 +107,13 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	}
 	router.POST("/api/login", h.login)
+	router.GET("/api/check", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+	router.POST("/api/registration", h.registration)
+
 	api := router.Group("/api/", baseApiMiddleware())
 	{
-		api.POST("/registration", h.registration)
 		api.GET("/registry", h.getRegistry)
 		api.GET("/registry/:name/:image", h.getImage)
 		api.DELETE("/registry/:name/:image", h.deleteRepository)
@@ -115,9 +122,6 @@ func (h *Handler) InitRouters() *gin.Engine {
 		api.DELETE("/registry/:name", h.deleteRegistry)
 		api.GET("/settings", h.settingsView)
 		api.POST("/settings", h.settingsView)
-		api.GET("/check", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"status": "ok"})
-		})
 	}
 	return router
 }

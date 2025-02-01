@@ -21,7 +21,7 @@ func init() {
 	manifestPath := filepath.Join(storage.ManifestPath)
 	os.MkdirAll(blobPath, 0755)
 	os.MkdirAll(manifestPath, 0755)
-	os.MkdirAll(config.DATA_PATH, 0755)
+	os.Mkdir(config.DATA_PATH, 0755)
 
 }
 
