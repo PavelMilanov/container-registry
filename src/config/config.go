@@ -13,5 +13,5 @@ var (
 
 	DATA_PATH = "var"
 
-	WEB_API_URL = os.Getenv("API_URL")
+	URL = os.Getenv("URL")
 )

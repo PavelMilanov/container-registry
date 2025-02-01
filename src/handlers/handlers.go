@@ -68,7 +68,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
+		AllowOrigins:     []string{config.URL},
 		AllowMethods:     []string{"GET", "POST", "DELETE"},
 		AllowHeaders:     []string{"Origin", "Authorization", "Content-Type"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -79,7 +79,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 	router.Static("/assets/", "./assets")
 
 	router.NoRoute(func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", gin.H{"WEB_API_URL": config.WEB_API_URL})
+		c.HTML(http.StatusOK, "index.html", gin.H{"URL": config.URL})
 	})
 
 	router.POST("/login", h.login)
