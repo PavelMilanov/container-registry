@@ -4,3 +4,4 @@ data
 var
 .DS_Store
 src/assets
+.obsidian
