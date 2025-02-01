@@ -18,7 +18,7 @@ function Login() {
             confirmPassword: confirmPassword(),
         }
         try {
-            const response = await axios.post(API_URL + "registration", JSON.stringify(data))
+            const response = await axios.post(API_URL + "/registration", JSON.stringify(data))
             console.log(response.data)
         } catch (error) { 
             console.log("ошибка", error)
@@ -31,7 +31,7 @@ function Login() {
             password: password(),
         }
         try {
-            const response = await axios.post(API_URL + "login", JSON.stringify(data))
+            const response = await axios.post(API_URL + "/login", JSON.stringify(data))
             localStorage.setItem("token", response.data.token)
             navigate("/registry", { replace: true })
         } catch (error) {

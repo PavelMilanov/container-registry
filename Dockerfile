@@ -11,7 +11,7 @@ ARG VERSION
 ENV VERSION="${VERSION}"
 ENV CGO_ENABLED=1
 
-RUN go build -ldflags="-s -w -X 'github.com/PavelMilanov/container-registry/config.VERSION=${VERSION}'" -o ./registry
+RUN go install -ldflags="-s -w -X 'github.com/PavelMilanov/container-registry/config.VERSION=${VERSION}'"
 
 
 FROM node:22 AS web
@@ -40,7 +40,7 @@ ENV GIN_MODE=release
 
 WORKDIR /registry
 
-COPY --from=app /build/registry /registry/
+COPY --from=app /go/bin/container-registry /registry/registry
 COPY --from=web /app/dist /registry/
 
 RUN apk --update --no-cache add tzdata sqlite-libs curl && \
@@ -51,8 +51,6 @@ chown -R ${USER_DOCKER}:${USER_DOCKER} /registry
 
 
 EXPOSE 5050/tcp
-
-VOLUME [ "/registry/data" ]
 
 HEALTHCHECK --interval=1m --timeout=2s --start-period=2s --retries=3 CMD curl -f http://localhost:5050/api/check || exit 1
 

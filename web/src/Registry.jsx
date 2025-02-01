@@ -23,7 +23,11 @@ function Registry() {
             'Authorization': `Bearer ${token}`
         }
         try {
-            const response = await axios.post(API_URL + `registry/${registry()}`, {headers: headers})
+            const response = await axios.post(
+                API_URL + `/api/registry/${registry()}`,
+                {},
+                { headers }
+            );
             setRegistryList([...registryList(), response.data.data])
         } catch (error) {
             console.log(error.response.data.error)
@@ -41,7 +45,7 @@ function Registry() {
     const closeDeleteModal = () => setModalDeleteOpen(false)
     const submitDelete = async () => {
         setModalDeleteOpen(false)
-        const response = await axios.delete(API_URL + `registry/${registry()}`)
+        const response = await axios.delete(API_URL + `/api/registry/${registry()}`)
         setRegistryList(registryList().filter((newItem) => newItem.Name !== response.data.data["Name"]))
     }
 
@@ -51,10 +55,11 @@ function Registry() {
             'Authorization': `Bearer ${token}`
         }
         try {
-            const response = await axios.get(API_URL + "registry", {headers: headers})
+            const response = await axios.get(API_URL + "/api/registry", {headers: headers})
             setRegistryList(response.data.data)// в ответе приходит массив "data"
         } catch (error) {
-            if (error.response.status) {
+            console.error(error.response.data)
+            if (error.response.status === 401) {
                 localStorage.removeItem("token")
                 navigate("/login", {replace: true})
             }

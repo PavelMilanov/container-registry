@@ -70,7 +70,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "DELETE"},
-		AllowHeaders:     []string{"Origin", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Authorization", "Content-Type"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
@@ -81,6 +81,12 @@ func (h *Handler) InitRouters() *gin.Engine {
 	router.NoRoute(func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.html", gin.H{"WEB_API_URL": config.WEB_API_URL})
 	})
+
+	router.POST("/login", h.login)
+	router.GET("/check", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+	router.POST("/registration", h.registration)
 	router.GET("v2/auth", h.authHandler)
 
 	v2 := router.Group("/v2/", loginRegistryMiddleware())
@@ -106,11 +112,6 @@ func (h *Handler) InitRouters() *gin.Engine {
 		v2.PUT("/:repository/:name/manifests/:reference", h.uploadManifest)
 
 	}
-	router.POST("/api/login", h.login)
-	router.GET("/api/check", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
-	})
-	router.POST("/api/registration", h.registration)
 
 	api := router.Group("/api/", baseApiMiddleware())
 	{

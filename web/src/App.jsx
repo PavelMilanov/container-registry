@@ -1,5 +1,5 @@
-import { createSignal, onMount, lazy } from "solid-js"
-import { Router, Route, useNavigate } from "@solidjs/router"
+import { lazy } from "solid-js"
+import { Router, Route } from "@solidjs/router"
 
 import Registry from "./Registry"
 
