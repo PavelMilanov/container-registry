@@ -52,6 +52,7 @@ func GetRegistires(sql *gorm.DB) []Registry {
 func (r *Registry) Get(name string, sql *gorm.DB) error {
 	result := sql.Where("name = ?", name).First(&r)
 	if result.RowsAffected == 0 {
+		logrus.Error(result.Error)
 		return result.Error
 	}
 	return nil

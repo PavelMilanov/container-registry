@@ -1,5 +1,5 @@
 import { lazy } from "solid-js"
-import { Router, Route, redirect } from "@solidjs/router"
+import { Router, Route } from "@solidjs/router"
 
 import Registry from "./Registry"
 
@@ -8,6 +8,7 @@ const Repo = lazy(() => import("./Repo"))
 const Image = lazy(() => import("./Image"))
 const Login = lazy(() => import("./Login"))
 const Logout = lazy(() => import("./modal/Logout"))
+const NotFound = lazy(() => import("./NotFound"))
 
 function App() {
   
@@ -22,6 +23,7 @@ function App() {
           <Route path="/:name" component={Repo} />
           <Route path="/:name/:image" component={Image} />
         </Route>
+        <Route path="*" component={NotFound} />
       </Router>
     </div>
   )
