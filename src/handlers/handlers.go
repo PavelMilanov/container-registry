@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -67,7 +66,6 @@ func loginRegistryMiddleware() gin.HandlerFunc {
 
 func (h *Handler) InitRouters() *gin.Engine {
 
-	fmt.Println(gin.Mode())
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{config.URL, "http://localhost:3000"},
