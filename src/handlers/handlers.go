@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -55,7 +56,8 @@ func loginRegistryMiddleware() gin.HandlerFunc {
 		payload := strings.TrimPrefix(data, "Bearer ")
 		valid := secure.ValidateJWT(payload)
 		if !valid {
-			c.Header("WWW-Authenticate", `Bearer realm="http://0.0.0.0:5050/v2/auth",service="Docker Registry"`)
+			realm := fmt.Sprintf(`Bearer realm="%s/v2/auth",service="Docker Registry"`, config.URL)
+			c.Header("WWW-Authenticate", realm)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			c.Abort()
 			return
@@ -68,7 +70,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{config.URL, "http://localhost:3000"},
+		AllowOrigins:     []string{config.URL},
 		AllowMethods:     []string{"GET", "POST", "DELETE"},
 		AllowHeaders:     []string{"Origin", "Authorization", "Content-Type"},
 		ExposeHeaders:    []string{"Content-Length"},
