@@ -6,6 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type SQLite struct {
@@ -14,13 +15,14 @@ type SQLite struct {
 }
 
 func NewDatabase(sql string) SQLite {
-	conn, err := gorm.Open(sqlite.Open(sql), &gorm.Config{PrepareStmt: true})
+	conn, err := gorm.Open(sqlite.Open(sql), &gorm.Config{
+		PrepareStmt: true,
+		Logger:      logger.Default.LogMode(logger.Silent)})
 	if err != nil {
-		logrus.Fatal("Ошибка при подключении к базе данных")
+		logrus.Fatal("Ошибка при доступе к базе данных")
 	}
 	var mutex sync.Mutex
 	db := SQLite{Sql: conn, Mutex: &mutex}
-	logrus.Info("Соединение с базой данных установлено")
 	automigrate(db.Sql)
 	return db
 }
