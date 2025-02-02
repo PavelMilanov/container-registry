@@ -56,7 +56,7 @@ chown -R ${USER_DOCKER}:${USER_DOCKER} /registry
 
 EXPOSE 5050/tcp
 
-HEALTHCHECK --interval=1m --timeout=2s --start-period=2s --retries=3 CMD curl -f http://localhost:5050/check || exit 1
+HEALTHCHECK --interval=10m --timeout=3s --start-period=5s --retries=3 CMD curl -f http://localhost:5050/check || exit 1
 
 ENTRYPOINT ["./registry" ]
 
