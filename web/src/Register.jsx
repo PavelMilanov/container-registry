@@ -2,25 +2,27 @@ import { createSignal, Show } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
 import axios from 'axios'
 
-function Login() {
+function Register() {
     const navigate = useNavigate()
     const [errorMessage, setErrorMessage] = createSignal('')
     const [username, setUsername] = createSignal('')
     const [password, setPassword] = createSignal('')
-    
-    function toRegister() {
-        navigate("/register")
+    const [confirmPassword, setConfirmPassword] = createSignal('')
+
+    function toLogin() {
+        navigate("/login")
     }
 
-    async function login() { 
+    async function register() {
         let data = {
             username: username(),
             password: password(),
+            confirmPassword: confirmPassword(),
         }
         try {
-            const response = await axios.post(API_URL + "/login", JSON.stringify(data))
-            localStorage.setItem("token", response.data.token)
-            navigate("/registry", { replace: true })
+            const response = await axios.post(API_URL + "/registration", JSON.stringify(data))
+            // console.log(response.data)
+            toLogin()
         } catch (error) {
             const msg = error.response.data.error
             setErrorMessage(msg)
@@ -29,13 +31,13 @@ function Login() {
 
     const handleKeyDown = (e) => {
         if (e.key === "Enter") {
-            login()
+            register()
         }
     }
 
     return (
         <div class="login-container" id="app">
-            <h1>Вход в систему</h1>
+            <h1>Регистрация в системе</h1>
             <label for="username">Имя пользователя:</label>
             <input
                 id="username"
@@ -52,22 +54,30 @@ function Login() {
                 onInput={(e) => (setPassword(e.target.value))}
                 onKeyDown={handleKeyDown}
             />
+            <label for="confirmPassword">Подтвердите пароль:</label>
+            <input
+                id="confirmPassword"
+                type="password"
+                required
+                onInput={(e) => (setConfirmPassword(e.target.value))}
+                onKeyDown={handleKeyDown}
+            />
             <Show
                 when={errorMessage()}
             >
-            <p class="error-message">{errorMessage()}</p>
+                <p class="error-message">{errorMessage()}</p>
             </Show>
-            <button class="btn login-button" onClick={login}>
-                Войти
+            <button class="btn login-button" onClick={register}>
+                Зарегистрироваться
             </button>
             <div class="divider">
                 <span>или</span>
             </div>
-            <button class="btn register-button" onClick={toRegister}>
-                Зарегистрироваться
+            <button class="btn register-button" onClick={toLogin}>
+                Вернуться ко входу
             </button>
         </div>
     )
 }
 
-export default Login
+export default Register

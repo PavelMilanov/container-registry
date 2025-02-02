@@ -18,7 +18,6 @@ type Repository struct {
 func (r *Repository) Add(sql *gorm.DB) {
 	now := time.Now()
 	r.CreatedAt = now.Format("2006-01-02 15:04:05")
-	// result := sql.Create(&i)
 	if sql.Model(&r).Where("name = ?", r.Name).First(&r).RowsAffected == 0 {
 		sql.Create(&r)
 		logrus.Infof("Создан новый репозиторий %+v", r)

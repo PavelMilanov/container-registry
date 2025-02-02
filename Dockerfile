@@ -2,7 +2,7 @@ FROM golang:1.23-alpine AS app
 
 RUN apk --update --no-cache add gcc musl-dev
 
-WORKDIR /build
+WORKDIR /
 
 COPY src/ .
 
