@@ -82,7 +82,7 @@ func (h *Handler) registration(c *gin.Context) {
 	}
 	var req userRegisterData
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "не указан логин или пароль"})
 		return
 	}
 	if req.Password != req.ConfirmPassword {
@@ -94,7 +94,7 @@ func (h *Handler) registration(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"data": user})
+	c.JSON(http.StatusCreated, gin.H{})
 }
 
 func (h *Handler) login(c *gin.Context) {
@@ -105,7 +105,7 @@ func (h *Handler) login(c *gin.Context) {
 	}
 	var req userLoginData
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "не указан логин или пароль"})
 		return
 	}
 	user := db.User{Name: req.Username, Password: req.Password}
