@@ -12,6 +12,7 @@ import (
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/handlers"
 	"github.com/PavelMilanov/container-registry/storage"
+	"github.com/PavelMilanov/container-registry/system"
 	"github.com/sirupsen/logrus"
 )
 
@@ -26,6 +27,9 @@ func init() {
 }
 
 func main() {
+
+	system.GarbageCollection()
+
 	logrus.SetLevel(logrus.TraceLevel)
 	logrus.SetReportCaller(true)
 	logrus.SetFormatter(&logrus.TextFormatter{

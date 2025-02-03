@@ -8,8 +8,8 @@ import (
 
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
-	"github.com/PavelMilanov/container-registry/secure"
 	"github.com/PavelMilanov/container-registry/storage"
+	"github.com/PavelMilanov/container-registry/system"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -28,7 +28,7 @@ func baseApiMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data := c.GetHeader("Authorization")
 		payload := strings.TrimPrefix(data, "Bearer ")
-		if !secure.ValidateJWT(payload) {
+		if !system.ValidateJWT(payload) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "token is not valid"})
 			c.Abort()
 			return
@@ -54,7 +54,7 @@ func loginRegistryMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data := c.GetHeader("Authorization")
 		payload := strings.TrimPrefix(data, "Bearer ")
-		valid := secure.ValidateJWT(payload)
+		valid := system.ValidateJWT(payload)
 		if !valid {
 			realm := fmt.Sprintf(`Bearer realm="%s/v2/auth",service="Docker Registry"`, config.URL)
 			c.Header("WWW-Authenticate", realm)

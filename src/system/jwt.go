@@ -1,4 +1,4 @@
-package secure
+package system
 
 import (
 	"time"
@@ -26,17 +26,17 @@ func ValidateJWT(tokenString string) bool {
 		logrus.Error(err)
 		return false
 	}
-	claims, ok := token.Claims.(jwt.MapClaims)
+	_, ok := token.Claims.(jwt.MapClaims)
 	if !ok || !token.Valid {
 		logrus.Debug("Токен не валиден")
 		return false
 	}
-	iat := time.Unix(int64(claims["iat"].(float64)), 0) // 2025-01-21 15:19:21 +0300 MSK
-	exp := time.Unix(int64(claims["exp"].(float64)), 0) // 2025-01-21 15:19:21 +0300 MSK
-	// difference := exp.Sub(iat)                          // вычисляем срок действия токена
-	if exp.Sub(iat) < 0 {
-		logrus.Debug("Срок жизни токена истек")
-		return false
-	}
+	// iat := time.Unix(int64(claims["iat"].(float64)), 0) // 2025-01-21 15:19:21 +0300 MSK
+	// exp := time.Unix(int64(claims["exp"].(float64)), 0) // 2025-01-21 15:19:21 +0300 MSK
+	// // difference := exp.Sub(iat)                          // вычисляем срок действия токена
+	// if exp.Sub(iat) < 0 {
+	// 	logrus.Debug("Срок жизни токена истек")
+	// 	return false
+	// }
 	return true
 }
