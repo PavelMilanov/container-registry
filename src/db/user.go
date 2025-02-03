@@ -3,7 +3,7 @@ package db
 import (
 	"errors"
 
-	"github.com/PavelMilanov/container-registry/secure"
+	"github.com/PavelMilanov/container-registry/system"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
@@ -18,7 +18,7 @@ type User struct {
 func (u *User) Add(sql *gorm.DB) error {
 	result := sql.Where("name = ? AND password = ?", u.Name, u.Password).First(&u)
 	if result.RowsAffected == 0 {
-		hash := secure.Hashed(u.Password)
+		hash := system.Hashed(u.Password)
 		u.Password = hash
 		sql.Create(&u)
 		logrus.Infof("Создан новый пользователь %+v", u)
@@ -30,13 +30,13 @@ func (u *User) Add(sql *gorm.DB) error {
 }
 
 func (u *User) Login(sql *gorm.DB) error {
-	pwd := secure.Hashed(u.Password)
+	pwd := system.Hashed(u.Password)
 	result := sql.Where("name = ? AND password = ?", u.Name, pwd).First(&u)
 	if result.RowsAffected == 0 {
 		logrus.Error("неверные логин или пароль")
 		return errors.New("неверные логин или пароль")
 	}
-	newToken, err := secure.GenerateJWT()
+	newToken, err := system.GenerateJWT()
 	if err != nil {
 		logrus.Error(err)
 		return err

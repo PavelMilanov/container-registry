@@ -58,7 +58,6 @@ func (h *Handler) uploadBlobPart(c *gin.Context) {
 
 	// Путь к временному файлу
 	tempPath := filepath.Join(h.STORAGE.BlobPath, uuid)
-	logrus.Debug(tempPath)
 	f, err := os.OpenFile(tempPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		logrus.Error(err)

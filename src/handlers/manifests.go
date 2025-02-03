@@ -78,37 +78,38 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 	}
 	c.Header("Docker-Content-Digest", calculatedDigest)
 	c.JSON(http.StatusCreated, gin.H{"message": "Manifest uploaded", "digest": calculatedDigest})
+	go func() {
+		// Считаем размер
+		type layers struct {
+			Size int `json:"size"`
+		}
+		type manifest struct {
+			Layers []layers `json:"layers"`
+		}
 
-	// Считаем размер
-	type layers struct {
-		Size int `json:"size"`
-	}
-	type manifest struct {
-		Layers []layers `json:"layers"`
-	}
+		data := manifest{}
+		json.Unmarshal(body, &data)
+		var size int
+		for _, layer := range data.Layers {
+			size += layer.Size
+		}
+		registy := db.Registry{}
+		registy.Get(repository, h.DB.Sql)
 
-	data := manifest{}
-	json.Unmarshal(body, &data)
-	var size int
-	for _, layer := range data.Layers {
-		size += layer.Size
-	}
-	registy := db.Registry{}
-	registy.Get(repository, h.DB.Sql)
-
-	repo := db.Repository{
-		Name:       imageName,
-		RegistryID: registy.ID,
-	}
-	repo.Add(h.DB.Sql)
-	image := db.Image{
-		Name:         imageName,
-		Hash:         calculatedDigest,
-		Tag:          reference,
-		Size:         size,
-		RepositoryID: repo.ID,
-	}
-	image.Add(h.DB.Sql)
+		repo := db.Repository{
+			Name:       imageName,
+			RegistryID: registy.ID,
+		}
+		repo.Add(h.DB.Sql)
+		image := db.Image{
+			Name:         imageName,
+			Hash:         calculatedDigest,
+			Tag:          reference,
+			Size:         size,
+			RepositoryID: repo.ID,
+		}
+		image.Add(h.DB.Sql)
+	}()
 }
 
 func (h *Handler) getManifest(c *gin.Context) {

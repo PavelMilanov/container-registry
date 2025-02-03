@@ -13,15 +13,15 @@ function Image() {
     const params = useParams()
     const [tag, setTag] = createSignal('')
     const [image, setImage] = createSignal('')
-    
     const [isModalDeleteOpen, setModalDeleteOpen] = createSignal(false)
-
     const openDeleteModal = (img, tag) => {
         setModalDeleteOpen(true)
         setImage(img)
         setTag(tag)
     }
     const closeDeleteModal = () => setModalDeleteOpen(false)
+    let copyText = `${API_URL}/${params.name}/${params.image}:<tag>`.split("//")[1]
+
     const submitDelete = async () => {
         setModalDeleteOpen(false)
         let token = localStorage.getItem('token')
@@ -44,7 +44,6 @@ function Image() {
         try {
             const response = await axios.get(
                 API_URL + `/api/registry/${params.name}/${params.image}`,
-                {},
                 { headers: headers }
             )
             setTagList(response.data.data)// в ответе приходит массив "data"
@@ -65,6 +64,13 @@ function Image() {
         <NavBar />
         <div class="container">
             <h2><a href="/registry">Репозитории</a> {'/'} <A href={"/registry/" + params.name}>{params.name}</A> {'/'} {params.image} </h2>
+            <div class="copy-container">
+                <input
+                    type="text"
+                    value={copyText}
+                    readonly
+                />
+            </div>
             <div class="card">
                 <Delete isOpen={isModalDeleteOpen()} message={"Образ Docker будет удален!"} onClose={closeDeleteModal} onSubmit={submitDelete} />
                 <table>
