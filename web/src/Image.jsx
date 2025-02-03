@@ -28,12 +28,19 @@ function Image() {
         const headers = {
             'Authorization': `Bearer ${token}`
         }
-        const response = await axios.delete(
-            API_URL + `/api/registry/${params.name}/${image()}`,
-            {},
-            { headers: headers, params: { "tag": tag() } }
-        )
-        setTagList(tagList().filter((newItem) => newItem.Name !== response.data.data["Name"]))
+        try {
+            const response = await axios.delete(
+                API_URL + `/api/registry/${params.name}/${image()}`,
+                { headers: headers, params: { "tag": tag() } }
+            )
+            setTagList(tagList().filter((newItem) => newItem.Name !== response.data.data["Name"]))
+        } catch (error) {
+            console.error(error.response.data)
+            if (error.response.status === 401) {
+                localStorage.removeItem("token")
+                navigate("/login", { replace: true })
+            }
+        }
     }
 
     async function getImages() {

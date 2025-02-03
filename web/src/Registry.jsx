@@ -45,8 +45,23 @@ function Registry() {
     const closeDeleteModal = () => setModalDeleteOpen(false)
     const submitDelete = async () => {
         setModalDeleteOpen(false)
-        const response = await axios.delete(API_URL + `/api/registry/${registry()}`)
-        setRegistryList(registryList().filter((newItem) => newItem.Name !== response.data.data["Name"]))
+        let token = localStorage.getItem('token')
+        const headers = {
+            'Authorization': `Bearer ${token}`
+        }
+        try {
+            const response = await axios.delete(
+                API_URL + `/api/registry/${registry()}`,
+                { headers: headers }
+            )
+            setRegistryList(registryList().filter((newItem) => newItem.Name !== response.data.data["Name"]))
+        } catch (error) {
+            console.error(error.response.data)
+            if (error.response.status === 401) {
+                localStorage.removeItem("token")
+                navigate("/login", {replace: true})
+            }
+        }
     }
 
     async function getRegistry() {
