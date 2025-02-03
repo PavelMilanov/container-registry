@@ -89,7 +89,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 	router.POST("/registration", h.registration)
-	router.GET("v2/auth", h.authHandler)
+	router.GET("/v2/auth", h.authHandler)
 
 	v2 := router.Group("/v2/", loginRegistryMiddleware())
 	{
