@@ -12,14 +12,14 @@ function Repo() {
     const [imageList, setImageList] = createSignal([])
     const params = useParams()
     const [repo, setRepo] = createSignal('')
-
     const [isModalDeleteOpen, setModalDeleteOpen] = createSignal(false)
-
     const openDeleteModal = (item) => {
         setModalDeleteOpen(true)
         setRepo(item)
     }
     const closeDeleteModal = () => setModalDeleteOpen(false)
+    let copyText = `${API_URL}/${params.name}`.split("//")[1]
+
     const submitDelete = async () => {
         setModalDeleteOpen(false)
         let token = localStorage.getItem('token')
@@ -36,7 +36,10 @@ function Repo() {
             'Authorization': `Bearer ${token}`
         }
         try {
-            const response = await axios.get(API_URL + `/api/registry/${params.name}`, {headers: headers})
+            const response = await axios.get(
+                API_URL + `/api/registry/${params.name}`,
+                { headers: headers }
+            )
             setImageList(response.data.data)  // в ответе приходит массив "data"
         } catch (error) {
             console.log(error.response.data)
@@ -55,6 +58,15 @@ function Repo() {
         <NavBar />
         <div class="container">
             <h2><a href="/registry">Репозитории</a> {'/'} {params.name}</h2>
+            <div class="copy-container">
+                <input
+                    type="text"
+                    value={copyText}
+                    readonly
+                />
+                {/* <button class="btn btn-secondary" onclick="copyText()">Копировать</button>
+                <span class="checkmark">✓</span> */}
+            </div>
             <div class="card">
                 <Delete isOpen={isModalDeleteOpen()} message={"Образы Docker репозитория будут удалены!"} onClose={closeDeleteModal} onSubmit={submitDelete} />
                 <table>

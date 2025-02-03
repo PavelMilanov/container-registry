@@ -315,3 +315,19 @@ a {
     opacity: 1;
   }
 }
+
+/* Стили для контейнера */
+.copy-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 600px;
+  margin: 20px;
+}
+
+/* Иконка проверки (опционально) */
+.checkmark {
+  display: none;
+  color: #4CAF50;
+  font-weight: bold;
+}
