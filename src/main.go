@@ -13,6 +13,7 @@ import (
 	"github.com/PavelMilanov/container-registry/handlers"
 	"github.com/PavelMilanov/container-registry/storage"
 	"github.com/PavelMilanov/container-registry/system"
+	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 )
 
@@ -27,15 +28,22 @@ func init() {
 }
 
 func main() {
-
-	system.GarbageCollection()
-
 	logrus.SetLevel(logrus.TraceLevel)
 	logrus.SetReportCaller(true)
 	logrus.SetFormatter(&logrus.TextFormatter{
 		FullTimestamp:   true,
 		TimestampFormat: "2006/01/02 15:04:00",
 	})
+	c := cron.New(
+		cron.WithSeconds(),
+		cron.WithLocation(time.Local),
+	)
+	defer c.Stop()
+
+	_, err := c.AddFunc("0 0 0 * * 0", system.GarbageCollection) // каждую неделю
+	if err != nil {
+		logrus.Error("Ошибка фоновой задачи:", err)
+	}
 	storage := storage.NewStorage()
 
 	sqliteFIle := fmt.Sprintf("%s/registry.db", config.DATA_PATH)
@@ -49,6 +57,9 @@ func main() {
 			logrus.Warn(err)
 		}
 	}()
+
+	c.Start()
+	logrus.Info("Планировщик запущен")
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit

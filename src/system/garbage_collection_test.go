@@ -4,5 +4,4 @@ import "testing"
 
 func TestGarbageCollection(t *testing.T) {
 	GarbageCollection()
-
 }

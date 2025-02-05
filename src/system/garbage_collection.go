@@ -2,16 +2,35 @@ package system
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/PavelMilanov/container-registry/storage"
+	"github.com/sirupsen/logrus"
 )
 
 func GarbageCollection() {
-	var digests = []string{}
+	blobs := getBlobDigest()
+	manifests := getManifestDigest()
+	var cache []string
+	for _, v := range blobs {
+		if !contains(manifests, v) {
+			cache = append(cache, v)
+		}
+	}
+
+	for _, i := range cache {
+		// if err := os.Remove(filepath.Join(storage.NewStorage().BlobPath, i)); err != nil {
+		// 	logrus.Error(err)
+		logrus.Infof("Тест удаления файла %s", i)
+		// }
+	}
+	logrus.Infof("Удален кеш blobs %+v", cache)
+}
+
+func getManifestDigest() []string {
+	var digests []string
 	dir := storage.NewStorage().ManifestPath
 	registies, _ := os.ReadDir(dir)
 	for _, d := range registies {
@@ -47,5 +66,24 @@ func GarbageCollection() {
 			}
 		}
 	}
-	fmt.Println(digests)
+	return digests
+}
+
+func getBlobDigest() []string {
+	var blobs []string
+	dir := storage.NewStorage().BlobPath
+	digests, _ := os.ReadDir(dir)
+	for _, blob := range digests {
+		blobs = append(blobs, blob.Name())
+	}
+	return blobs
+}
+
+func contains(list []string, str string) bool {
+	for _, i := range list {
+		if i == str {
+			return true
+		}
+	}
+	return false
 }
