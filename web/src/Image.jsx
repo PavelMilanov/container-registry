@@ -20,7 +20,8 @@ function Image() {
         setTag(tag)
     }
     const closeDeleteModal = () => setModalDeleteOpen(false)
-    let copyText = `${API_URL}/${params.name}/${params.image}:<tag>`.split("//")[1]
+
+    let copyText = `${API_URL}/${params.name}/${params.image}`.split("//")[1]
 
     const submitDelete = async () => {
         setModalDeleteOpen(false)
@@ -71,13 +72,6 @@ function Image() {
         <NavBar />
         <div class="container">
             <h2><a href="/registry">Репозитории</a> {'/'} <A href={"/registry/" + params.name}>{params.name}</A> {'/'} {params.image} </h2>
-            <div class="copy-container">
-                <input
-                    type="text"
-                    value={copyText}
-                    readonly
-                />
-            </div>
             <div class="card">
                 <Delete isOpen={isModalDeleteOpen()} message={"Образ Docker будет удален!"} onClose={closeDeleteModal} onSubmit={submitDelete} />
                 <table>
@@ -93,9 +87,9 @@ function Image() {
                         <For each={tagList()} >{(tag, i) =>
                             <tr>
                                 <td>
-                                    {tag.Name}:{tag.Tag}
+                                    {copyText()}:{tag.Tag}
                                 </td>
-                                <td>{tag.Size}</td>
+                                <td>{tag.SizeAlias}</td>
                                 <td>{tag.CreatedAt}</td>
                                 <td>
                                     <button class="btn btn-secondary" onClick={() => openDeleteModal(tag.Name, tag.Tag)}>Удалить образ</button>

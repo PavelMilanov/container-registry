@@ -21,10 +21,9 @@ func GarbageCollection() {
 	}
 
 	for _, i := range cache {
-		// if err := os.Remove(filepath.Join(storage.NewStorage().BlobPath, i)); err != nil {
-		// 	logrus.Error(err)
-		logrus.Infof("Тест удаления файла %s", i)
-		// }
+		if err := os.Remove(filepath.Join(storage.NewStorage().BlobPath, i)); err != nil {
+			logrus.Error(err)
+		}
 	}
 	logrus.Infof("Удален кеш blobs %+v", cache)
 }

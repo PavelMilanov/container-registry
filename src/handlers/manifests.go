@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/PavelMilanov/container-registry/db"
+	"github.com/PavelMilanov/container-registry/system"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -106,6 +107,7 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 			Hash:         calculatedDigest,
 			Tag:          reference,
 			Size:         size,
+			SizeAlias:    system.ConvertSize(size),
 			RepositoryID: repo.ID,
 		}
 		image.Add(h.DB.Sql)

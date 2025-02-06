@@ -18,7 +18,6 @@ function Repo() {
         setRepo(item)
     }
     const closeDeleteModal = () => setModalDeleteOpen(false)
-    let copyText = `${API_URL}/${params.name}`.split("//")[1]
 
     const submitDelete = async () => {
         setModalDeleteOpen(false)
@@ -69,15 +68,6 @@ function Repo() {
         <NavBar />
         <div class="container">
             <h2><a href="/registry">Репозитории</a> {'/'} {params.name}</h2>
-            <div class="copy-container">
-                <input
-                    type="text"
-                    value={copyText}
-                    readonly
-                />
-                {/* <button class="btn btn-secondary" onclick="copyText()">Копировать</button>
-                <span class="checkmark">✓</span> */}
-            </div>
             <div class="card">
                 <Delete isOpen={isModalDeleteOpen()} message={"Образы Docker репозитория будут удалены!"} onClose={closeDeleteModal} onSubmit={submitDelete} />
                 <table>
@@ -93,7 +83,7 @@ function Repo() {
                         <For each={imageList()} >{(image, i) =>
                             <tr>
                                 <td>
-                                    <A href={image.Name}>{image.Name}</A>
+                                    <A href={image.Name}>{API_URL.split("//")[1]}/{image.Name}</A>
                                 </td>
                                 {/* <td>{repo.Size}</td> */}
                                 <td>{image.CreatedAt}</td>
