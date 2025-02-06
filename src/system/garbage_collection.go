@@ -38,8 +38,18 @@ func getManifestDigest() []string {
 		for _, file := range repositories {
 			tagDir := filepath.Join(repoDir, file.Name())
 			manifests, _ := os.ReadDir(tagDir)
+			tagsDir := filepath.Join(tagDir, "tags")
+			tags, _ := os.ReadDir(tagsDir)
+			var buffer []string
+			for _, tag := range tags { // ищем ссылки на манифесты в тегах, добавляем в буффер
+				data, _ := os.ReadFile(filepath.Join(tagsDir, tag.Name()))
+				buffer = append(buffer, string(data))
+			}
 			for _, manifest := range manifests {
 				if !manifest.IsDir() { // читаем файлы sha256:...
+					if !contains(buffer, manifest.Name()) { // ищем манифесты без ссылок на теги, удаляем
+						os.Remove(filepath.Join(tagDir, manifest.Name()))
+					}
 					data, _ := os.ReadFile(filepath.Join(tagDir, manifest.Name()))
 					type config struct {
 						Digest string `json:"digest"`
