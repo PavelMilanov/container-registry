@@ -13,7 +13,7 @@ function Registry() {
     const [isModalOpen, setModalOpen] = createSignal(false)
     const [registryList, setRegistryList] = createSignal([])
     const [registry, setRegistry] = createSignal('')
-
+    
     const openModal = () => setModalOpen(true)
     const closeModal = () => setModalOpen(false)
     const submitAddRegistry = async () => {
@@ -38,6 +38,8 @@ function Registry() {
 
     const [isModalDeleteOpen, setModalDeleteOpen] = createSignal(false)
 
+    let copyText = `${API_URL}`.split("//")[1]
+
     const openDeleteModal = (item) => {
         setModalDeleteOpen(true)
         setRegistry(item)
@@ -45,8 +47,23 @@ function Registry() {
     const closeDeleteModal = () => setModalDeleteOpen(false)
     const submitDelete = async () => {
         setModalDeleteOpen(false)
-        const response = await axios.delete(API_URL + `/api/registry/${registry()}`)
-        setRegistryList(registryList().filter((newItem) => newItem.Name !== response.data.data["Name"]))
+        let token = localStorage.getItem('token')
+        const headers = {
+            'Authorization': `Bearer ${token}`
+        }
+        try {
+            const response = await axios.delete(
+                API_URL + `/api/registry/${registry()}`,
+                { headers: headers }
+            )
+            setRegistryList(registryList().filter((newItem) => newItem.Name !== response.data.data["Name"]))
+        } catch (error) {
+            console.error(error.response.data)
+            if (error.response.status === 401) {
+                localStorage.removeItem("token")
+                navigate("/login", {replace: true})
+            }
+        }
     }
 
     async function getRegistry() {
@@ -75,6 +92,13 @@ function Registry() {
         <NavBar />
         <div class="container">
             <h2>Репозитории</h2>
+            <div class="copy-container">
+                <input
+                    type="text"
+                    value={copyText}
+                    readonly
+                />
+            </div>
             <div class="card">
                 <button class="btn btn-primary" onClick={openModal}>Добавить реестр</button>
                 <AddRegistry isOpen={isModalOpen()} onNewRegistry={newRegistry} onClose={closeModal} onSubmit={submitAddRegistry} />
@@ -83,7 +107,7 @@ function Registry() {
                     <thead>
                         <tr>
                             <th>Реестр</th>
-                            <th>Размер</th>
+                            {/* <th>Размер</th> */}
                             <th>Создан</th>
                             <th>...</th>
                         </tr>
@@ -94,7 +118,7 @@ function Registry() {
                                 <td>
                                     <A href={registy.Name}>{registy.Name}</A>
                                 </td>
-                                <td>{registy.Size}</td>
+                                {/* <td>{registy.Size}</td> */}
                                 <td>{registy.CreatedAt}</td>
                                 <td>
                                     <button class="btn btn-secondary" onClick={() => openDeleteModal(registy.Name)}>Удалить реестр</button>

@@ -13,6 +13,7 @@ type Image struct {
 	Hash         string
 	Tag          string
 	Size         int
+	SizeAlias    string
 	CreatedAt    string
 	RepositoryID int `gorm:"constraint:OnDelete:CASCADE;"`
 }

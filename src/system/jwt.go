@@ -31,12 +31,5 @@ func ValidateJWT(tokenString string) bool {
 		logrus.Debug("Токен не валиден")
 		return false
 	}
-	// iat := time.Unix(int64(claims["iat"].(float64)), 0) // 2025-01-21 15:19:21 +0300 MSK
-	// exp := time.Unix(int64(claims["exp"].(float64)), 0) // 2025-01-21 15:19:21 +0300 MSK
-	// // difference := exp.Sub(iat)                          // вычисляем срок действия токена
-	// if exp.Sub(iat) < 0 {
-	// 	logrus.Debug("Срок жизни токена истек")
-	// 	return false
-	// }
 	return true
 }

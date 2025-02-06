@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/PavelMilanov/container-registry/db"
+	"github.com/PavelMilanov/container-registry/system"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -106,6 +107,7 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 			Hash:         calculatedDigest,
 			Tag:          reference,
 			Size:         size,
+			SizeAlias:    system.ConvertSize(size),
 			RepositoryID: repo.ID,
 		}
 		image.Add(h.DB.Sql)
@@ -147,5 +149,6 @@ func (h *Handler) getManifest(c *gin.Context) {
 	// Возвращаем манифест клиенту
 	c.Header("Content-Type", "application/vnd.docker.distribution.manifest.v2+json")
 	c.Header("Docker-Content-Digest", calculatedDigest)
+	c.Header("Content-Length", fmt.Sprintf("%d", len(manifest)))
 	c.Data(http.StatusOK, "application/vnd.docker.distribution.manifest.v2+json", manifest)
 }
