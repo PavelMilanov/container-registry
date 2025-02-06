@@ -30,7 +30,7 @@ function Repo() {
                 API_URL + `/api/registry/${params.name}/${repo()}`,
                 { headers: headers }
             )
-            setImageList(imageList().filter((newItem) => newItem.Name !== response.data.data["Name"]))
+            await getRepo()
         } catch (error) {
             console.error(error.response.data)
             if (error.response.status === 401) {

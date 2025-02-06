@@ -28,7 +28,7 @@ function Registry() {
                 {},
                 { headers }
             );
-            setRegistryList([...registryList(), response.data.data])
+            await getRegistry()
         } catch (error) {
             console.log(error.response.data.error)
             localStorage.removeItem('token')

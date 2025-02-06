@@ -34,7 +34,7 @@ function Image() {
                 API_URL + `/api/registry/${params.name}/${image()}`,
                 { headers: headers, params: { "tag": tag() } }
             )
-            setTagList(tagList().filter((newItem) => newItem.Name !== response.data.data["Name"]))
+            await getImages()
         } catch (error) {
             console.error(error.response.data)
             if (error.response.status === 401) {
@@ -90,7 +90,7 @@ function Image() {
                                 <td>
                                     {copyText()}:{tag.Tag}
                                 </td>
-                                <td>{tag.Hash}</td>
+                                    <td>{tag.Hash.slice(0, 15)}...</td>
                                 <td>{tag.SizeAlias}</td>
                                 <td>{tag.CreatedAt}</td>
                                 <td>
