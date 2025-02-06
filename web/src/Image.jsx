@@ -78,6 +78,7 @@ function Image() {
                     <thead>
                         <tr>
                             <th>Образ</th>
+                            <th>Хеш</th>
                             <th>Размер</th>
                             <th>Создан</th>
                             <th></th>
@@ -89,6 +90,7 @@ function Image() {
                                 <td>
                                     {copyText()}:{tag.Tag}
                                 </td>
+                                <td>{tag.Hash}</td>
                                 <td>{tag.SizeAlias}</td>
                                 <td>{tag.CreatedAt}</td>
                                 <td>
