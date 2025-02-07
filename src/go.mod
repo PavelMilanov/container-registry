@@ -1,6 +1,6 @@
 module github.com/PavelMilanov/container-registry
 
-go 1.23.2
+go 1.23.6
 
 require (
 	github.com/gin-contrib/cors v1.7.3
