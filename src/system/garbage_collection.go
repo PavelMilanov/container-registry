@@ -69,8 +69,10 @@ func getManifestDigest() []string {
 						digests = append(digests, layerDigest)
 					}
 					manifestDigestString := strings.Split(jsonData.Config.Digest, ":")
-					manifestDigest := manifestDigestString[1]
-					digests = append(digests, manifestDigest)
+					if len(manifestDigestString) > 1 {
+						manifestDigest := manifestDigestString[1]
+						digests = append(digests, manifestDigest)
+					}
 				}
 			}
 		}
