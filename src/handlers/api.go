@@ -5,7 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
+	"github.com/PavelMilanov/container-registry/system"
 	"github.com/gin-gonic/gin"
 )
 
@@ -114,4 +116,17 @@ func (h *Handler) login(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"token": user.Token})
+}
+
+func (h *Handler) settings(c *gin.Context) {
+	if c.Request.Method == "GET" {
+		c.JSON(http.StatusOK, gin.H{"version": config.VERSION})
+	} else if c.Request.Method == "POST" {
+		q := c.Query("garbage")
+		if q == "true" {
+			system.GarbageCollection()
+			c.JSON(http.StatusAccepted, gin.H{"data": "Очистка завершена"})
+			return
+		}
+	}
 }

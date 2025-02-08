@@ -75,7 +75,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 		AllowHeaders:     []string{"Origin", "Authorization", "Content-Type"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
+		MaxAge:           24 * time.Hour,
 	}))
 	router.LoadHTMLGlob("./index.html")
 	router.Static("/assets/", "./assets")
@@ -123,8 +123,8 @@ func (h *Handler) InitRouters() *gin.Engine {
 		api.GET("/registry/:name", h.getRepository)
 		api.POST("/registry/:name", h.addRegistry)
 		api.DELETE("/registry/:name", h.deleteRegistry)
-		api.GET("/settings", h.settingsView)
-		api.POST("/settings", h.settingsView)
+		api.POST("/settings", h.settings)
+		api.GET("/settings", h.settings)
 	}
 	return router
 }

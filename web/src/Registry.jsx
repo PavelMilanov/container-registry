@@ -1,8 +1,8 @@
 import { createSignal, onMount, lazy } from "solid-js"
 import { A, useNavigate } from "@solidjs/router"
 import axios from 'axios'
+import toast from "solid-toast"
 
-import NavBar from "./NavBar"
 const AddRegistry = lazy(() => import("./modal/AddRegistry"))
 const Delete = lazy(() => import("./modal/Delete"))
 
@@ -28,10 +28,22 @@ function Registry() {
                 {},
                 { headers }
             );
-            await getRegistry()
+            if (response.status === 201) {
+                await getRegistry()
+                toast("Реестр добавлен!", {
+                    style: {
+                        "background-color": "#1e3c72",
+                        "color": "white"
+                    },
+                    className: "notification",
+                })
+            }
         } catch (error) {
             console.log(error.response.data.error)
-            localStorage.removeItem('token')
+            if (error.response.status === 401) {
+                localStorage.removeItem("token")
+                navigate("/login", { replace: true })
+            }
         }
     }
     const newRegistry = (value) => setRegistry(value)
@@ -56,7 +68,16 @@ function Registry() {
                 API_URL + `/api/registry/${registry()}`,
                 { headers: headers }
             )
-            setRegistryList(registryList().filter((newItem) => newItem.Name !== response.data.data["Name"]))
+            if (response.status == 202) {
+                toast("Реестр Удален!", {
+                    style: {
+                        "background-color": "#1e3c72",
+                        "color": "white"
+                    },
+                    className: "notification",
+                })
+            }
+            await getRegistry()
         } catch (error) {
             console.error(error.response.data)
             if (error.response.status === 401) {
@@ -88,8 +109,6 @@ function Registry() {
     })
 
     return (
-        <>
-        <NavBar />
         <div class="container">
             <h2>Репозитории</h2>
             <div class="copy-container">
@@ -116,7 +135,9 @@ function Registry() {
                         <For each={registryList()} >{(registy, i) =>
                             <tr>
                                 <td>
-                                    <A href={registy.Name}>{registy.Name}</A>
+                                    <div>
+                                        <A inactiveClass="" href={registy.Name}>{registy.Name}</A>
+                                    </div>
                                 </td>
                                 {/* <td>{registy.Size}</td> */}
                                 <td>{registy.CreatedAt}</td>
@@ -128,8 +149,7 @@ function Registry() {
                     </tbody>
                 </table>
             </div>
-            </div>
-        </>
+        </div>
     )
 }
 
