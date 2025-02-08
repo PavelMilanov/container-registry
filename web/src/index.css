@@ -119,6 +119,13 @@ nav a {
   transition: background-color 0.3s;
 }
 
+div a {
+  color: #1e3c72;
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  transition: background-color 0.3s;
+}
+
 nav a:hover,
 nav a.active {
   background: #e8eef7;
@@ -246,10 +253,6 @@ code {
   cursor: pointer;
 }
 
-a {
-  text-decoration: none;
-}
-
 .github-link {
   position: fixed;
   bottom: 20px;
@@ -316,18 +319,8 @@ a {
   }
 }
 
-/* Стили для контейнера */
 .copy-container {
-  display: flex;
   align-items: center;
-  gap: 10px;
-  max-width: 600px;
-  margin: 20px;
-}
-
-/* Иконка проверки (опционально) */
-.checkmark {
-  display: none;
-  color: #4CAF50;
-  font-weight: bold;
+  width: 40%;
+  margin-bottom: 1rem;
 }

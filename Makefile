@@ -1,9 +1,9 @@
 version=
 
 build:
-	docker buildx build . --build-arg VERSION=${version} -t registry:local
+	docker buildx build . --build-arg VERSION=dev -t registry:local
 
-local:
+local: build
 	docker run --rm -d -p 5050:5050 -e URL=http://localhost:5050 -e JWT_SECRET=qwerty --name registry registry:local
 
 release:

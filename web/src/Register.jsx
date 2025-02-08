@@ -21,7 +21,6 @@ function Register() {
         }
         try {
             const response = await axios.post(API_URL + "/registration", JSON.stringify(data))
-            // console.log(response.data)
             toLogin()
         } catch (error) {
             const msg = error.response.data.error

@@ -2,7 +2,6 @@ import { createSignal, onMount, lazy } from "solid-js"
 import { A, useParams, useNavigate } from "@solidjs/router"
 import axios from "axios"
 
-import NavBar from "./NavBar"
 const Delete = lazy(() => import("./modal/Delete"))
 
 const API_URL = window.API_URL
@@ -30,6 +29,7 @@ function Repo() {
                 API_URL + `/api/registry/${params.name}/${repo()}`,
                 { headers: headers }
             )
+            console.log(response.status)
             await getRepo()
         } catch (error) {
             console.error(error.response.data)
@@ -64,8 +64,6 @@ function Repo() {
         await getRepo()
     })
     return (
-        <>
-        <NavBar />
         <div class="container">
             <h2><a href="/registry">Репозитории</a> {'/'} {params.name}</h2>
             <div class="card">
@@ -83,7 +81,7 @@ function Repo() {
                         <For each={imageList()} >{(image, i) =>
                             <tr>
                                 <td>
-                                    <A href={image.Name}>{API_URL.split("//")[1]}/{image.Name}</A>
+                                    <A inactiveClass="" href={image.Name}>{API_URL.split("//")[1]}/{image.Name}</A>
                                 </td>
                                 {/* <td>{repo.Size}</td> */}
                                 <td>{image.CreatedAt}</td>
@@ -95,8 +93,7 @@ function Repo() {
                     </tbody>
                 </table>
             </div>
-            </div>
-        </>
+        </div>
     )
 }
 

@@ -68,10 +68,8 @@ function Image() {
         await getImages()
     })
     return (
-        <>
-        <NavBar />
         <div class="container">
-            <h2><a href="/registry">Репозитории</a> {'/'} <A href={"/registry/" + params.name}>{params.name}</A> {'/'} {params.image} </h2>
+            <h2><a href="/registry">Репозитории</a>{"/"}<A href={"/registry/" + params.name}>{params.name}</A> {"/"} {params.image} </h2>
             <div class="card">
                 <Delete isOpen={isModalDeleteOpen()} message={"Образ Docker будет удален!"} onClose={closeDeleteModal} onSubmit={submitDelete} />
                 <table>
@@ -102,7 +100,6 @@ function Image() {
                 </table>
             </div>
         </div>
-        </>
     )
 }
 
