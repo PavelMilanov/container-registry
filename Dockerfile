@@ -48,11 +48,9 @@ COPY --from=app /go/bin/container-registry /registry/registry
 COPY --from=web /app/dist /registry/
 
 RUN apk --update --no-cache add tzdata sqlite-libs curl && \
-rm -rf /var/cache/apk/ && \
-addgroup -g ${UID_DOCKER} ${USER_DOCKER} && \
-adduser -u ${UID_DOCKER} -G ${USER_DOCKER} -s /bin/sh -D -H ${USER_DOCKER} && \
-chown -R ${USER_DOCKER}:${USER_DOCKER} /registry
-
+    addgroup -g ${UID_DOCKER} ${USER_DOCKER} && \
+    adduser -u ${UID_DOCKER} -G ${USER_DOCKER} -s /bin/sh -D -H ${USER_DOCKER} && \
+    chown -R ${USER_DOCKER}:${USER_DOCKER} /registry
 
 EXPOSE 5050/tcp
 

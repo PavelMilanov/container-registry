@@ -18,17 +18,18 @@ import (
 type Handler struct {
 	DB      *db.SQLite
 	STORAGE *storage.Storage
+	ENV     *config.Env
 }
 
-func NewHandler(storage *storage.Storage, db *db.SQLite) *Handler {
-	return &Handler{STORAGE: storage, DB: db}
+func NewHandler(storage *storage.Storage, db *db.SQLite, env *config.Env) *Handler {
+	return &Handler{STORAGE: storage, DB: db, ENV: env}
 }
 
-func baseApiMiddleware() gin.HandlerFunc {
+func baseApiMiddleware(jwtKey []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data := c.GetHeader("Authorization")
 		payload := strings.TrimPrefix(data, "Bearer ")
-		if !system.ValidateJWT(payload) {
+		if !system.ValidateJWT(payload, jwtKey) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "token is not valid"})
 			c.Abort()
 			return
@@ -50,13 +51,13 @@ func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-func loginRegistryMiddleware() gin.HandlerFunc {
+func loginRegistryMiddleware(url string, jwtKey []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data := c.GetHeader("Authorization")
 		payload := strings.TrimPrefix(data, "Bearer ")
-		valid := system.ValidateJWT(payload)
+		valid := system.ValidateJWT(payload, jwtKey)
 		if !valid {
-			realm := fmt.Sprintf(`Bearer realm="%s/v2/auth",service="Docker Registry"`, config.URL)
+			realm := fmt.Sprintf(`Bearer realm="%s/v2/auth",service="Docker Registry"`, url)
 			c.Header("WWW-Authenticate", realm)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			c.Abort()
@@ -70,7 +71,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{config.URL},
+		AllowOrigins:     []string{h.ENV.Server.Url},
 		AllowMethods:     []string{"GET", "POST", "DELETE"},
 		AllowHeaders:     []string{"Origin", "Authorization", "Content-Type"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -81,7 +82,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 	router.Static("/assets/", "./assets")
 
 	router.NoRoute(func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", gin.H{"URL": config.URL})
+		c.HTML(http.StatusOK, "index.html", gin.H{"URL": h.ENV.Server.Url})
 	})
 
 	router.POST("/login", h.login)
@@ -91,7 +92,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 	router.POST("/registration", h.registration)
 	router.GET("/v2/auth", h.authHandler)
 
-	v2 := router.Group("/v2/", loginRegistryMiddleware())
+	v2 := router.Group("/v2/", loginRegistryMiddleware(h.ENV.Server.Url, []byte(h.ENV.Server.Jwt)))
 	{
 		// Пинг для проверки
 		v2.GET("/", func(c *gin.Context) {
@@ -115,7 +116,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	}
 
-	api := router.Group("/api/", baseApiMiddleware())
+	api := router.Group("/api/", baseApiMiddleware([]byte(h.ENV.Server.Jwt)))
 	{
 		api.GET("/registry", h.getRegistry)
 		api.GET("/registry/:name/:image", h.getImage)

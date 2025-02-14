@@ -29,14 +29,14 @@ func (u *User) Add(sql *gorm.DB) error {
 	return nil
 }
 
-func (u *User) Login(sql *gorm.DB) error {
+func (u *User) Login(sql *gorm.DB, jwtKey []byte) error {
 	pwd := system.Hashed(u.Password)
 	result := sql.Where("name = ? AND password = ?", u.Name, pwd).First(&u)
 	if result.RowsAffected == 0 {
 		logrus.Error("неверные логин или пароль")
 		return errors.New("неверные логин или пароль")
 	}
-	newToken, err := system.GenerateJWT()
+	newToken, err := system.GenerateJWT(jwtKey)
 	if err != nil {
 		logrus.Error(err)
 		return err
