@@ -11,13 +11,15 @@ type Env struct {
 }
 
 type server struct {
-	Debug bool   `mapstructure:"debug"`
-	Url   string `mapstructure:"url"`
-	Jwt   string `mapstructure:"jwt"`
+	Url string `mapstructure:"url"`
+	Jwt string `mapstructure:"jwt"`
 }
 
 type storage struct {
-	Type string `mapstructure:"type"`
+	Type      string `mapstructure:"type"`
+	Endpoint  string `mapstructure:"endpoint"`
+	AccessKey string `mapstructure:"access_key"`
+	SecretKey string `mapstructure:"secret_key"`
 }
 
 func NewEnv() *Env {

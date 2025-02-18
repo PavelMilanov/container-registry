@@ -9,4 +9,6 @@ var (
 	BLOBS_PATH    = "blobs"
 
 	DATA_PATH = "var"
+
+	BACKET_NAME = "registry"
 )

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
@@ -19,13 +18,11 @@ import (
 
 func main() {
 	env := config.NewEnv()
-	if env.Storage.Type == "local" {
-		storage := storage.NewStorage()
-		blobPath := filepath.Join(storage.BlobPath)
-		manifestPath := filepath.Join(storage.ManifestPath)
-		os.MkdirAll(blobPath, 0755)
-		os.MkdirAll(manifestPath, 0755)
-		os.Mkdir(config.DATA_PATH, 0755)
+	switch env.Storage.Type {
+	case "local":
+		storage.NewStorage()
+	case "s3":
+		storage.NewS3storage(env.Storage.Endpoint, env.Storage.AccessKey, env.Storage.SecretKey)
 	}
 	logrus.SetLevel(logrus.TraceLevel)
 	logrus.SetReportCaller(true)
