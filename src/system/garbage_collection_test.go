@@ -1,7 +1,14 @@
 package system
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/PavelMilanov/container-registry/config"
+	"github.com/PavelMilanov/container-registry/storage"
+)
 
 func TestGarbageCollection(t *testing.T) {
-	GarbageCollection()
+	env := config.NewEnv()
+	storage := storage.NewStorage(env)
+	GarbageCollection(storage)
 }

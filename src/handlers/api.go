@@ -124,7 +124,7 @@ func (h *Handler) settings(c *gin.Context) {
 	} else if c.Request.Method == "POST" {
 		q := c.Query("garbage")
 		if q == "true" {
-			system.GarbageCollection()
+			system.GarbageCollection(h.STORAGE)
 			c.JSON(http.StatusAccepted, gin.H{"data": "Очистка завершена"})
 			return
 		}

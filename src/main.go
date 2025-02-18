@@ -18,12 +18,9 @@ import (
 
 func main() {
 	env := config.NewEnv()
-	switch env.Storage.Type {
-	case "local":
-		storage.NewStorage()
-	case "s3":
-		storage.NewS3storage(env.Storage.Endpoint, env.Storage.AccessKey, env.Storage.SecretKey)
-	}
+
+	storage := storage.NewStorage(env)
+
 	logrus.SetLevel(logrus.TraceLevel)
 	logrus.SetReportCaller(true)
 	logrus.SetFormatter(&logrus.TextFormatter{
@@ -35,9 +32,9 @@ func main() {
 		cron.WithLocation(location),
 	)
 
-	c.AddFunc("0 0 * * 0", system.GarbageCollection) // каждую неделю
-
-	storage := storage.NewStorage()
+	c.AddFunc("0 0 * * 0", func() {
+		system.GarbageCollection(storage)
+	}) // каждую неделю
 
 	sqliteFIle := fmt.Sprintf("%s/registry.db", config.DATA_PATH)
 	sqlite := db.NewDatabase(sqliteFIle)

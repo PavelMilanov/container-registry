@@ -10,9 +10,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func GarbageCollection() {
-	blobs := getBlobDigest()
-	manifests := getManifestDigest()
+func GarbageCollection(store *storage.Storage) {
+	blobs := getBlobDigest(store.BlobPath)
+	manifests := getManifestDigest(store.ManifestPath)
 	var cache []string
 	for _, v := range blobs {
 		if !contains(manifests, v) {
@@ -21,16 +21,15 @@ func GarbageCollection() {
 	}
 
 	for _, i := range cache {
-		if err := os.Remove(filepath.Join(storage.NewStorage().BlobPath, i)); err != nil {
+		if err := os.Remove(filepath.Join(store.BlobPath, i)); err != nil {
 			logrus.Error(err)
 		}
 	}
 	logrus.Infof("Удален кеш blobs %+v", cache)
 }
 
-func getManifestDigest() []string {
+func getManifestDigest(dir string) []string {
 	var digests []string
-	dir := storage.NewStorage().ManifestPath
 	registies, _ := os.ReadDir(dir)
 	for _, d := range registies {
 		repoDir := filepath.Join(dir, d.Name())
@@ -80,9 +79,8 @@ func getManifestDigest() []string {
 	return digests
 }
 
-func getBlobDigest() []string {
+func getBlobDigest(dir string) []string {
 	var blobs []string
-	dir := storage.NewStorage().BlobPath
 	digests, _ := os.ReadDir(dir)
 	for _, blob := range digests {
 		blobs = append(blobs, blob.Name())
