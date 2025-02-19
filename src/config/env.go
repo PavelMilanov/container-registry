@@ -5,16 +5,19 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Env описывает конфигурацию приложения.
 type Env struct {
 	Server  server
 	Storage storage
 }
 
+// server описывает конфигурацию сервера.
 type server struct {
 	Url string `mapstructure:"url"`
 	Jwt string `mapstructure:"jwt"`
 }
 
+// storage описывает конфигурацию хранилища.
 type storage struct {
 	Type      string `mapstructure:"type"`
 	Endpoint  string `mapstructure:"endpoint"`

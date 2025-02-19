@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// Registry абстракция таблицы registies.
 type Registry struct {
 	gorm.Model
 	ID           int    `gorm:"primaryKey"`

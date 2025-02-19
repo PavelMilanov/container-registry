@@ -7,13 +7,13 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	uid "github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
+// checkBlob реализация
 func (h *Handler) checkBlob(c *gin.Context) {
 	uuid := c.Param("uuid")
 	// Проверяем, существует ли слой
@@ -130,32 +130,35 @@ func (h *Handler) getBlob(c *gin.Context) {
 	digest := c.Param("digest")
 
 	// Определяем путь к блобу
-	blobPath := filepath.Join(h.STORAGE.BlobPath, strings.Replace(digest, "sha256:", "", 1))
-
-	// Открываем файл блоба
-	file, err := os.Open(blobPath)
+	// blobPath := filepath.Join(h.STORAGE.BlobPath, strings.Replace(digest, "sha256:", "", 1))
+	info, err := h.STORAGE.GetBlob(digest)
 	if err != nil {
-		logrus.Error(err)
-		if os.IsNotExist(err) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Blob not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 	}
-	defer file.Close()
+	// Открываем файл блоба
+	// file, err := os.Open(blobPath)
+	// if err != nil {
+	// 	logrus.Error(err)
+	// 	if os.IsNotExist(err) {
+	// 		c.JSON(http.StatusNotFound, gin.H{"error": "Blob not found"})
+	// 		return
+	// 	}
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	// 	return
+	// }
+	// defer file.Close()
 
 	// Получаем информацию о файле
-	fileInfo, err := file.Stat()
-	if err != nil {
-		logrus.Error(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to stat blob file"})
-		return
-	}
+	// fileInfo, err := file.Stat()
+	// if err != nil {
+	// 	logrus.Error(err)
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to stat blob file"})
+	// 	return
+	// }
 
 	// Возвращаем блоб клиенту
 	c.Header("Content-Type", "application/octet-stream")
-	c.Header("Content-Length", fmt.Sprintf("%d", fileInfo.Size()))
+	c.Header("Content-Length", info["size"])
 	c.Header("Docker-Content-Digest", digest)
-	c.File(blobPath)
+	c.File(info["path"])
 }

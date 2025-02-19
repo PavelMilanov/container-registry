@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// User абстракция таблицы users.
 type User struct {
 	ID       int    `gorm:"primaryKey"`
 	Name     string `gorm:"not null,unique"`

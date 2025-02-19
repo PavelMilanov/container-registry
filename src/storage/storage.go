@@ -1,3 +1,6 @@
+// Package storage реализовывает логику работы с разными видами хранилищами данных:
+// local - локальный диск на хосте;
+// S3 - удаленное хранилище;
 package storage
 
 import (
@@ -8,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Storage абстракция над моделью подключаемого хранилища.
 type Storage struct {
 	ManifestPath string
 	BlobPath     string

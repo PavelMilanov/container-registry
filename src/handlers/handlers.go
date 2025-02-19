@@ -1,3 +1,6 @@
+// Package handlers реализует основную логику REST API приложения.
+// Интеграция спецификации https://distribution.github.io/distribution/spec/api/
+// с кастомным API.
 package handlers
 
 import (
@@ -15,6 +18,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// Handler основная сущность взаимодействия с API.
 type Handler struct {
 	DB      *db.SQLite
 	STORAGE *storage.Storage
@@ -25,6 +29,7 @@ func NewHandler(storage *storage.Storage, db *db.SQLite, env *config.Env) *Handl
 	return &Handler{STORAGE: storage, DB: db, ENV: env}
 }
 
+// baseApiMiddleware мидлварь для авторизации на уровне REST-API.
 func baseApiMiddleware(jwtKey []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data := c.GetHeader("Authorization")
@@ -38,6 +43,7 @@ func baseApiMiddleware(jwtKey []byte) gin.HandlerFunc {
 	}
 }
 
+// baseRegistryMiddleware мидлварь для авторизации на уровне docker client.
 func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		repository := c.Param("repository")
@@ -51,6 +57,8 @@ func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 	}
 }
 
+// loginRegistryMiddleware мидлварь для авторизации на уровне docker client.
+// см. https://distribution.github.io/distribution/spec/auth/token/
 func loginRegistryMiddleware(url string, jwtKey []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data := c.GetHeader("Authorization")

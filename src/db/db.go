@@ -1,3 +1,4 @@
+// Package db реализует логику работы с базой данных.
 package db
 
 import (
@@ -9,6 +10,7 @@ import (
 	"gorm.io/gorm/logger"
 )
 
+// SQlite абстракция над *gorm.DB.
 type SQLite struct {
 	Sql   *gorm.DB
 	Mutex *sync.Mutex

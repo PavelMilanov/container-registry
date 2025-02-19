@@ -1,3 +1,4 @@
+// Package config реализует управление конфигурацией приложения.
 package config
 
 var (

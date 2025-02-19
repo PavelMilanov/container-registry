@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// Repository абстракция таблицы repositories.
 type Repository struct {
 	ID         int    `gorm:"primaryKey"`
 	Name       string `gorm:"unique"`
