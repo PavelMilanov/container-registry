@@ -89,11 +89,11 @@ docker login -u test -p test localhost:5050
 - загрузить образ:
 
 ```bash
-docker push localhost:5050/dev/alpine
+docker push localhost:5050/test/alpine
 ```
 
 - скачать образ:
 
 ```bash
-docker pull localhost:5050/dev/alpine
+docker pull localhost:5050/test/alpine
 ```
