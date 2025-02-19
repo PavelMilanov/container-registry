@@ -133,7 +133,13 @@ func (h *Handler) getBlob(c *gin.Context) {
 	// blobPath := filepath.Join(h.STORAGE.BlobPath, strings.Replace(digest, "sha256:", "", 1))
 	info, err := h.STORAGE.GetBlob(digest)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if err.Error() == "Blob not found" {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
 	}
 	// Открываем файл блоба
 	// file, err := os.Open(blobPath)
