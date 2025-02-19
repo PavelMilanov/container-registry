@@ -9,6 +9,7 @@ ___
 - **Совместимость с Docker Registry API**: Полная поддержка [Docker Registry HTTP API v2](https://distribution.github.io/distribution/spec/api/), что позволяет использовать реестр с различными инструментами, поддерживающими стандарт Docker.
 - **Безопасность**: Реализованы основные механизмы аутентификации и авторизации для безопасного доступа к реестру.
 - **Масштабируемость**: Реализована возможность создавать несколько логических реестров для каждого проекта\стека.
+- **Гибкость**: Реализована подключение различных видов хранилищ (локальное или S3).
 
 ## Стек технологий
 
@@ -22,8 +23,7 @@ ___
 
 ```bash
 docker run -d --restart unless-stopped -p 5050:5050 \
--v ./registry/db:/registry/var:rw -v ./registry/store:/registry/data:rw \
--e URL=http://localhost:5050 -e JWT_SECRET=qwerty  \
+-v ./registry:/registry/var \
 --name registry rosomilanov/container-registry 
 ```
 
@@ -35,21 +35,43 @@ services:
     image: rosomilanov/container-registry:latest
     container_name: registry
     restart: unless-stopped
-    environment:
-      - JWT_KEY=qwerty
-      - URL=http://localhost:5050
     ports:
       - 5050:5050
     volumes:
-      - ./registry/db:/registry/var
-      - ./registry/store:/registry/data
-
+      - ./registry:/registry/var
 ```
 
 Сервис будет доступен по адресу http://localhost:5050/login
 
 ![вход](./images/start.png)
 
+## Конфигурация
+
+- Конфигурация приложения осуществляется в декларативном стиле с помощью файла конфигурации `config.yaml`
+- Пример конфигурации для локального хранилища:
+```bash config.yaml
+server:
+  url: "http://127.0.0.1:5050"
+  jwt: "qwerty"
+
+storage:
+  type: "local"
+
+```
+- Пример конфигурации для S3 хранилища:
+```bash config.yaml
+server:
+  url: "http://127.0.0.1:5050"
+  jwt: "qwerty"
+
+storage:
+  type: "s3"
+  endpoint: "http://127.0.0.10:9000"
+  access_key: "your_access_key"
+  secret_key: "your_secret_key"
+
+```
+- папку с файлом `config.yaml` необходимо смонтировать в контейнер по пути `/registry/var`
 ## Использование
 
 - создать реестр через веб-интерфейс:
@@ -62,14 +84,16 @@ services:
 docker login -u test -p test localhost:5050
 ```
 
-![логин](./images/login-cli.png)
-
 - собрать образ по правилу <адрес docker registry>/<название реестра>:<тег> - localhost:5050/dev/alpine
 
-- загрузка образа:
+- загрузить образ:
 
 ```bash
 docker push localhost:5050/dev/alpine
 ```
 
-![push](./images/push.png)
+- скачать образ:
+
+```bash
+docker pull localhost:5050/dev/alpine
+```
