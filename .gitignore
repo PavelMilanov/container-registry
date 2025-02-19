@@ -1,5 +1,5 @@
 container-registry
-data
+tmp
 var
 .DS_Store
 src/assets

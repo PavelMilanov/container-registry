@@ -26,7 +26,7 @@ func NewEnv() *Env {
 	env := Env{}
 	viper.SetConfigName("config") // имя файла без расширения
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath(".")
+	viper.AddConfigPath(DATA_PATH)
 
 	err := viper.ReadInConfig()
 	if err != nil {
@@ -37,6 +37,14 @@ func NewEnv() *Env {
 	if err != nil {
 		logrus.Fatal("не загружен файл конфигурации: ", err)
 	}
-
+	switch env.Storage.Type {
+	case "local":
+		logrus.Info("Подключен локальный storage")
+	case "s3":
+		if env.Storage.Endpoint == "" || env.Storage.AccessKey == "" || env.Storage.SecretKey == "" {
+			logrus.Fatal("не указан конфиг для подключения к S3 storage")
+		}
+		logrus.Info("Подключен S3 storage")
+	}
 	return &env
 }

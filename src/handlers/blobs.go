@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/PavelMilanov/container-registry/config"
 	"github.com/gin-gonic/gin"
 	uid "github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -17,12 +16,9 @@ import (
 
 func (h *Handler) checkBlob(c *gin.Context) {
 	uuid := c.Param("uuid")
-
-	blobPath := filepath.Join(config.STORAGE_PATH, config.BLOBS_PATH, strings.Replace(uuid, "sha256:", "", 1))
-
 	// Проверяем, существует ли слой
-	if _, err := os.Stat(blobPath); os.IsNotExist(err) {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Blob not found"})
+	if err := h.STORAGE.CheckBlob(uuid); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{})
@@ -38,8 +34,7 @@ func (h *Handler) startBlobUpload(c *gin.Context) {
 	// Возвращаем URL для продолжения загрузки
 	c.Header("Location", fmt.Sprintf("/v2/%s/%s/blobs/uploads/%s", repository, imageName, uuid))
 	c.Header("Docker-Upload-UUID", uuid)
-	c.JSON(http.StatusAccepted, gin.H{
-	})
+	c.JSON(http.StatusAccepted, gin.H{})
 }
 
 func (h *Handler) uploadBlobPart(c *gin.Context) {
@@ -54,7 +49,7 @@ func (h *Handler) uploadBlobPart(c *gin.Context) {
 	}
 
 	// Путь к временному файлу
-	tempPath := filepath.Join(h.STORAGE.BlobPath, uuid)
+	tempPath := filepath.Join(h.STORAGE.TmpPath, uuid)
 	f, err := os.OpenFile(tempPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		logrus.Error(err)
@@ -86,7 +81,7 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 	}
 
 	// Путь к временному и конечному файлам
-	tempPath := filepath.Join(h.STORAGE.BlobPath, uuid)
+	tempPath := filepath.Join(h.STORAGE.TmpPath, uuid)
 
 	// Открытие временного файла
 	file, err := os.Open(tempPath)
@@ -116,14 +111,18 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 	}
 
 	// переименование временного файла в итоговый файл
-	finalPath := filepath.Join(h.STORAGE.BlobPath, strings.Replace(digest, "sha256:", "", 1))
-
-	err = os.Rename(tempPath, finalPath)
-	if err != nil {
+	// finalPath := filepath.Join(h.STORAGE.BlobPath, strings.Replace(digest, "sha256:", "", 1))
+	if err := h.STORAGE.SaveBlob(tempPath, digest); err != nil {
 		logrus.Error(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to finalize blob upload"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
 		return
 	}
+	// err = os.Rename(tempPath, finalPath)
+	// if err != nil {
+	// 	logrus.Error(err)
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to finalize blob upload"})
+	// 	return
+	// }
 	c.JSON(http.StatusCreated, gin.H{"message": "Blob finalized", "digest": digest})
 }
 
