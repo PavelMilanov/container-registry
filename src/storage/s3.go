@@ -15,7 +15,7 @@ func newS3(endpoint string, accessKey string, privateKey string, ssl bool) *S3 {
 	if err != nil {
 		logrus.Fatal(err)
 	}
-	err = s3Client.MakeBucket(config.BACKET_NAME, "")
+	err = s3Client.MakeBucket(config.BACKET_NAME, "ru-1")
 	if err != nil {
 		exists, errBucketExists := s3Client.BucketExists(config.BACKET_NAME)
 		if errBucketExists == nil && exists {
