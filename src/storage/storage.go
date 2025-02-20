@@ -34,7 +34,7 @@ func NewStorage(env *config.Env) *Storage {
 			Type:         env.Storage.Type,
 		}
 	case "s3":
-		s3 := newS3(env.Storage.Endpoint, env.Storage.AccessKey, env.Storage.SecretKey)
+		s3 := newS3(env.Storage.Endpoint, env.Storage.AccessKey, env.Storage.SecretKey, env.Storage.SSL)
 		return &Storage{
 			ManifestPath: filepath.Join(config.BACKET_NAME, config.MANIFEST_PATH),
 			BlobPath:     filepath.Join(config.BACKET_NAME, config.BLOBS_PATH),

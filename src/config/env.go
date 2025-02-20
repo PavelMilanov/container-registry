@@ -23,6 +23,7 @@ type storage struct {
 	Endpoint  string `mapstructure:"endpoint"`
 	AccessKey string `mapstructure:"access_key"`
 	SecretKey string `mapstructure:"secret_key"`
+	SSL       bool   `mapstructure:"ssl"`
 }
 
 func NewEnv() *Env {
