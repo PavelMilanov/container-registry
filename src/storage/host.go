@@ -122,3 +122,38 @@ func (s *Storage) GetManifest(repository string, image string, reference string)
 	}
 	return manifest, nil
 }
+
+// DeleteRegistry
+func (s *Storage) DeleteRegistry(registry string) error {
+	switch s.Type {
+	case "local":
+		if err := os.RemoveAll(filepath.Join(s.ManifestPath, registry)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// DeleteImage
+func (s *Storage) DeleteImage(repository string, imageName string, imageTag string, imageHash string) error {
+	switch s.Type {
+	case "local":
+		err := os.Remove(filepath.Join(s.ManifestPath, repository, imageName, "tags", imageTag))
+		err = os.Remove(filepath.Join(s.ManifestPath, repository, imageName, imageHash))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// DeleteRepository
+func (s *Storage) DeleteRepository(name string, image string) error {
+	switch s.Type {
+	case "local":
+		if err := os.RemoveAll(filepath.Join(s.ManifestPath, name, image)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
