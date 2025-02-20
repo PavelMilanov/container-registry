@@ -15,9 +15,8 @@ import (
 type Storage struct {
 	ManifestPath string
 	BlobPath     string
-	TmpPath      string
 	Type         string
-	Store        *S3
+	S3           *S3
 }
 
 func NewStorage(env *config.Env) *Storage {
@@ -32,7 +31,6 @@ func NewStorage(env *config.Env) *Storage {
 		return &Storage{
 			ManifestPath: manifestPath,
 			BlobPath:     blobPath,
-			TmpPath:      config.TMP_PATH,
 			Type:         env.Storage.Type,
 		}
 	case "s3":
@@ -40,9 +38,8 @@ func NewStorage(env *config.Env) *Storage {
 		return &Storage{
 			ManifestPath: filepath.Join(config.BACKET_NAME, config.MANIFEST_PATH),
 			BlobPath:     filepath.Join(config.BACKET_NAME, config.BLOBS_PATH),
-			TmpPath:      config.TMP_PATH,
 			Type:         env.Storage.Type,
-			Store:        s3,
+			S3:           s3,
 		}
 	}
 	logrus.Fatal("неудалось инициализировать хранилище")

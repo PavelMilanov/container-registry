@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/PavelMilanov/container-registry/config"
 	"github.com/gin-gonic/gin"
 	uid "github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -45,7 +46,7 @@ func (h *Handler) uploadBlobPart(c *gin.Context) {
 		return
 	}
 	// Путь к временному файлу
-	tempPath := filepath.Join(h.STORAGE.TmpPath, uuid)
+	tempPath := filepath.Join(config.TMP_PATH, uuid)
 	f, err := os.OpenFile(tempPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		logrus.Error(err)
@@ -74,7 +75,7 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 		return
 	}
 	// Путь к временному и конечному файлам
-	tempPath := filepath.Join(h.STORAGE.TmpPath, uuid)
+	tempPath := filepath.Join(config.TMP_PATH, uuid)
 	// Открытие временного файла
 	file, err := os.Open(tempPath)
 	if err != nil {
