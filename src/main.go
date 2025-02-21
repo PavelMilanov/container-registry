@@ -11,7 +11,6 @@ import (
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/handlers"
 	"github.com/PavelMilanov/container-registry/storage"
-	"github.com/PavelMilanov/container-registry/system"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 )
@@ -33,7 +32,7 @@ func main() {
 	)
 
 	c.AddFunc("0 0 * * 0", func() {
-		system.GarbageCollection(storage)
+		storage.GarbageCollection()
 	}) // каждую неделю
 
 	sqliteFIle := fmt.Sprintf("%s/registry.db", config.DATA_PATH)

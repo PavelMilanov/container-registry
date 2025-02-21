@@ -5,7 +5,6 @@ import (
 
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
-	"github.com/PavelMilanov/container-registry/system"
 	"github.com/gin-gonic/gin"
 )
 
@@ -132,7 +131,7 @@ func (h *Handler) settings(c *gin.Context) {
 	} else if c.Request.Method == "POST" {
 		q := c.Query("garbage")
 		if q == "true" {
-			system.GarbageCollection(h.STORAGE)
+			h.STORAGE.GarbageCollection()
 			c.JSON(http.StatusAccepted, gin.H{"data": "Очистка завершена"})
 			return
 		}
