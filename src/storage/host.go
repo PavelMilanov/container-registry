@@ -1,19 +1,27 @@
 package storage
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/PavelMilanov/container-registry/config"
+	"github.com/minio/minio-go/v7"
 )
 
 // CheckBlob
 func (s *Storage) CheckBlob(uuid string) error {
+	path := filepath.Join(s.BlobPath, strings.Replace(uuid, "sha256:", "", 1))
 	switch s.Type {
 	case "local":
-		path := filepath.Join(s.BlobPath, strings.Replace(uuid, "sha256:", "", 1))
 		if _, err := os.Stat(path); os.IsNotExist(err) {
+			return errors.New("Blob not found")
+		}
+	case "s3":
+		if _, err := s.S3.Client.StatObject(context.Background(), config.BACKET_NAME, path, minio.GetObjectOptions{}); err != nil {
 			return errors.New("Blob not found")
 		}
 	}
@@ -57,6 +65,8 @@ func (s *Storage) GetBlob(digest string) (map[string]string, error) {
 		}
 		info["path"] = blobPath
 		info["size"] = fmt.Sprintf("%d", fileInfo.Size())
+	case "s3":
+
 	}
 	return info, nil
 }

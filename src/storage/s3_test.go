@@ -1,8 +1,52 @@
 package storage
 
-import "testing"
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+	"testing"
+
+	"github.com/minio/minio-go/v7"
+)
+
+var testS3 = newS3("192.168.12.27:9000", "YT3ITTiJFuO0cASXNY9g", "dj1RFM02yjhuRuBF75W0swehEX5TU4lYitLddWEm", false)
 
 func TestNewS3(t *testing.T) {
-	testS3 := newS3("192.168.12.27:9000", "J3BwPUGqDPWJTeZd5Dcv", "hHgZgIyuuHKuvtmOcyY4NV2cotkgGft93VZnHkPW", false)
-	t.Log(testS3)
+	t.Logf("%+v", testS3.Client)
+}
+func TestPutObject(t *testing.T) {
+	object, err := os.Open("test_blob")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer object.Close()
+	objectStat, err := object.Stat()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	info, err := testS3.Client.PutObject(context.Background(), "registry", "manifests/test-blob", object, objectStat.Size(), minio.PutObjectOptions{ContentType: "application/octet-stream"})
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Println(info)
+}
+
+func TestRemoveObject(t *testing.T) {
+	opts := minio.RemoveObjectOptions{
+		GovernanceBypass: true,
+	}
+
+	err := testS3.Client.RemoveObject(context.Background(), "registry", "manifests/test-blob", opts)
+	if err != nil {
+		log.Fatalln(err)
+	}
+}
+
+func TestGetObject(t *testing.T) {
+	reader, err := testS3.Client.StatObject(context.Background(), "registry", "manifests/test-blob", minio.GetObjectOptions{})
+	if err != nil {
+		log.Fatalln(err)
+	}
+	fmt.Println(reader)
 }

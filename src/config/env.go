@@ -43,12 +43,10 @@ func NewEnv() *Env {
 	}
 	switch env.Storage.Type {
 	case "local":
-		logrus.Info("Подключен локальный storage")
 	case "s3":
 		if env.Storage.Endpoint == "" || env.Storage.AccessKey == "" || env.Storage.SecretKey == "" {
 			logrus.Fatal("не указан конфиг для подключения к S3 storage")
 		}
-		logrus.Info("Подключен S3 storage")
 	}
 	return &env
 }
