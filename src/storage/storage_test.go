@@ -6,13 +6,9 @@ import (
 	"github.com/PavelMilanov/container-registry/config"
 )
 
-func TestNewStorage(t *testing.T) {
-	// s3 := NewS3storage("192.168.12.27:9001", "jlSDwyyoeI71kbnRC1wK", "sBqscm1bmreddLINb5aQqSU2gq6qbmpeqVZ9OxVK")
-	// t.Log(s3)
-}
+var env = config.NewEnv("../var/")
+var s = NewStorage(env)
 
-func TestGarbageCollection(t *testing.T) {
-	env := config.NewEnv()
-	storage := NewStorage(env)
-	storage.GarbageCollection()
+func TestNewStorage(t *testing.T) {
+	t.Log(s)
 }

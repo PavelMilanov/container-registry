@@ -24,10 +24,8 @@ func newS3(endpoint string, accessKey string, privateKey string, ssl bool) *S3 {
 	}
 	_, errBucketExists := s3Client.BucketExists(context.Background(), config.BACKET_NAME)
 	if errBucketExists != nil {
-		logrus.Error(err)
+		logrus.Fatal(err)
 	}
-	// logrus.Debugf("Подключен bucket %s", config.BACKET_NAME)
-
 	return &S3{
 		Client: s3Client,
 	}

@@ -26,11 +26,11 @@ type storage struct {
 	SSL       bool   `mapstructure:"ssl"`
 }
 
-func NewEnv() *Env {
+func NewEnv(path string) *Env {
 	env := Env{}
 	viper.SetConfigName("config") // имя файла без расширения
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath(DATA_PATH)
+	viper.AddConfigPath(path)
 
 	err := viper.ReadInConfig()
 	if err != nil {

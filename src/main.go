@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-	env := config.NewEnv()
+	env := config.NewEnv(config.DATA_PATH)
 
 	storage := storage.NewStorage(env)
 
