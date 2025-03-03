@@ -2,8 +2,6 @@ package storage
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"os"
 	"testing"
 
@@ -18,18 +16,18 @@ func TestNewS3(t *testing.T) {
 func TestPutObject(t *testing.T) {
 	object, err := os.Open("test_blob")
 	if err != nil {
-		log.Fatalln(err)
+		t.Fatal(err)
 	}
 	defer object.Close()
 	objectStat, err := object.Stat()
 	if err != nil {
-		log.Fatalln(err)
+		t.Fatal(err)
 	}
 	info, err := testS3.Client.PutObject(context.Background(), "registry", "manifests/test-blob", object, objectStat.Size(), minio.PutObjectOptions{ContentType: "application/octet-stream"})
 	if err != nil {
-		log.Fatalln(err)
+		t.Fatal(err)
 	}
-	log.Println(info)
+	t.Fatal(info)
 }
 
 func TestRemoveObject(t *testing.T) {
@@ -39,14 +37,14 @@ func TestRemoveObject(t *testing.T) {
 
 	err := testS3.Client.RemoveObject(context.Background(), "registry", "manifests/test-blob", opts)
 	if err != nil {
-		log.Fatalln(err)
+		t.Fatal(err)
 	}
 }
 
 func TestStatObject(t *testing.T) {
 	reader, err := testS3.Client.StatObject(context.Background(), "registry", "manifests/test-blob", minio.GetObjectOptions{})
 	if err != nil {
-		log.Fatalln(err)
+		t.Fatal(err)
 	}
-	fmt.Println(reader)
+	t.Log(reader)
 }
