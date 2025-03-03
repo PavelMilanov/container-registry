@@ -18,6 +18,7 @@ import (
 
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/sirupsen/logrus"
 )
 
@@ -26,7 +27,7 @@ type Storage struct {
 	ManifestPath string
 	BlobPath     string
 	Type         string
-	S3           *S3
+	S3           *minio.Client
 }
 
 func NewStorage(env *config.Env) *Storage {
@@ -44,12 +45,23 @@ func NewStorage(env *config.Env) *Storage {
 			Type:         env.Storage.Type,
 		}
 	case "s3":
-		s3 := newS3(env.Storage.Endpoint, env.Storage.AccessKey, env.Storage.SecretKey, env.Storage.SSL)
+		// s3 := newS3(env.Storage.Credentials.Endpoint, env.Storage.Credentials.AccessKey, env.Storage.Credentials.SecretKey, env.Storage.Credentials.SSL)
+		s3Client, err := minio.New(env.Storage.Credentials.Endpoint, &minio.Options{
+			Creds:  credentials.NewStaticV4(env.Storage.Credentials.AccessKey, env.Storage.Credentials.SecretKey, ""),
+			Secure: env.Storage.Credentials.SSL,
+		})
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		_, errBucketExists := s3Client.BucketExists(context.Background(), config.BACKET_NAME)
+		if errBucketExists != nil {
+			logrus.Fatal(err)
+		}
 		return &Storage{
 			ManifestPath: filepath.Join(config.BACKET_NAME, config.MANIFEST_PATH),
 			BlobPath:     filepath.Join(config.BACKET_NAME, config.BLOBS_PATH),
 			Type:         env.Storage.Type,
-			S3:           s3,
+			S3:           s3Client,
 		}
 	}
 	logrus.Fatal("неудалось инициализировать хранилище")
@@ -65,7 +77,7 @@ func (s *Storage) CheckBlob(uuid string) error {
 			return errors.New("Blob not found")
 		}
 	case "s3":
-		if _, err := s.S3.Client.StatObject(context.Background(), config.BACKET_NAME, path, minio.GetObjectOptions{}); err != nil {
+		if _, err := s.S3.StatObject(context.Background(), config.BACKET_NAME, path, minio.GetObjectOptions{}); err != nil {
 			return errors.New("Blob not found")
 		}
 	}
@@ -84,7 +96,7 @@ func (s *Storage) SaveBlob(tmpPath string, digest string) error {
 		file, _ := os.Open(tmpPath)
 		defer file.Close()
 		fileStat, _ := file.Stat()
-		_, err := s.S3.Client.PutObject(context.Background(), config.BACKET_NAME, finalPath, file, fileStat.Size(), minio.PutObjectOptions{ContentType: "application/octet-stream"})
+		_, err := s.S3.PutObject(context.Background(), config.BACKET_NAME, finalPath, file, fileStat.Size(), minio.PutObjectOptions{ContentType: "application/octet-stream"})
 		if err != nil {
 			return err
 		}
@@ -119,7 +131,7 @@ func (s *Storage) GetBlob(digest string) (map[string]string, error) {
 		info["path"] = blobPath
 		info["size"] = fmt.Sprintf("%d", fileInfo.Size())
 	case "s3":
-		reader, err := s.S3.Client.GetObject(context.Background(), config.BACKET_NAME, blobPath, minio.GetObjectOptions{})
+		reader, err := s.S3.GetObject(context.Background(), config.BACKET_NAME, blobPath, minio.GetObjectOptions{})
 		if err != nil {
 			return info, err
 		}
@@ -172,14 +184,14 @@ func (s *Storage) SaveManifest(body []byte, repository string, image string, ref
 	case "s3":
 		reader := bytes.NewReader(body)
 		size := reader.Size()
-		_, err := s.S3.Client.PutObject(context.Background(), config.BACKET_NAME, manifestPath, reader, size, minio.PutObjectOptions{ContentType: "application/octet-stream"})
+		_, err := s.S3.PutObject(context.Background(), config.BACKET_NAME, manifestPath, reader, size, minio.PutObjectOptions{ContentType: "application/octet-stream"})
 		if err != nil {
 			logrus.Error(err)
 		}
 		if !strings.HasPrefix(reference, "sha256:") {
 			reader := bytes.NewReader([]byte(calculatedDigest))
 			size := reader.Size()
-			_, err = s.S3.Client.PutObject(context.Background(), config.BACKET_NAME, tagPath, reader, size, minio.PutObjectOptions{ContentType: "application/octet-stream"})
+			_, err = s.S3.PutObject(context.Background(), config.BACKET_NAME, tagPath, reader, size, minio.PutObjectOptions{ContentType: "application/octet-stream"})
 			if err != nil {
 				logrus.Error(err)
 			}
@@ -223,7 +235,7 @@ func (s *Storage) GetManifest(repository string, image string, reference string)
 			manifestPath = filepath.Join(s.ManifestPath, repository, image, reference)
 		} else {
 			// Если reference — это тег
-			reader, err := s.S3.Client.GetObject(context.Background(), config.BACKET_NAME, tagPath, minio.GetObjectOptions{})
+			reader, err := s.S3.GetObject(context.Background(), config.BACKET_NAME, tagPath, minio.GetObjectOptions{})
 			if err != nil {
 				return manifest, errors.New("Tag not found")
 			}
@@ -235,7 +247,7 @@ func (s *Storage) GetManifest(repository string, image string, reference string)
 			manifestDigest := string(tagData)
 			manifestPath = filepath.Join(s.ManifestPath, repository, image, manifestDigest)
 		}
-		reader, err := s.S3.Client.GetObject(context.Background(), config.BACKET_NAME, manifestPath, minio.GetObjectOptions{})
+		reader, err := s.S3.GetObject(context.Background(), config.BACKET_NAME, manifestPath, minio.GetObjectOptions{})
 		if err != nil {
 			return manifest, err
 		}
@@ -259,7 +271,7 @@ func (s *Storage) DeleteRegistry(registry string) error {
 			GovernanceBypass: true,
 		}
 
-		err := s.S3.Client.RemoveObject(context.Background(), config.BACKET_NAME, path, opts)
+		err := s.S3.RemoveObject(context.Background(), config.BACKET_NAME, path, opts)
 		if err != nil {
 			return err
 		}
