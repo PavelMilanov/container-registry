@@ -5,6 +5,6 @@ import (
 )
 
 func TestNewEnv(t *testing.T) {
-	env := Env{}
+	env := NewEnv("../var/")
 	t.Logf("config: %+v", env)
 }

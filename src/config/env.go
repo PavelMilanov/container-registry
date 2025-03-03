@@ -19,7 +19,11 @@ type server struct {
 
 // storage описывает конфигурацию хранилища.
 type storage struct {
-	Type      string `mapstructure:"type"`
+	Type        string      `mapstructure:"type"`
+	Credentials credentials `mapstructure:"credentials,omitzero"`
+}
+
+type credentials struct {
 	Endpoint  string `mapstructure:"endpoint"`
 	AccessKey string `mapstructure:"access_key"`
 	SecretKey string `mapstructure:"secret_key"`
@@ -42,9 +46,8 @@ func NewEnv(path string) *Env {
 		logrus.Fatal("не загружен файл конфигурации: ", err)
 	}
 	switch env.Storage.Type {
-	case "local":
 	case "s3":
-		if env.Storage.Endpoint == "" || env.Storage.AccessKey == "" || env.Storage.SecretKey == "" {
+		if env.Storage.Credentials.Endpoint == "" || env.Storage.Credentials.AccessKey == "" || env.Storage.Credentials.SecretKey == "" {
 			logrus.Fatal("не указан конфиг для подключения к S3 storage")
 		}
 	}
