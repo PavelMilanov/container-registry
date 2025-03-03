@@ -43,7 +43,7 @@ func TestRemoveObject(t *testing.T) {
 	}
 }
 
-func TestGetObject(t *testing.T) {
+func TestStatObject(t *testing.T) {
 	reader, err := testS3.Client.StatObject(context.Background(), "registry", "manifests/test-blob", minio.GetObjectOptions{})
 	if err != nil {
 		log.Fatalln(err)

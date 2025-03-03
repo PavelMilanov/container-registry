@@ -115,6 +115,7 @@ func (h *Handler) getBlob(c *gin.Context) {
 	info, err := h.STORAGE.GetBlob(digest)
 	if err != nil {
 		if err.Error() == "Blob not found" {
+			logrus.Error(err)
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		} else {

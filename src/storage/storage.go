@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/PavelMilanov/container-registry/config"
@@ -53,7 +54,7 @@ func (s *Storage) GarbageCollection() {
 	manifests := getManifestDigest(s.ManifestPath)
 	var cache []string
 	for _, v := range blobs {
-		if !contains(manifests, v) {
+		if !slices.Contains(manifests, v) {
 			cache = append(cache, v)
 		}
 	}
@@ -84,7 +85,7 @@ func getManifestDigest(dir string) []string {
 			}
 			for _, manifest := range manifests {
 				if !manifest.IsDir() { // читаем файлы sha256:...
-					if !contains(buffer, manifest.Name()) { // ищем манифесты без ссылок на теги, удаляем
+					if !slices.Contains(buffer, manifest.Name()) { // ищем манифесты без ссылок на теги, удаляем
 						os.Remove(filepath.Join(tagDir, manifest.Name()))
 					}
 					data, _ := os.ReadFile(filepath.Join(tagDir, manifest.Name()))
@@ -124,13 +125,4 @@ func getBlobDigest(dir string) []string {
 		blobs = append(blobs, blob.Name())
 	}
 	return blobs
-}
-
-func contains(list []string, str string) bool {
-	for _, i := range list {
-		if i == str {
-			return true
-		}
-	}
-	return false
 }
