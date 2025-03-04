@@ -266,13 +266,20 @@ func (s *Storage) DeleteRegistry(registry string) error {
 			return err
 		}
 	case "s3":
-		opts := minio.RemoveObjectOptions{
-			GovernanceBypass: true,
-		}
-
-		err := s.S3.RemoveObject(context.Background(), config.BACKET_NAME, path, opts)
-		if err != nil {
-			return err
+		objectsCh := make(chan minio.ObjectInfo)
+		go func() {
+			defer close(objectsCh)
+			opts := minio.ListObjectsOptions{Prefix: path, Recursive: true}
+			for object := range s.S3.ListObjects(context.Background(), config.BACKET_NAME, opts) {
+				if object.Err != nil {
+					logrus.Error(object.Err)
+				}
+				objectsCh <- object
+			}
+		}()
+		err := s.S3.RemoveObjects(context.Background(), config.BACKET_NAME, objectsCh, minio.RemoveObjectsOptions{})
+		for e := range err {
+			return e.Err
 		}
 	}
 	return nil
@@ -293,9 +300,10 @@ func (s *Storage) DeleteImage(repository string, imageName string, imageTag stri
 
 // DeleteRepository
 func (s *Storage) DeleteRepository(name string, image string) error {
+	path := filepath.Join(s.ManifestPath, name, image)
 	switch s.Type {
 	case "local":
-		if err := os.RemoveAll(filepath.Join(s.ManifestPath, name, image)); err != nil {
+		if err := os.RemoveAll(path); err != nil {
 			return err
 		}
 	}
