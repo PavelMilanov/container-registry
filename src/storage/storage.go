@@ -31,13 +31,13 @@ type Storage struct {
 }
 
 func NewStorage(env *config.Env) *Storage {
+	os.MkdirAll(config.TMP_PATH, 0755)
 	switch env.Storage.Type {
 	case "local":
 		blobPath := filepath.Join(config.DATA_PATH, config.STORAGE_PATH, config.BLOBS_PATH)
 		manifestPath := filepath.Join(config.DATA_PATH, config.STORAGE_PATH, config.MANIFEST_PATH)
 		os.MkdirAll(blobPath, 0755)
 		os.MkdirAll(manifestPath, 0755)
-		os.MkdirAll(config.TMP_PATH, 0755)
 		os.Mkdir(config.DATA_PATH, 0755)
 		return &Storage{
 			ManifestPath: manifestPath,
@@ -45,7 +45,6 @@ func NewStorage(env *config.Env) *Storage {
 			Type:         env.Storage.Type,
 		}
 	case "s3":
-		// s3 := newS3(env.Storage.Credentials.Endpoint, env.Storage.Credentials.AccessKey, env.Storage.Credentials.SecretKey, env.Storage.Credentials.SSL)
 		s3Client, err := minio.New(env.Storage.Credentials.Endpoint, &minio.Options{
 			Creds:  credentials.NewStaticV4(env.Storage.Credentials.AccessKey, env.Storage.Credentials.SecretKey, ""),
 			Secure: env.Storage.Credentials.SSL,
