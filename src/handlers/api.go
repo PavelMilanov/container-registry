@@ -25,10 +25,6 @@ func (h *Handler) addRegistry(c *gin.Context) {
 
 func (h *Handler) deleteRegistry(c *gin.Context) {
 	data := c.Param("name")
-	// if err := os.RemoveAll(filepath.Join(h.STORAGE.ManifestPath, data)); err != nil {
-	// 	c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
-	// 	return
-	// }
 	if err := h.STORAGE.DeleteRegistry(data); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		return
@@ -59,8 +55,6 @@ func (h *Handler) deleteRepository(c *gin.Context) {
 		if err := h.STORAGE.DeleteImage(name, img.Name, img.Tag, img.Hash); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		}
-		// os.Remove(filepath.Join(h.STORAGE.ManifestPath, name, img.Name, "tags", img.Tag))
-		// os.Remove(filepath.Join(h.STORAGE.ManifestPath, name, img.Name, img.Hash))
 		c.JSON(http.StatusAccepted, gin.H{"data": img})
 	} else { // удаляется весь репозиторий
 		repo := db.Repository{Name: image}
@@ -72,7 +66,6 @@ func (h *Handler) deleteRepository(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 			return
 		}
-		// os.RemoveAll(filepath.Join(h.STORAGE.ManifestPath, name, image))
 		c.JSON(http.StatusAccepted, gin.H{"data": repo})
 	}
 }
