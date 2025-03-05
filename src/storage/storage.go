@@ -306,6 +306,22 @@ func (s *Storage) DeleteRepository(name string, image string) error {
 		if err := os.RemoveAll(path); err != nil {
 			return err
 		}
+	case "s3":
+		objectsCh := make(chan minio.ObjectInfo)
+		go func() {
+			defer close(objectsCh)
+			opts := minio.ListObjectsOptions{Prefix: path, Recursive: true}
+			for object := range s.S3.ListObjects(context.Background(), config.BACKET_NAME, opts) {
+				if object.Err != nil {
+					logrus.Error(object.Err)
+				}
+				objectsCh <- object
+			}
+		}()
+		err := s.S3.RemoveObjects(context.Background(), config.BACKET_NAME, objectsCh, minio.RemoveObjectsOptions{})
+		for e := range err {
+			return e.Err
+		}
 	}
 	return nil
 }
