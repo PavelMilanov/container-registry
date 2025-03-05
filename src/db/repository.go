@@ -41,9 +41,9 @@ func (r *Repository) Delete(sql *gorm.DB) error {
 	return nil
 }
 
-func GetRepositories(sql *gorm.DB) []Repository {
+func GetRepositoriesOfRegistry(sql *gorm.DB, id int) []Repository {
 	var r []Repository
-	sql.Find(&r)
+	sql.Where("registry_id =?", id).Find(&r)
 	return r
 }
 

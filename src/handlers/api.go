@@ -9,18 +9,28 @@ import (
 )
 
 func (h *Handler) getRegistry(c *gin.Context) {
-	data := db.GetRegistires(h.DB.Sql)
-	c.JSON(http.StatusOK, gin.H{"data": data})
+	name := c.Param("name")
+	if len(name) == 0 {
+		data := db.GetRegistires(h.DB.Sql)
+		c.JSON(http.StatusOK, gin.H{"data": data})
+		return
+	}
+	var registry db.Registry
+	if err := registry.GetRepositories(h.DB.Sql, name); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": registry.Repositories})
 }
 
 func (h *Handler) addRegistry(c *gin.Context) {
 	data := c.Param("name")
-	registy := db.Registry{Name: data}
-	if err := registy.Add(h.DB.Sql); err != nil {
+	registry := db.Registry{Name: data}
+	if err := registry.Add(h.DB.Sql); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"data": registy})
+	c.JSON(http.StatusCreated, gin.H{"data": registry})
 }
 
 func (h *Handler) deleteRegistry(c *gin.Context) {
@@ -35,11 +45,6 @@ func (h *Handler) deleteRegistry(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusAccepted, gin.H{"data": registy})
-}
-
-func (h *Handler) getRepository(c *gin.Context) {
-	data := db.GetRepositories(h.DB.Sql)
-	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
 func (h *Handler) deleteRepository(c *gin.Context) {

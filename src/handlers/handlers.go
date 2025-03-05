@@ -48,7 +48,7 @@ func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		repository := c.Param("repository")
 		var registry db.Registry
-		if err := registry.Get(repository, sql); err != nil {
+		if err := registry.Get(sql, repository); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get registry"})
 			c.Abort()
 			return
@@ -129,7 +129,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 		api.GET("/registry", h.getRegistry)
 		api.GET("/registry/:name/:image", h.getImage)
 		api.DELETE("/registry/:name/:image", h.deleteRepository)
-		api.GET("/registry/:name", h.getRepository)
+		api.GET("/registry/:name", h.getRegistry)
 		api.POST("/registry/:name", h.addRegistry)
 		api.DELETE("/registry/:name", h.deleteRegistry)
 		api.POST("/settings", h.settings)
