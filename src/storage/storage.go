@@ -287,11 +287,28 @@ func (s *Storage) DeleteRegistry(registry string) error {
 
 // DeleteImage
 func (s *Storage) DeleteImage(repository string, imageName string, imageTag string, imageHash string) error {
+	path := filepath.Join(s.ManifestPath, repository, imageName, imageHash)
+	tagPath := filepath.Join(s.ManifestPath, repository, imageName, "tags", imageTag)
 	switch s.Type {
 	case "local":
-		err := os.Remove(filepath.Join(s.ManifestPath, repository, imageName, "tags", imageTag))
-		err = os.Remove(filepath.Join(s.ManifestPath, repository, imageName, imageHash))
+		err := os.Remove(tagPath)
+		err = os.Remove(path)
 		if err != nil {
+			return err
+		}
+	case "s3":
+		opts := minio.RemoveObjectOptions{
+			GovernanceBypass: true,
+		}
+
+		err := s.S3.RemoveObject(context.Background(), config.DATA_PATH, tagPath, opts)
+		if err != nil {
+			logrus.Error(err)
+			return err
+		}
+		err = s.S3.RemoveObject(context.Background(), config.DATA_PATH, path, opts)
+		if err != nil {
+			logrus.Error(err)
 			return err
 		}
 	}
