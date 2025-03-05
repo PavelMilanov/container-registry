@@ -1,24 +1,24 @@
-import { createSignal, onMount, lazy } from "solid-js"
-import { A, useNavigate } from "@solidjs/router"
-import axios from "axios"
-import toast from "solid-toast"
+import { createSignal, onMount, lazy } from "solid-js";
+import { A, useNavigate } from "@solidjs/router";
+import axios from "axios";
+import toast from "solid-toast";
 
-const AddRegistry = lazy(() => import("./modal/AddRegistry"))
-const Delete = lazy(() => import("./modal/Delete"))
+const AddRegistry = lazy(() => import("./modal/AddRegistry"));
+const Delete = lazy(() => import("./modal/Delete"));
 
-const API_URL = window.API_URL
+const API_URL = window.API_URL;
 
 function Registry() {
-  const navigate = useNavigate()
-  const [isModalOpen, setModalOpen] = createSignal(false)
-  const [registryList, setRegistryList] = createSignal([])
-  const [registry, setRegistry] = createSignal("")
+  const navigate = useNavigate();
+  const [isModalOpen, setModalOpen] = createSignal(false);
+  const [registryList, setRegistryList] = createSignal([]);
+  const [registry, setRegistry] = createSignal("");
 
-  const openModal = () => setModalOpen(true)
-  const closeModal = () => setModalOpen(false)
+  const openModal = () => setModalOpen(true);
+  const closeModal = () => setModalOpen(false);
   const submitAddRegistry = async () => {
-    setModalOpen(false)
-    let token = localStorage.getItem("token")
+    setModalOpen(false);
+    let token = localStorage.getItem("token");
     const headers = {
       Authorization: `Bearer ${token}`,
     };
@@ -26,7 +26,7 @@ function Registry() {
       const response = await axios.post(
         API_URL + `/api/registry/${registry()}`,
         {},
-        { headers },
+        { headers: headers },
       );
       if (response.status === 201) {
         await getRegistry();
@@ -39,27 +39,27 @@ function Registry() {
         });
       }
     } catch (error) {
-      console.log(error.response.data.error)
+      console.log(error);
       if (error.response.status === 401) {
-        localStorage.removeItem("token")
-        navigate("/login", { replace: true })
+        localStorage.removeItem("token");
+        navigate("/login", { replace: true });
       }
     }
   };
   const newRegistry = (value) => setRegistry(value);
 
-  const [isModalDeleteOpen, setModalDeleteOpen] = createSignal(false)
+  const [isModalDeleteOpen, setModalDeleteOpen] = createSignal(false);
 
-  let copyText = `${API_URL}`.split("//")[1]
+  let copyText = `${API_URL}`.split("//")[1];
 
   const openDeleteModal = (item) => {
-    setModalDeleteOpen(true)
-    setRegistry(item)
+    setModalDeleteOpen(true);
+    setRegistry(item);
   };
-  const closeDeleteModal = () => setModalDeleteOpen(false)
+  const closeDeleteModal = () => setModalDeleteOpen(false);
   const submitDelete = async () => {
-    setModalDeleteOpen(false)
-    let token = localStorage.getItem("token")
+    setModalDeleteOpen(false);
+    let token = localStorage.getItem("token");
     const headers = {
       Authorization: `Bearer ${token}`,
     };
@@ -79,16 +79,23 @@ function Registry() {
       }
       await getRegistry();
     } catch (error) {
-      console.error(error.response.data);
+      console.error(error);
+      toast("Ошибка!", {
+        style: {
+          "background-color": "#dc3545",
+          color: "white",
+        },
+        className: "notification",
+      });
       if (error.response.status === 401) {
-        localStorage.removeItem("token")
-        navigate("/login", { replace: true })
+        localStorage.removeItem("token");
+        navigate("/login", { replace: true });
       }
     }
   };
 
   async function getRegistry() {
-    let token = localStorage.getItem("token")
+    let token = localStorage.getItem("token");
     const headers = {
       Authorization: `Bearer ${token}`,
     };
@@ -96,18 +103,25 @@ function Registry() {
       const response = await axios.get(API_URL + "/api/registry", {
         headers: headers,
       });
-      setRegistryList(response.data.data) // в ответе приходит массив "data"
+      setRegistryList(response.data.data); // в ответе приходит массив "data"
     } catch (error) {
-      console.error(error.response.data)
+      console.error(error);
+      toast("Ошибка!", {
+        style: {
+          "background-color": "#dc3545",
+          color: "white",
+        },
+        className: "notification",
+      });
       if (error.response.status === 401) {
-        localStorage.removeItem("token")
-        navigate("/login", { replace: true })
+        localStorage.removeItem("token");
+        navigate("/login", { replace: true });
       }
     }
   }
 
   onMount(async () => {
-    await getRegistry()
+    await getRegistry();
   });
 
   return (
@@ -172,4 +186,4 @@ function Registry() {
   );
 }
 
-export default Registry
+export default Registry;

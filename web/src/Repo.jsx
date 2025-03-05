@@ -1,26 +1,28 @@
-import { createSignal, onMount, lazy } from "solid-js"
-import { A, useParams, useNavigate } from "@solidjs/router"
-import axios from "axios"
+import { createSignal, onMount, lazy } from "solid-js";
+import { A, useParams, useNavigate } from "@solidjs/router";
+import axios from "axios";
+import toast from "solid-toast";
 
-const Delete = lazy(() => import("./modal/Delete"))
+const Delete = lazy(() => import("./modal/Delete"));
 
-const API_URL = window.API_URL
+const API_URL = window.API_URL;
 
 function Repo() {
-  const navigate = useNavigate()
-  const [imageList, setImageList] = createSignal([])
-  const params = useParams()
-  const [repo, setRepo] = createSignal("")
-  const [isModalDeleteOpen, setModalDeleteOpen] = createSignal(false)
-  const openDeleteModal = (item) => {
-    setModalDeleteOpen(true)
-    setRepo(item)
-  };
-  const closeDeleteModal = () => setModalDeleteOpen(false)
+  const navigate = useNavigate();
+  const [imageList, setImageList] = createSignal([]);
+  const params = useParams();
+  const [repo, setRepo] = createSignal("");
+  const [isModalDeleteOpen, setModalDeleteOpen] = createSignal(false);
 
+  const openDeleteModal = (item) => {
+    setModalDeleteOpen(true);
+    setRepo(item);
+  };
+
+  const closeDeleteModal = () => setModalDeleteOpen(false);
   const submitDelete = async () => {
-    setModalDeleteOpen(false)
-    let token = localStorage.getItem("token")
+    setModalDeleteOpen(false);
+    let token = localStorage.getItem("token");
     const headers = {
       Authorization: `Bearer ${token}`,
     };
@@ -40,16 +42,23 @@ function Repo() {
       }
       await getRepo();
     } catch (error) {
-      console.error(error.response.data)
+      console.error(error);
+      toast("Ошибка!", {
+        style: {
+          "background-color": "#dc3545",
+          color: "white",
+        },
+        className: "notification",
+      });
       if (error.response.status === 401) {
-        localStorage.removeItem("token")
-        navigate("/login", { replace: true })
+        localStorage.removeItem("token");
+        navigate("/login", { replace: true });
       }
     }
   };
 
   async function getRepo() {
-    let token = localStorage.getItem("token")
+    let token = localStorage.getItem("token");
     const headers = {
       Authorization: `Bearer ${token}`,
     };
@@ -60,16 +69,16 @@ function Repo() {
       );
       setImageList(response.data.data); // в ответе приходит массив "data"
     } catch (error) {
-      console.log(error.response.data);
+      console.log(error);
       if (error.response.status === 401) {
-        localStorage.removeItem("token")
-        navigate("/login", { replace: true })
+        localStorage.removeItem("token");
+        navigate("/login", { replace: true });
       }
     }
   }
 
   onMount(async () => {
-    await getRepo()
+    await getRepo();
   });
   return (
     <div class="container">
@@ -98,7 +107,7 @@ function Repo() {
                 <tr>
                   <td>
                     <A inactiveClass="" href={image.Name}>
-                      {API_URL.split("//")[1]}/{image.Name}
+                      {API_URL.split("//")[1]}/{params.name}/{image.Name}
                     </A>
                   </td>
                   {/* <td>{repo.Size}</td> */}
@@ -121,4 +130,4 @@ function Repo() {
   );
 }
 
-export default Repo
+export default Repo;

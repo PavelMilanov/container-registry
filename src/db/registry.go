@@ -61,7 +61,7 @@ func (r *Registry) Get(sql *gorm.DB, name string) error {
 
 func (r *Registry) GetRepositories(sql *gorm.DB, name string) error {
 	result := sql.Preload("Repositories").Where("name = ?", name).First(&r)
-	if result.RowsAffected == 0 {
+	if result.Error != nil {
 		logrus.Error(result.Error)
 		return result.Error
 	}

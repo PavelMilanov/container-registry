@@ -13,7 +13,7 @@ import (
 // /api/registry/<name> - вывод репозиториев указанного реестра.
 func (h *Handler) getRegistry(c *gin.Context) {
 	name := c.Param("name")
-	if name != "" {
+	if name == "" {
 		data := db.GetRegistires(h.DB.Sql)
 		c.JSON(http.StatusOK, gin.H{"data": data})
 		return
