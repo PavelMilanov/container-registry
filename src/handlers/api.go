@@ -8,9 +8,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// getRegistry - получение информации о реестрах.
+// /api/registry -вывод всех репозиториев.
+// /api/registry/<name> - вывод репозиториев указанного реестра.
 func (h *Handler) getRegistry(c *gin.Context) {
 	name := c.Param("name")
-	if len(name) == 0 {
+	if name != "" {
 		data := db.GetRegistires(h.DB.Sql)
 		c.JSON(http.StatusOK, gin.H{"data": data})
 		return
@@ -23,6 +26,7 @@ func (h *Handler) getRegistry(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": registry.Repositories})
 }
 
+// addRegistry -добавление нового реестра.
 func (h *Handler) addRegistry(c *gin.Context) {
 	data := c.Param("name")
 	registry := db.Registry{Name: data}
@@ -33,6 +37,7 @@ func (h *Handler) addRegistry(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"data": registry})
 }
 
+// deleteRegistry -удаление указанного реестра.
 func (h *Handler) deleteRegistry(c *gin.Context) {
 	data := c.Param("name")
 	if err := h.STORAGE.DeleteRegistry(data); err != nil {
@@ -47,6 +52,9 @@ func (h *Handler) deleteRegistry(c *gin.Context) {
 	c.JSON(http.StatusAccepted, gin.H{"data": registy})
 }
 
+// deleteRepository -удаление указанного репозитория или образа.
+// /api/<registry>/<repository> - удаляется репозиторий.
+// /api/<registry>/<repository>?tag=<tag> - удаляется образ.
 func (h *Handler) deleteRepository(c *gin.Context) {
 	name := c.Param("name")
 	image := c.Param("image")
@@ -75,6 +83,7 @@ func (h *Handler) deleteRepository(c *gin.Context) {
 	}
 }
 
+// getImage -получение образа.
 func (h *Handler) getImage(c *gin.Context) {
 	ImageName := c.Param("image")
 	repo := db.GetRepository(h.DB.Sql, ImageName)
@@ -82,6 +91,7 @@ func (h *Handler) getImage(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
+// registration - регистрация.
 func (h *Handler) registration(c *gin.Context) {
 	type userRegisterData struct {
 		Username        string `json:"username" binding:"required"`
@@ -105,6 +115,7 @@ func (h *Handler) registration(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{})
 }
 
+// login - авторизация.
 func (h *Handler) login(c *gin.Context) {
 	type userLoginData struct {
 		Username string `json:"username" binding:"required"`
