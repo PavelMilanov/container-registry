@@ -127,11 +127,11 @@ func (h *Handler) InitRouters() *gin.Engine {
 	api := router.Group("/api/", baseApiMiddleware([]byte(h.ENV.Server.Jwt)))
 	{
 		api.GET("/registry", h.getRegistry)
-		api.GET("/registry/:name/:image", h.getImage)
-		api.DELETE("/registry/:name/:image", h.deleteRepository)
 		api.GET("/registry/:name", h.getRegistry)
 		api.POST("/registry/:name", h.addRegistry)
 		api.DELETE("/registry/:name", h.deleteRegistry)
+		api.GET("/registry/:name/:image", h.getImage)
+		api.DELETE("/registry/:name/:image", h.deleteImage)
 		api.POST("/settings", h.settings)
 		api.GET("/settings", h.settings)
 	}

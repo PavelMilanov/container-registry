@@ -20,7 +20,7 @@ var s = storage.NewStorage(env)
 var sqlite = db.NewDatabase("test.db")
 var h = handlers.NewHandler(s, &sqlite, env)
 
-func TestRegistrationAPI(t *testing.T) {
+func TestRegistyAPI(t *testing.T) {
 	srv := h.InitRouters()
 	token := ""
 	t.Run("registration", func(t *testing.T) {
@@ -29,7 +29,7 @@ func TestRegistrationAPI(t *testing.T) {
 		req, _ := http.NewRequest("POST", "/registration", strings.NewReader(body))
 		srv.ServeHTTP(w, req)
 		if w.Code != http.StatusCreated {
-			t.Fatal("ошибка при регистрации")
+			t.Error("ошибка при регистрации")
 		}
 	})
 	t.Run("login", func(t *testing.T) {
@@ -41,20 +41,14 @@ func TestRegistrationAPI(t *testing.T) {
 		var response map[string]any
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		if err != nil {
-			t.Fatal("не указан логин или пароль")
+			t.Error("не указан логин или пароль")
 		}
 		if w.Code != http.StatusOK {
-			t.Fatal("ошибка при входе")
+			t.Error("ошибка при входе")
 		}
 		token = response["token"].(string)
 		t.Log(token)
 	})
-	os.Remove("test.db")
-}
-
-func TestRegistyAPI(t *testing.T) {
-	srv := h.InitRouters()
-	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDExNjA4NTUsImlhdCI6MTc0MTA3NDQ1NX0.IolFwVdG4GxiSMqlqlpD3YQlxmKFSlkipFZsh3GJMmM"
 	t.Run("add registry", func(t *testing.T) {
 		t.Run("with authorization", func(t *testing.T) {
 			t.Parallel()

@@ -55,7 +55,7 @@ func (h *Handler) deleteRegistry(c *gin.Context) {
 // deleteRepository -удаление указанного репозитория или образа.
 // /api/<registry>/<repository> - удаляется репозиторий.
 // /api/<registry>/<repository>?tag=<tag> - удаляется образ.
-func (h *Handler) deleteRepository(c *gin.Context) {
+func (h *Handler) deleteImage(c *gin.Context) {
 	name := c.Param("name")
 	image := c.Param("image")
 	tag := c.Query("tag")
