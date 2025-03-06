@@ -4,7 +4,8 @@ RUN apk --update --no-cache add gcc musl-dev
 
 WORKDIR /
 
-COPY src/go.mod src/go.sum ./
+COPY src/go.mod ./
+COPY src/go.sum ./
 
 RUN go mod download
 
