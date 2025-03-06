@@ -30,9 +30,9 @@ type credentials struct {
 	SSL       bool   `mapstructure:"ssl"`
 }
 
-func NewEnv(path string) *Env {
+func NewEnv(path, file string) *Env {
 	env := Env{}
-	viper.SetConfigName("config") // имя файла без расширения
+	viper.SetConfigName(file) // имя файла без расширения
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(path)
 

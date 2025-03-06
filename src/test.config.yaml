@@ -1,0 +1,6 @@
+server:
+  url: "http://localhost:5050"
+  jwt: "qwerty"
+
+storage:
+  type: local

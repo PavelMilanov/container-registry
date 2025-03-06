@@ -15,7 +15,7 @@ import (
 	"github.com/PavelMilanov/container-registry/storage"
 )
 
-var env = config.NewEnv(config.DATA_PATH)
+var env = config.NewEnv(".", "test.config")
 var s = storage.NewStorage(env)
 var sqlite = db.NewDatabase("test.db")
 var h = handlers.NewHandler(s, &sqlite, env)
