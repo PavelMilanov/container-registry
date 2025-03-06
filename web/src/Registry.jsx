@@ -106,7 +106,7 @@ function Registry() {
 
   return (
     <div class="container">
-      <h2>Репозитории</h2>
+      <h2>Реестры</h2>
       <div class="copy-container">
         <input type="text" value={copyText} readonly />
       </div>

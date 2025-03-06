@@ -1,6 +1,6 @@
 FROM golang:1.24-alpine AS app
 
-RUN apk --update --no-cache add gcc musl-dev git
+RUN apk --update --no-cache add gcc musl-dev
 
 WORKDIR /
 
@@ -13,10 +13,9 @@ COPY src/ ./
 ARG VERSION
 
 ENV VERSION="${VERSION}"
-ENV CGO_ENABLED=0
-ENV GOOS=linux
+ENV CGO_ENABLED=1
 
-RUN go install -ldflags="-s -w -X 'github.com/PavelMilanov/container-registry/config.VERSION=${VERSION}'"
+RUN go install -ldflags="-s -w -X 'config.VERSION=${VERSION}'"
 
 
 FROM node:22 AS web

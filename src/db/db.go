@@ -21,7 +21,7 @@ func NewDatabase(sql string) SQLite {
 		PrepareStmt: true,
 		Logger:      logger.Default.LogMode(logger.Silent)})
 	if err != nil {
-		logrus.Fatal("Ошибка при доступе к базе данных")
+		logrus.Fatalf("Ошибка при доступе к базе данных: %s", sql)
 	}
 	var mutex sync.Mutex
 	db := SQLite{Sql: conn, Mutex: &mutex}
