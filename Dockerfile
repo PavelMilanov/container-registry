@@ -6,14 +6,15 @@ WORKDIR /
 
 COPY src/go.mod src/go.sum ./
 
-RUN go mod download
+RUN go mod download && go mod verify
 
 COPY src/ ./
 
 ARG VERSION
 
 ENV VERSION="${VERSION}"
-ENV CGO_ENABLED=1
+ENV CGO_ENABLED=0
+ENV GOOS=linux
 
 RUN go install -ldflags="-s -w -X 'github.com/PavelMilanov/container-registry/config.VERSION=${VERSION}'"
 
