@@ -16,7 +16,6 @@ require (
 )
 
 require (
-
 	github.com/bytedance/sonic v1.12.10 // indirect
 	github.com/bytedance/sonic/loader v0.2.3 // indirect
 	github.com/cloudwego/base64x v0.1.5 // indirect
@@ -64,4 +63,5 @@ require (
 	golang.org/x/text v0.22.0 // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
