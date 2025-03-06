@@ -1,10 +1,10 @@
 FROM golang:1.24-alpine AS app
 
-RUN apk --update --no-cache add gcc musl-dev
+RUN apk --update --no-cache add gcc musl-dev git
 
 WORKDIR /
 
-COPY src/go.mod ./
+COPY src/go.mod src/go.sum ./
 
 RUN go mod download
 

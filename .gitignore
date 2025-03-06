@@ -1,7 +1,6 @@
 container-registry
 tmp
 var
-go.sum
 .DS_Store
 src/assets
 .obsidian
