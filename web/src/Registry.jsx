@@ -1,7 +1,7 @@
-import { createSignal, onMount, lazy } from "solid-js";
+import { createSignal, onMount, lazy, Show } from "solid-js";
 import { A, useNavigate } from "@solidjs/router";
 import axios from "axios";
-import toast from "solid-toast";
+import { showToast } from "./utils/notification";
 
 const AddRegistry = lazy(() => import("./modal/AddRegistry"));
 const Delete = lazy(() => import("./modal/Delete"));
@@ -30,19 +30,15 @@ function Registry() {
       );
       if (response.status === 201) {
         await getRegistry();
-        toast("Реестр добавлен!", {
-          style: {
-            "background-color": "#1e3c72",
-            color: "white",
-          },
-          className: "notification",
-        });
+        showToast("Реестр добавлен!");
       }
     } catch (error) {
-      console.log(error);
       if (error.response.status === 401) {
         localStorage.removeItem("token");
         navigate("/login", { replace: true });
+      } else {
+        console.log(error);
+        showToast("Ошибка!", "error");
       }
     }
   };
@@ -69,27 +65,16 @@ function Registry() {
         { headers: headers },
       );
       if (response.status == 202) {
-        toast("Реестр удален!", {
-          style: {
-            "background-color": "#1e3c72",
-            color: "white",
-          },
-          className: "notification",
-        });
+        showToast("Реестр удален!", "error");
       }
       await getRegistry();
     } catch (error) {
-      console.error(error);
-      toast("Ошибка!", {
-        style: {
-          "background-color": "#dc3545",
-          color: "white",
-        },
-        className: "notification",
-      });
       if (error.response.status === 401) {
         localStorage.removeItem("token");
         navigate("/login", { replace: true });
+      } else {
+        console.error(error);
+        showToast("Ошибка!", "error");
       }
     }
   };
@@ -105,17 +90,12 @@ function Registry() {
       });
       setRegistryList(response.data.data); // в ответе приходит массив "data"
     } catch (error) {
-      console.error(error);
-      toast("Ошибка!", {
-        style: {
-          "background-color": "#dc3545",
-          color: "white",
-        },
-        className: "notification",
-      });
       if (error.response.status === 401) {
         localStorage.removeItem("token");
         navigate("/login", { replace: true });
+      } else {
+        console.error(error);
+        showToast("Ошибка!", "error");
       }
     }
   }

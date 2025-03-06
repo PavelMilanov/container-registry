@@ -1,8 +1,8 @@
 import { createSignal, onMount, lazy } from "solid-js";
 import { A, useParams, useNavigate } from "@solidjs/router";
 import axios from "axios";
+import { showToast } from "./utils/notification";
 
-import NavBar from "./NavBar";
 const Delete = lazy(() => import("./modal/Delete"));
 
 const API_URL = window.API_URL;
@@ -34,12 +34,17 @@ function Image() {
         API_URL + `/api/registry/${params.name}/${image()}`,
         { headers: headers, params: { tag: tag() } },
       );
+      if (response.status == 202) {
+        showToast("Образ удален!");
+      }
       await getImages();
     } catch (error) {
-      console.error(error);
       if (error.response.status === 401) {
         localStorage.removeItem("token");
         navigate("/login", { replace: true });
+      } else {
+        console.error(error);
+        showToast("Ошибка!", "error");
       }
     }
   };
@@ -56,10 +61,12 @@ function Image() {
       );
       setTagList(response.data.data); // в ответе приходит массив "data"
     } catch (error) {
-      console.error(error);
       if (error.response.status === 401) {
         localStorage.removeItem("token");
         navigate("/login", { replace: true });
+      } else {
+        console.error(error);
+        showToast("Ошибка!", "error");
       }
     }
   }

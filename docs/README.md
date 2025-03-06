@@ -65,11 +65,12 @@ server:
   jwt: "qwerty"
 
 storage:
-  type: "s3"
-  endpoint: "http://127.0.0.10:9000"
-  access_key: "your_access_key"
-  secret_key: "your_secret_key"
-
+  type: s3
+  credentials:
+    endpoint: "https://storage.network.net"
+    access_key: "your_access_key"
+    secret_key: "your_secret_key"
+    ssl: true
 ```
 - папку с файлом `config.yaml` необходимо смонтировать в контейнер по пути `/registry/var`
 ## Использование
