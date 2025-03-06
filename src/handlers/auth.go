@@ -26,7 +26,7 @@ func (h *Handler) authHandler(c *gin.Context) {
 	username := strings.Split(string(decoded), ":")[0]
 	password := strings.Split(string(decoded), ":")[1]
 	user := db.User{Name: username, Password: password}
-	if err := user.Login(h.DB.Sql); err != nil {
+	if err := user.Login(h.DB.Sql, []byte(h.ENV.Server.Jwt)); err != nil {
 		c.Header("WWW-Authenticate", `Basic realm="Docker Registry"`)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
 		return

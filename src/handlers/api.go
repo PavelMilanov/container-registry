@@ -2,33 +2,45 @@ package handlers
 
 import (
 	"net/http"
-	"os"
-	"path/filepath"
 
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
-	"github.com/PavelMilanov/container-registry/system"
 	"github.com/gin-gonic/gin"
 )
 
+// getRegistry - получение информации о реестрах.
+// /api/registry -вывод всех репозиториев.
+// /api/registry/<name> - вывод репозиториев указанного реестра.
 func (h *Handler) getRegistry(c *gin.Context) {
-	data := db.GetRegistires(h.DB.Sql)
-	c.JSON(http.StatusOK, gin.H{"data": data})
-}
-
-func (h *Handler) addRegistry(c *gin.Context) {
-	data := c.Param("name")
-	registy := db.Registry{Name: data}
-	if err := registy.Add(h.DB.Sql); err != nil {
+	name := c.Param("name")
+	if name == "" {
+		data := db.GetRegistires(h.DB.Sql)
+		c.JSON(http.StatusOK, gin.H{"data": data})
+		return
+	}
+	var registry db.Registry
+	if err := registry.GetRepositories(h.DB.Sql, name); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"data": registy})
+	c.JSON(http.StatusOK, gin.H{"data": registry.Repositories})
 }
 
+// addRegistry -добавление нового реестра.
+func (h *Handler) addRegistry(c *gin.Context) {
+	data := c.Param("name")
+	registry := db.Registry{Name: data}
+	if err := registry.Add(h.DB.Sql); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"data": registry})
+}
+
+// deleteRegistry -удаление указанного реестра.
 func (h *Handler) deleteRegistry(c *gin.Context) {
 	data := c.Param("name")
-	if err := os.RemoveAll(filepath.Join(h.STORAGE.ManifestPath, data)); err != nil {
+	if err := h.STORAGE.DeleteRegistry(data); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		return
 	}
@@ -40,12 +52,10 @@ func (h *Handler) deleteRegistry(c *gin.Context) {
 	c.JSON(http.StatusAccepted, gin.H{"data": registy})
 }
 
-func (h *Handler) getRepository(c *gin.Context) {
-	data := db.GetRepositories(h.DB.Sql)
-	c.JSON(http.StatusOK, gin.H{"data": data})
-}
-
-func (h *Handler) deleteRepository(c *gin.Context) {
+// deleteRepository -удаление указанного репозитория или образа.
+// /api/<registry>/<repository> - удаляется репозиторий.
+// /api/<registry>/<repository>?tag=<tag> - удаляется образ.
+func (h *Handler) deleteImage(c *gin.Context) {
 	name := c.Param("name")
 	image := c.Param("image")
 	tag := c.Query("tag")
@@ -55,8 +65,9 @@ func (h *Handler) deleteRepository(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 			return
 		}
-		os.Remove(filepath.Join(h.STORAGE.ManifestPath, name, img.Name, "tags", img.Tag))
-		os.Remove(filepath.Join(h.STORAGE.ManifestPath, name, img.Name, img.Hash))
+		if err := h.STORAGE.DeleteImage(name, img.Name, img.Tag, img.Hash); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+		}
 		c.JSON(http.StatusAccepted, gin.H{"data": img})
 	} else { // удаляется весь репозиторий
 		repo := db.Repository{Name: image}
@@ -64,11 +75,15 @@ func (h *Handler) deleteRepository(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 			return
 		}
-		os.RemoveAll(filepath.Join(h.STORAGE.ManifestPath, name, image))
+		if err := h.STORAGE.DeleteRepository(name, image); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+			return
+		}
 		c.JSON(http.StatusAccepted, gin.H{"data": repo})
 	}
 }
 
+// getImage -получение образа.
 func (h *Handler) getImage(c *gin.Context) {
 	ImageName := c.Param("image")
 	repo := db.GetRepository(h.DB.Sql, ImageName)
@@ -76,6 +91,7 @@ func (h *Handler) getImage(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
+// registration - регистрация.
 func (h *Handler) registration(c *gin.Context) {
 	type userRegisterData struct {
 		Username        string `json:"username" binding:"required"`
@@ -99,8 +115,8 @@ func (h *Handler) registration(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{})
 }
 
+// login - авторизация.
 func (h *Handler) login(c *gin.Context) {
-
 	type userLoginData struct {
 		Username string `json:"username" binding:"required"`
 		Password string `json:"password" binding:"required"`
@@ -111,7 +127,7 @@ func (h *Handler) login(c *gin.Context) {
 		return
 	}
 	user := db.User{Name: req.Username, Password: req.Password}
-	if err := user.Login(h.DB.Sql); err != nil {
+	if err := user.Login(h.DB.Sql, []byte(h.ENV.Server.Jwt)); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -124,7 +140,7 @@ func (h *Handler) settings(c *gin.Context) {
 	} else if c.Request.Method == "POST" {
 		q := c.Query("garbage")
 		if q == "true" {
-			system.GarbageCollection()
+			h.STORAGE.GarbageCollection()
 			c.JSON(http.StatusAccepted, gin.H{"data": "Очистка завершена"})
 			return
 		}

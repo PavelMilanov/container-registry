@@ -1,17 +1,15 @@
+// Package config реализует управление конфигурацией приложения.
 package config
 
-import "os"
-
 var (
-	DURATION   = 3
-	VERSION    string
-	JWT_SECRET = []byte(os.Getenv("JWT_KEY"))
+	DURATION = 5
+	VERSION  string
 
 	STORAGE_PATH  = "data"
 	MANIFEST_PATH = "manifests"
 	BLOBS_PATH    = "blobs"
+	DATA_PATH     = "var"
+	TMP_PATH      = "tmp"
 
-	DATA_PATH = "var"
-
-	URL = os.Getenv("URL")
+	BACKET_NAME = "registry"
 )

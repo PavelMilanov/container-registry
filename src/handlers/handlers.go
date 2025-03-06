@@ -1,3 +1,6 @@
+// Package handlers реализует основную логику REST API приложения.
+// Интеграция спецификации https://distribution.github.io/distribution/spec/api/
+// с кастомным API.
 package handlers
 
 import (
@@ -15,20 +18,23 @@ import (
 	"gorm.io/gorm"
 )
 
+// Handler основная сущность взаимодействия с API.
 type Handler struct {
 	DB      *db.SQLite
 	STORAGE *storage.Storage
+	ENV     *config.Env
 }
 
-func NewHandler(storage *storage.Storage, db *db.SQLite) *Handler {
-	return &Handler{STORAGE: storage, DB: db}
+func NewHandler(storage *storage.Storage, db *db.SQLite, env *config.Env) *Handler {
+	return &Handler{STORAGE: storage, DB: db, ENV: env}
 }
 
-func baseApiMiddleware() gin.HandlerFunc {
+// baseApiMiddleware мидлварь для авторизации на уровне REST-API.
+func baseApiMiddleware(jwtKey []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data := c.GetHeader("Authorization")
 		payload := strings.TrimPrefix(data, "Bearer ")
-		if !system.ValidateJWT(payload) {
+		if !system.ValidateJWT(payload, jwtKey) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "token is not valid"})
 			c.Abort()
 			return
@@ -37,11 +43,12 @@ func baseApiMiddleware() gin.HandlerFunc {
 	}
 }
 
+// baseRegistryMiddleware мидлварь для авторизации на уровне docker client.
 func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		repository := c.Param("repository")
 		var registry db.Registry
-		if err := registry.Get(repository, sql); err != nil {
+		if err := registry.Get(sql, repository); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get registry"})
 			c.Abort()
 			return
@@ -50,13 +57,15 @@ func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-func loginRegistryMiddleware() gin.HandlerFunc {
+// loginRegistryMiddleware мидлварь для авторизации на уровне docker client.
+// см. https://distribution.github.io/distribution/spec/auth/token/
+func loginRegistryMiddleware(url string, jwtKey []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data := c.GetHeader("Authorization")
 		payload := strings.TrimPrefix(data, "Bearer ")
-		valid := system.ValidateJWT(payload)
+		valid := system.ValidateJWT(payload, jwtKey)
 		if !valid {
-			realm := fmt.Sprintf(`Bearer realm="%s/v2/auth",service="Docker Registry"`, config.URL)
+			realm := fmt.Sprintf(`Bearer realm="%s/v2/auth",service="Docker Registry"`, url)
 			c.Header("WWW-Authenticate", realm)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			c.Abort()
@@ -70,7 +79,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{config.URL},
+		AllowOrigins:     []string{h.ENV.Server.Url},
 		AllowMethods:     []string{"GET", "POST", "DELETE"},
 		AllowHeaders:     []string{"Origin", "Authorization", "Content-Type"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -81,7 +90,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 	router.Static("/assets/", "./assets")
 
 	router.NoRoute(func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", gin.H{"URL": config.URL})
+		c.HTML(http.StatusOK, "index.html", gin.H{"URL": h.ENV.Server.Url})
 	})
 
 	router.POST("/login", h.login)
@@ -91,7 +100,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 	router.POST("/registration", h.registration)
 	router.GET("/v2/auth", h.authHandler)
 
-	v2 := router.Group("/v2/", loginRegistryMiddleware())
+	v2 := router.Group("/v2/", loginRegistryMiddleware(h.ENV.Server.Url, []byte(h.ENV.Server.Jwt)))
 	{
 		// Пинг для проверки
 		v2.GET("/", func(c *gin.Context) {
@@ -115,14 +124,14 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	}
 
-	api := router.Group("/api/", baseApiMiddleware())
+	api := router.Group("/api/", baseApiMiddleware([]byte(h.ENV.Server.Jwt)))
 	{
 		api.GET("/registry", h.getRegistry)
-		api.GET("/registry/:name/:image", h.getImage)
-		api.DELETE("/registry/:name/:image", h.deleteRepository)
-		api.GET("/registry/:name", h.getRepository)
+		api.GET("/registry/:name", h.getRegistry)
 		api.POST("/registry/:name", h.addRegistry)
 		api.DELETE("/registry/:name", h.deleteRegistry)
+		api.GET("/registry/:name/:image", h.getImage)
+		api.DELETE("/registry/:name/:image", h.deleteImage)
 		api.POST("/settings", h.settings)
 		api.GET("/settings", h.settings)
 	}

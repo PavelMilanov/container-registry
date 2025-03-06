@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// Repository абстракция таблицы repositories.
 type Repository struct {
 	ID         int    `gorm:"primaryKey"`
 	Name       string `gorm:"unique"`
@@ -38,12 +39,6 @@ func (r *Repository) Delete(sql *gorm.DB) error {
 		}
 	}()
 	return nil
-}
-
-func GetRepositories(sql *gorm.DB) []Repository {
-	var r []Repository
-	sql.Find(&r)
-	return r
 }
 
 func GetRepository(sql *gorm.DB, name string) Repository {

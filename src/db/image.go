@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// Image абстракция таблицы images.
 type Image struct {
 	ID           int `gorm:"primaryKey"`
 	Name         string
