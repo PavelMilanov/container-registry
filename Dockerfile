@@ -15,7 +15,7 @@ ARG VERSION
 ENV VERSION="${VERSION}"
 ENV CGO_ENABLED=1
 
-RUN go install -ldflags="-s -w -X 'config.VERSION=${VERSION}'"
+RUN go install -ldflags="-s -w -X 'github.com/PavelMilanov/container-registry/config.VERSION=${VERSION}'"
 
 
 FROM node:22 AS web
