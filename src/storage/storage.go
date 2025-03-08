@@ -24,25 +24,19 @@ import (
 
 // Storage абстракция над моделью подключаемого хранилища.
 type Storage struct {
-	ManifestPath string
-	BlobPath     string
-	Type         string
-	S3           *minio.Client
+	Type string
+	S3   *minio.Client
 }
 
 func NewStorage(env *config.Env) *Storage {
+	os.Mkdir(config.DATA_PATH, 0755)
 	os.MkdirAll(config.TMP_PATH, 0755)
+	os.MkdirAll(config.BLOBS_PATH, 0755)
+	os.MkdirAll(config.MANIFEST_PATH, 0755)
 	switch env.Storage.Type {
 	case "local":
-		// blobPath := filepath.Join(config.DATA_PATH, config.STORAGE_PATH, config.BLOBS_PATH)
-		// manifestPath := filepath.Join(config.DATA_PATH, config.STORAGE_PATH, config.MANIFEST_PATH)
-		os.Mkdir(config.DATA_PATH, 0755)
-		os.MkdirAll(config.BLOBS_PATH, 0755)
-		os.MkdirAll(config.MANIFEST_PATH, 0755)
 		return &Storage{
-			ManifestPath: config.MANIFEST_PATH,
-			BlobPath:     config.BLOBS_PATH,
-			Type:         env.Storage.Type,
+			Type: env.Storage.Type,
 		}
 	case "s3":
 		s3Client, err := minio.New(env.Storage.Credentials.Endpoint, &minio.Options{
@@ -57,10 +51,8 @@ func NewStorage(env *config.Env) *Storage {
 			logrus.Fatal(err)
 		}
 		return &Storage{
-			ManifestPath: filepath.Join(config.BACKET_NAME, config.MANIFEST_PATH),
-			BlobPath:     filepath.Join(config.BACKET_NAME, config.BLOBS_PATH),
-			Type:         env.Storage.Type,
-			S3:           s3Client,
+			Type: env.Storage.Type,
+			S3:   s3Client,
 		}
 	}
 	logrus.Fatal("неудалось инициализировать хранилище")
@@ -69,7 +61,7 @@ func NewStorage(env *config.Env) *Storage {
 
 // CheckBlob
 func (s *Storage) CheckBlob(uuid string) error {
-	path := filepath.Join(s.BlobPath, strings.Replace(uuid, "sha256:", "", 1))
+	path := filepath.Join(config.BLOBS_PATH, strings.Replace(uuid, "sha256:", "", 1))
 	switch s.Type {
 	case "local":
 		if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -85,7 +77,7 @@ func (s *Storage) CheckBlob(uuid string) error {
 
 // SaveBlob
 func (s *Storage) SaveBlob(tmpPath string, digest string) error {
-	finalPath := filepath.Join(s.BlobPath, strings.Replace(digest, "sha256:", "", 1))
+	finalPath := filepath.Join(config.BLOBS_PATH, strings.Replace(digest, "sha256:", "", 1))
 	switch s.Type {
 	case "local":
 		if err := os.Rename(tmpPath, finalPath); err != nil {
@@ -111,7 +103,7 @@ func (s *Storage) SaveBlob(tmpPath string, digest string) error {
 //	map["size"] - размер файла.
 func (s *Storage) GetBlob(digest string) (map[string]string, error) {
 	info := make(map[string]string)
-	blobPath := filepath.Join(s.BlobPath, strings.Replace(digest, "sha256:", "", 1))
+	blobPath := filepath.Join(config.BLOBS_PATH, strings.Replace(digest, "sha256:", "", 1))
 	switch s.Type {
 	case "local":
 		// Открываем файл блоба
@@ -157,8 +149,8 @@ func (s *Storage) GetBlob(digest string) (map[string]string, error) {
 
 // SaveManifest
 func (s *Storage) SaveManifest(body []byte, repository string, image string, reference string, calculatedDigest string) error {
-	manifestPath := filepath.Join(s.ManifestPath, repository, image, calculatedDigest)
-	tagPath := filepath.Join(s.ManifestPath, repository, image, "tags", reference)
+	manifestPath := filepath.Join(config.MANIFEST_PATH, repository, image, calculatedDigest)
+	tagPath := filepath.Join(config.MANIFEST_PATH, repository, image, "tags", reference)
 	switch s.Type {
 	case "local":
 		err := os.MkdirAll(filepath.Dir(manifestPath), 0755)
@@ -206,13 +198,13 @@ func (s *Storage) SaveManifest(body []byte, repository string, image string, ref
 func (s *Storage) GetManifest(repository string, image string, reference string) ([]byte, error) {
 	var manifest []byte
 	manifestPath := ""
-	tagPath := filepath.Join(s.ManifestPath, repository, image, "tags", reference)
+	tagPath := filepath.Join(config.MANIFEST_PATH, repository, image, "tags", reference)
 	switch s.Type {
 	case "local":
 		// Определяем путь к файлу манифеста
 		if strings.HasPrefix(reference, "sha256:") {
 			// Если reference — это digest
-			manifestPath = filepath.Join(s.ManifestPath, repository, image, reference)
+			manifestPath = filepath.Join(config.MANIFEST_PATH, repository, image, reference)
 		} else {
 			// Если reference — это тег
 			tagData, err := os.ReadFile(tagPath)
@@ -220,7 +212,7 @@ func (s *Storage) GetManifest(repository string, image string, reference string)
 				return manifest, errors.New("Tag not found")
 			}
 			manifestDigest := string(tagData)
-			manifestPath = filepath.Join(s.ManifestPath, repository, image, manifestDigest)
+			manifestPath = filepath.Join(config.MANIFEST_PATH, repository, image, manifestDigest)
 		}
 		// Читаем содержимое манифеста
 		data, err := os.ReadFile(manifestPath)
@@ -231,7 +223,7 @@ func (s *Storage) GetManifest(repository string, image string, reference string)
 	case "s3":
 		if strings.HasPrefix(reference, "sha256:") {
 			// Если reference — это digest
-			manifestPath = filepath.Join(s.ManifestPath, repository, image, reference)
+			manifestPath = filepath.Join(config.MANIFEST_PATH, repository, image, reference)
 		} else {
 			// Если reference — это тег
 			reader, err := s.S3.GetObject(context.Background(), config.BACKET_NAME, tagPath, minio.GetObjectOptions{})
@@ -244,7 +236,7 @@ func (s *Storage) GetManifest(repository string, image string, reference string)
 				return manifest, err
 			}
 			manifestDigest := string(tagData)
-			manifestPath = filepath.Join(s.ManifestPath, repository, image, manifestDigest)
+			manifestPath = filepath.Join(config.MANIFEST_PATH, repository, image, manifestDigest)
 		}
 		reader, err := s.S3.GetObject(context.Background(), config.BACKET_NAME, manifestPath, minio.GetObjectOptions{})
 		if err != nil {
@@ -259,7 +251,7 @@ func (s *Storage) GetManifest(repository string, image string, reference string)
 
 // DeleteRegistry
 func (s *Storage) DeleteRegistry(registry string) error {
-	path := filepath.Join(s.ManifestPath, registry)
+	path := filepath.Join(config.MANIFEST_PATH, registry)
 	switch s.Type {
 	case "local":
 		if err := os.RemoveAll(path); err != nil {
@@ -287,8 +279,8 @@ func (s *Storage) DeleteRegistry(registry string) error {
 
 // DeleteImage
 func (s *Storage) DeleteImage(repository string, imageName string, imageTag string, imageHash string) error {
-	path := filepath.Join(s.ManifestPath, repository, imageName, imageHash)
-	tagPath := filepath.Join(s.ManifestPath, repository, imageName, "tags", imageTag)
+	path := filepath.Join(config.MANIFEST_PATH, repository, imageName, imageHash)
+	tagPath := filepath.Join(config.MANIFEST_PATH, repository, imageName, "tags", imageTag)
 	switch s.Type {
 	case "local":
 		err := os.Remove(tagPath)
@@ -317,7 +309,7 @@ func (s *Storage) DeleteImage(repository string, imageName string, imageTag stri
 
 // DeleteRepository
 func (s *Storage) DeleteRepository(name string, image string) error {
-	path := filepath.Join(s.ManifestPath, name, image)
+	path := filepath.Join(config.MANIFEST_PATH, name, image)
 	switch s.Type {
 	case "local":
 		if err := os.RemoveAll(path); err != nil {
@@ -344,8 +336,8 @@ func (s *Storage) DeleteRepository(name string, image string) error {
 }
 
 func (s *Storage) GarbageCollection() {
-	blobs := getBlobDigest(s.BlobPath)
-	manifests := getManifestDigest(s.ManifestPath)
+	blobs := getBlobDigest(config.BLOBS_PATH)
+	manifests := getManifestDigest(config.MANIFEST_PATH)
 	var cache []string
 	for _, v := range blobs {
 		if !slices.Contains(manifests, v) {
@@ -354,7 +346,7 @@ func (s *Storage) GarbageCollection() {
 	}
 
 	for _, i := range cache {
-		if err := os.Remove(filepath.Join(s.BlobPath, i)); err != nil {
+		if err := os.Remove(filepath.Join(config.BLOBS_PATH, i)); err != nil {
 			logrus.Error(err)
 		}
 	}
