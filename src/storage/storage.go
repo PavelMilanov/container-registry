@@ -34,14 +34,14 @@ func NewStorage(env *config.Env) *Storage {
 	os.MkdirAll(config.TMP_PATH, 0755)
 	switch env.Storage.Type {
 	case "local":
-		blobPath := filepath.Join(config.DATA_PATH, config.STORAGE_PATH, config.BLOBS_PATH)
-		manifestPath := filepath.Join(config.DATA_PATH, config.STORAGE_PATH, config.MANIFEST_PATH)
-		os.MkdirAll(blobPath, 0755)
-		os.MkdirAll(manifestPath, 0755)
+		// blobPath := filepath.Join(config.DATA_PATH, config.STORAGE_PATH, config.BLOBS_PATH)
+		// manifestPath := filepath.Join(config.DATA_PATH, config.STORAGE_PATH, config.MANIFEST_PATH)
 		os.Mkdir(config.DATA_PATH, 0755)
+		os.MkdirAll(config.BLOBS_PATH, 0755)
+		os.MkdirAll(config.MANIFEST_PATH, 0755)
 		return &Storage{
-			ManifestPath: manifestPath,
-			BlobPath:     blobPath,
+			ManifestPath: config.MANIFEST_PATH,
+			BlobPath:     config.BLOBS_PATH,
 			Type:         env.Storage.Type,
 		}
 	case "s3":
@@ -89,7 +89,7 @@ func (s *Storage) SaveBlob(tmpPath string, digest string) error {
 	switch s.Type {
 	case "local":
 		if err := os.Rename(tmpPath, finalPath); err != nil {
-			return errors.New("Failed to finalize blob upload")
+			return err
 		}
 	case "s3":
 		file, _ := os.Open(tmpPath)
@@ -100,7 +100,7 @@ func (s *Storage) SaveBlob(tmpPath string, digest string) error {
 			return err
 		}
 	}
-	defer os.Remove(tmpPath)
+	os.Remove(tmpPath)
 	return nil
 }
 
