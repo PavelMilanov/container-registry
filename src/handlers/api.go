@@ -136,9 +136,14 @@ func (h *Handler) settings(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"version": config.VERSION})
 	} else if c.Request.Method == "POST" {
 		q := c.Query("garbage")
+		t := c.Query("tag")
 		if q == "true" {
 			h.STORAGE.GarbageCollection()
 			c.JSON(http.StatusAccepted, gin.H{"data": "Очистка завершена"})
+			return
+		}
+		if t != "" {
+			c.JSON(http.StatusOK, gin.H{"data": "ping"})
 			return
 		}
 	}
