@@ -1,4 +1,4 @@
-// Package handlers реализует основную логику REST API приложения.
+// Package handlers реализует REST API приложения.
 // Интеграция спецификации https://distribution.github.io/distribution/spec/api/
 // с кастомным API.
 package handlers
