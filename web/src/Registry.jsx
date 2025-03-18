@@ -65,7 +65,7 @@ function Registry() {
         { headers: headers },
       );
       if (response.status == 202) {
-        showToast("Реестр удален!", "error");
+        showToast("Реестр удален!");
       }
       await getRegistry();
     } catch (error) {
