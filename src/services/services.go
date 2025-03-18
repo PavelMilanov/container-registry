@@ -60,3 +60,7 @@ func GetImages(image string, sql *gorm.DB) []db.Image {
 	data := db.GetImageTags(sql, repo.ID, image)
 	return data
 }
+
+func DeleteOldestImages() {
+	
+}

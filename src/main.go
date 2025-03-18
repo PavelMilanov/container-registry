@@ -10,6 +10,7 @@ import (
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/handlers"
+	"github.com/PavelMilanov/container-registry/services"
 	"github.com/PavelMilanov/container-registry/storage"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
@@ -31,9 +32,13 @@ func main() {
 		cron.WithLocation(location),
 	)
 
-	c.AddFunc("0 0 * * 0", func() {
+	c.AddFunc("0 1 * * 0", func() {
 		storage.GarbageCollection()
-	}) // каждую неделю
+	}) // каждое воскресенье в 01:00
+
+	c.AddFunc("0 0 * * 0", func() {
+		services.DeleteOldestImages()
+	}) // каждое воскресенье в 00:00
 
 	sqliteFIle := fmt.Sprintf("%s/registry.db", config.DATA_PATH)
 	sqlite := db.NewDatabase(sqliteFIle)

@@ -13,5 +13,6 @@ var (
 	BLOBS_PATH    = filepath.Join(DATA_PATH, "data", "blobs")
 	TMP_PATH      = filepath.Join(DATA_PATH, "tmp")
 
-	BACKET_NAME = "registry"
+	BACKET_NAME              = "registry"
+	DEFAULT_TAG_EXPIRED_DAYS = 0
 )

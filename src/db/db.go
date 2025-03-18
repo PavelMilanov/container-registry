@@ -4,6 +4,7 @@ package db
 import (
 	"sync"
 
+	"github.com/PavelMilanov/container-registry/config"
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -26,6 +27,7 @@ func NewDatabase(sql string) SQLite {
 	var mutex sync.Mutex
 	db := SQLite{Sql: conn, Mutex: &mutex}
 	automigrate(db.Sql)
+	setDefaultSettings(db.Sql)
 	return db
 }
 
@@ -36,8 +38,16 @@ func CloseDatabase(db *gorm.DB) {
 	}
 }
 
+func setDefaultSettings(db *gorm.DB) {
+	var settings Settings
+	if err := db.FirstOrCreate(&settings, Settings{TagCount: config.DEFAULT_TAG_EXPIRED_DAYS}).Error; err != nil {
+		logrus.Fatal(err)
+		return
+	}
+}
+
 func automigrate(db *gorm.DB) {
-	if err := db.AutoMigrate(&Registry{}, &Repository{}, &Image{}, &User{}); err != nil {
+	if err := db.AutoMigrate(&Registry{}, &Repository{}, &Image{}, &User{}, &Settings{}); err != nil {
 		logrus.Fatalf("%s", err)
 		return
 	}
