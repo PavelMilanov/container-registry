@@ -15,6 +15,7 @@ import (
 	"github.com/PavelMilanov/container-registry/system"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -62,10 +63,11 @@ func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 func loginRegistryMiddleware(url string, jwtKey []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data := c.GetHeader("Authorization")
+		logrus.Debug(data)
 		payload := strings.TrimPrefix(data, "Bearer ")
 		valid := system.ValidateJWT(payload, jwtKey)
 		if !valid {
-			realm := fmt.Sprintf(`Bearer realm="%s/v2/auth",service="Docker Registry"`, url)
+			realm := fmt.Sprintf(`Bearer realm="%s/v2/auth"`, url)
 			c.Header("WWW-Authenticate", realm)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			c.Abort()
