@@ -2,6 +2,8 @@
 package services
 
 import (
+	"fmt"
+
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/storage"
 	"gorm.io/gorm"
@@ -61,6 +63,12 @@ func GetImages(image string, sql *gorm.DB) []db.Image {
 	return data
 }
 
-func DeleteOldestImages() {
-	
+func DeleteOlderImages(sql *gorm.DB) {
+	images := db.GetOlderImages(sql, "test", 10)
+	fmt.Println(images)
+	// for _, img := range images {
+	// 	if err := DeleteImage(img.Name, img.Name, img.Tag, sql, storage); err != nil {
+	// 		log.Printf("Failed to delete image %s/%s:%s: %v", img.Name, img.Name, img.Tag, err)
+	// 	}
+	// }
 }

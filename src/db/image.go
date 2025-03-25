@@ -44,3 +44,9 @@ func GetImageTags(sql *gorm.DB, id int, name string) []Image {
 	sql.Where("repository_id =? AND name =?", id, name).Find(&i)
 	return i
 }
+
+func GetOlderImages(sql *gorm.DB, name string, count int) []Image {
+	var i []Image
+	sql.Raw("select * from images where images.name = ? order by created_at LIMIT ?", name, count).Scan(&i)
+	return i
+}

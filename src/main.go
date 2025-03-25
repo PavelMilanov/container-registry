@@ -32,18 +32,17 @@ func main() {
 		cron.WithLocation(location),
 	)
 
+	sqliteFIle := fmt.Sprintf("%s/registry.db", config.DATA_PATH)
+	sqlite := db.NewDatabase(sqliteFIle)
+	defer db.CloseDatabase(sqlite.Sql)
+
 	c.AddFunc("0 1 * * 0", func() {
 		storage.GarbageCollection()
 	}) // каждое воскресенье в 01:00
 
 	c.AddFunc("0 0 * * 0", func() {
-		services.DeleteOldestImages()
+		services.DeleteOlderImages(sqlite.Sql)
 	}) // каждое воскресенье в 00:00
-
-	sqliteFIle := fmt.Sprintf("%s/registry.db", config.DATA_PATH)
-	sqlite := db.NewDatabase(sqliteFIle)
-	defer db.CloseDatabase(sqlite.Sql)
-
 	handler := handlers.NewHandler(storage, &sqlite, env)
 	srv := new(Server)
 	go func() {
