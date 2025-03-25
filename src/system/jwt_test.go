@@ -6,7 +6,7 @@ import (
 
 func TestGenerateJWT(t *testing.T) {
 	key := []byte("secret")
-	token, err := GenerateJWT(key)
+	token, err := GenerateJWT("test", key)
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -15,7 +15,7 @@ func TestGenerateJWT(t *testing.T) {
 
 func TestValidateJWT(t *testing.T) {
 	key := []byte("secret")
-	token, _ := GenerateJWT(key)
+	token, _ := GenerateJWT("test", key)
 	if !ValidateJWT(token, key) {
 		t.Error("токен не валиден")
 	}

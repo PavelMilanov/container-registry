@@ -2,11 +2,10 @@ package handlers
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/PavelMilanov/container-registry/db"
+	"github.com/PavelMilanov/container-registry/system"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,7 +23,7 @@ func (h *Handler) authHandler(c *gin.Context) {
 		return
 	}
 	// Генерируем JWT-токен (срок действия 24 часа)
-	tokenString, err := generateJWT(username, h.ENV.Server.Jwt)
+	tokenString, err := system.GenerateJWT(username, []byte(h.ENV.Server.Jwt))
 	if err != nil {
 		logrus.Errorf("Failed to generate token: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
@@ -34,13 +33,13 @@ func (h *Handler) authHandler(c *gin.Context) {
 	// c.JSON(http.StatusOK, gin.H{"token": user.Token})
 }
 
-// generateJWT генерирует JWT-токен с использованием алгоритма HS256.
-func generateJWT(username, secret string) (string, error) {
-	claims := jwt.MapClaims{
-		"sub": username,
-		"iat": time.Now().Unix(),
-		"exp": time.Now().Add(24 * time.Hour).Unix(),
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(secret))
-}
+// // generateJWT генерирует JWT-токен с использованием алгоритма HS256.
+// func generateJWT(username, secret string) (string, error) {
+// 	claims := jwt.MapClaims{
+// 		"sub": username,
+// 		"iat": time.Now().Unix(),
+// 		"exp": time.Now().Add(24 * time.Hour).Unix(),
+// 	}
+// 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+// 	return token.SignedString([]byte(secret))
+// }
