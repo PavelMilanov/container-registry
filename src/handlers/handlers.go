@@ -15,6 +15,7 @@ import (
 	"github.com/PavelMilanov/container-registry/system"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/gorm"
 )
 
@@ -61,20 +62,42 @@ func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 // см. https://distribution.github.io/distribution/spec/auth/token/
 func loginRegistryMiddleware(url string, jwtKey []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		data := c.GetHeader("Authorization")
-		payload := strings.TrimPrefix(data, "Bearer ")
-		if !system.ValidateJWT(payload, jwtKey) {
-			service := c.Query("service")
-			scope := c.Query("scope")
-			challenge := fmt.Sprintf(`Bearer realm="%s/v2/auth"`, url)
-			if service != "" {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			// Формируем challenge согласно спецификации
+			challenge := fmt.Sprintf(`Bearer realm="%s/v2/auth",service="Docker Registry"`, url)
+			if service := c.Query("service"); service != "" {
 				challenge += fmt.Sprintf(`,service="%s"`, service)
 			}
-			if scope != "" {
+			if scope := c.Query("scope"); scope != "" {
 				challenge += fmt.Sprintf(`,scope="%s"`, scope)
 			}
 			c.Header("WWW-Authenticate", challenge)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized - missing token"})
+			c.Abort()
+			return
+		}
+
+		// Извлекаем токен (удаляем префикс "Bearer ")
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		// Проверяем токен с использованием jwtKey
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			// Проверка соответствия алгоритма подписи
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+			return jwtKey, nil
+		})
+		if err != nil || token == nil || !token.Valid {
+			challenge := fmt.Sprintf(`Bearer realm="%s/v2/auth",service="Docker Registry"`, url)
+			if service := c.Query("service"); service != "" {
+				challenge += fmt.Sprintf(`,service="%s"`, service)
+			}
+			if scope := c.Query("scope"); scope != "" {
+				challenge += fmt.Sprintf(`,scope="%s"`, scope)
+			}
+			c.Header("WWW-Authenticate", challenge)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized - invalid token"})
 			c.Abort()
 			return
 		}
