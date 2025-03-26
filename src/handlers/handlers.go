@@ -119,10 +119,6 @@ func (h *Handler) InitRouters() *gin.Engine {
 	router.LoadHTMLGlob("./index.html")
 	router.Static("/assets/", "./assets")
 
-	router.NoRoute(func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", gin.H{"URL": h.ENV.Server.Url})
-	})
-
 	router.POST("/login", h.login)
 	router.GET("/check", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
@@ -165,5 +161,9 @@ func (h *Handler) InitRouters() *gin.Engine {
 		api.POST("/settings", h.settings)
 		api.GET("/settings", h.settings)
 	}
+
+	router.NoRoute(func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.html", gin.H{"URL": h.ENV.Server.Url})
+	})
 	return router
 }
