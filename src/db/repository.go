@@ -41,8 +41,11 @@ func (r *Repository) Delete(sql *gorm.DB) error {
 	return nil
 }
 
-func GetRepository(sql *gorm.DB, name string) Repository {
+func GetRepository(sql *gorm.DB, condition string, args ...interface{}) (*Repository, error) {
 	var r Repository
-	sql.Where("name =?", name).First(&r)
-	return r
+	if err := sql.Where(condition, args...).First(&r).Error; err != nil {
+		logrus.Error(err)
+		return nil, err
+	}
+	return &r, nil
 }

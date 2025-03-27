@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
@@ -133,7 +134,8 @@ func (h *Handler) login(c *gin.Context) {
 
 func (h *Handler) settings(c *gin.Context) {
 	if c.Request.Method == "GET" {
-		c.JSON(http.StatusOK, gin.H{"version": config.VERSION})
+		count, _ := db.GetCountTag(h.DB.Sql)
+		c.JSON(http.StatusOK, gin.H{"version": config.VERSION, "count": count})
 	} else if c.Request.Method == "POST" {
 		q := c.Query("garbage")
 		t := c.Query("tag")
@@ -143,7 +145,12 @@ func (h *Handler) settings(c *gin.Context) {
 			return
 		}
 		if t != "" {
-			c.JSON(http.StatusOK, gin.H{"data": "ping"})
+			count, _ := strconv.Atoi(t)
+			if err := db.SetCountTag(h.DB.Sql, count); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusAccepted, gin.H{"data": "Настройки сохранены"})
 			return
 		}
 	}

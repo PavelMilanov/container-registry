@@ -2,7 +2,6 @@ import { createSignal, onMount, lazy, Show } from "solid-js";
 import { A, useNavigate } from "@solidjs/router";
 import axios from "axios";
 import { showToast } from "./utils/notification";
-
 const AddRegistry = lazy(() => import("./modal/AddRegistry"));
 const Delete = lazy(() => import("./modal/Delete"));
 

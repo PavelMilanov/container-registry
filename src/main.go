@@ -39,10 +39,10 @@ func main() {
 	c.AddFunc("0 1 * * 0", func() {
 		storage.GarbageCollection()
 	}) // каждое воскресенье в 01:00
-
 	c.AddFunc("0 0 * * 0", func() {
-		services.DeleteOlderImages(sqlite.Sql)
+		services.DeleteOlderImages(sqlite.Sql, storage)
 	}) // каждое воскресенье в 00:00
+
 	handler := handlers.NewHandler(storage, &sqlite, env)
 	srv := new(Server)
 	go func() {

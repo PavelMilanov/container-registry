@@ -2,10 +2,9 @@
 package services
 
 import (
-	"fmt"
-
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/storage"
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -58,17 +57,22 @@ func DeleteRepository(name, image string, sql *gorm.DB, storage *storage.Storage
 }
 
 func GetImages(image string, sql *gorm.DB) []db.Image {
-	repo := db.GetRepository(sql, image)
+	repo, _ := db.GetRepository(sql, "name = ?", image)
 	data := db.GetImageTags(sql, repo.ID, image)
 	return data
 }
 
-func DeleteOlderImages(sql *gorm.DB) {
-	images := db.GetOlderImages(sql, "test", 10)
-	fmt.Println(images)
-	// for _, img := range images {
-	// 	if err := DeleteImage(img.Name, img.Name, img.Tag, sql, storage); err != nil {
-	// 		log.Printf("Failed to delete image %s/%s:%s: %v", img.Name, img.Name, img.Tag, err)
-	// 	}
-	// }
+// DeleteOlderImages удаляет старые образы из базы данных и хранилища.
+func DeleteOlderImages(sql *gorm.DB, storage *storage.Storage) {
+	tagCount, err := db.GetCountTag(sql)
+	if err != nil {
+		logrus.Printf("Failed to get tag count: %v", err)
+		return
+	}
+	data := db.GetLastTagImages(sql, tagCount)
+	for _, item := range data {
+		repo, _ := db.GetRepository(sql, "ID = ?", item.RepositoryID)
+		storage.DeleteImage(repo.Name, item.Name, item.Tag, item.Hash)
+		sql.Delete(&item)
+	}
 }
