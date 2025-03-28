@@ -3,6 +3,10 @@
 @plugin "flowbite/plugin";
 @source "../../node_modules/flowbite";
 
+@theme {
+    --color-main: #1e3c72;
+}
+
 body {
     font-family: "Roboto", sans-serif;
     margin: 0;
@@ -85,16 +89,10 @@ body {
     position: relative;
 }
 
-header {
+.header {
     background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
     color: white;
-    padding: 1rem;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-nav {
-    background: #ffffff;
-    /* padding: 0.5rem; */
+    padding: 2rem;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 

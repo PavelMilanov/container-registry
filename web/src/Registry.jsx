@@ -107,15 +107,18 @@ function Registry() {
 
   return (
     <div class="container">
-      {/* <h2>Реестры</h2> */}
-      {/* <div class="copy-container">
-        <input type="text" value={copyText} readonly />
-      </div> */}
       <Breadcrumb path={location.pathname} />
       <div class="card">
-        <button class="btn btn-primary" onClick={openModal}>
+        <button
+          type="button"
+          onClick={openModal}
+          class="text-white bg-main hover:bg-blue-900 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2"
+        >
           Добавить реестр
         </button>
+        {/* <button class="btn btn-primary" onClick={openModal}>
+          Добавить реестр
+        </button> */}
         <AddRegistry
           isOpen={isModalOpen()}
           onNewRegistry={newRegistry}
