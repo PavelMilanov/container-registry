@@ -5,7 +5,6 @@ import { Toaster } from "solid-toast";
 import Registry from "./Registry";
 import NavBar from "./NavBar";
 import GithubLink from "./utils/GithubLink";
-
 const Register = lazy(() => import("./Register"));
 const Repo = lazy(() => import("./Repo"));
 const Image = lazy(() => import("./Image"));

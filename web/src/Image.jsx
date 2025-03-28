@@ -1,16 +1,18 @@
 import { createSignal, onMount, lazy } from "solid-js";
-import { A, useParams, useNavigate } from "@solidjs/router";
+import { A, useParams, useLocation, useNavigate } from "@solidjs/router";
 import axios from "axios";
 import { showToast } from "./utils/notification";
+import Breadcrumb from "./utils/Breadcrumb";
 
 const Delete = lazy(() => import("./modal/Delete"));
 
-const API_URL = window.API_URL;
+// const API_URL = window.API_URL;
 
 function Image() {
   const navigate = useNavigate();
-  const [tagList, setTagList] = createSignal([]);
   const params = useParams();
+  const location = useLocation();
+  const [tagList, setTagList] = createSignal([]);
   const [tag, setTag] = createSignal("");
   const [image, setImage] = createSignal("");
   const [isModalDeleteOpen, setModalDeleteOpen] = createSignal(false);
@@ -76,12 +78,7 @@ function Image() {
   });
   return (
     <div class="container">
-      <h2>
-        <a href="/registry">Репозитории</a>
-        {"/"}
-        <A href={"/registry/" + params.name}>{params.name}</A> {"/"}{" "}
-        {params.image}{" "}
-      </h2>
+      <Breadcrumb path={location.pathname} />
       <div class="card">
         <Delete
           isOpen={isModalDeleteOpen()}

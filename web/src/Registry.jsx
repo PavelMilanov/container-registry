@@ -1,7 +1,8 @@
 import { createSignal, onMount, lazy, Show } from "solid-js";
-import { A, useNavigate } from "@solidjs/router";
+import { A, useNavigate, useLocation } from "@solidjs/router";
 import axios from "axios";
 import { showToast } from "./utils/notification";
+import Breadcrumb from "./utils/Breadcrumb";
 const AddRegistry = lazy(() => import("./modal/AddRegistry"));
 const Delete = lazy(() => import("./modal/Delete"));
 
@@ -9,6 +10,7 @@ const API_URL = window.API_URL;
 
 function Registry() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isModalOpen, setModalOpen] = createSignal(false);
   const [registryList, setRegistryList] = createSignal([]);
   const [registry, setRegistry] = createSignal("");
@@ -45,7 +47,7 @@ function Registry() {
 
   const [isModalDeleteOpen, setModalDeleteOpen] = createSignal(false);
 
-  let copyText = `${API_URL}`.split("//")[1];
+  // let copyText = `${API_URL}`.split("//")[1];
 
   const openDeleteModal = (item) => {
     setModalDeleteOpen(true);
@@ -105,10 +107,11 @@ function Registry() {
 
   return (
     <div class="container">
-      <h2>Реестры</h2>
-      <div class="copy-container">
+      {/* <h2>Реестры</h2> */}
+      {/* <div class="copy-container">
         <input type="text" value={copyText} readonly />
-      </div>
+      </div> */}
+      <Breadcrumb path={location.pathname} />
       <div class="card">
         <button class="btn btn-primary" onClick={openModal}>
           Добавить реестр
@@ -140,9 +143,7 @@ function Registry() {
                 <tr>
                   <td>
                     <div>
-                      <A inactiveClass="" href={registy.Name}>
-                        {registy.Name}
-                      </A>
+                      <A href={registy.Name}>{registy.Name}</A>
                     </div>
                   </td>
                   {/* <td>{registy.Size}</td> */}

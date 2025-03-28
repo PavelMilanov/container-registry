@@ -1,15 +1,18 @@
 import { createSignal, onMount, lazy } from "solid-js";
-import { A, useParams, useNavigate } from "@solidjs/router";
+import { A, useNavigate, useParams, useLocation } from "@solidjs/router";
 import axios from "axios";
 import { showToast } from "./utils/notification";
+import Breadcrumb from "./utils/Breadcrumb";
+
 const Delete = lazy(() => import("./modal/Delete"));
 
 const API_URL = window.API_URL;
 
 function Repo() {
   const navigate = useNavigate();
-  const [imageList, setImageList] = createSignal([]);
+  const location = useLocation();
   const params = useParams();
+  const [imageList, setImageList] = createSignal([]);
   const [repo, setRepo] = createSignal("");
   const [isModalDeleteOpen, setModalDeleteOpen] = createSignal(false);
 
@@ -53,11 +56,13 @@ function Repo() {
     try {
       const response = await axios.get(
         API_URL + `/api/registry/${params.name}`,
-        { headers: headers },
+        {
+          headers: headers,
+        },
       );
       setImageList(response.data.data); // в ответе приходит массив "data"
     } catch (error) {
-      if (error.response.status === 401) {
+      if (error.response?.status === 401) {
         localStorage.removeItem("token");
         navigate("/login", { replace: true });
       } else {
@@ -66,14 +71,13 @@ function Repo() {
       }
     }
   }
+
   onMount(async () => {
     await getRepo();
   });
   return (
     <div class="container">
-      <h2>
-        <a href="/registry">Репозитории</a> {"/"} {params.name}
-      </h2>
+      <Breadcrumb path={location.pathname} />
       <div class="card">
         <Delete
           isOpen={isModalDeleteOpen()}
@@ -95,7 +99,7 @@ function Repo() {
               {(image, i) => (
                 <tr>
                   <td>
-                    <A inactiveClass="" href={image.Name}>
+                    <A href={image.Name}>
                       {API_URL.split("//")[1]}/{params.name}/{image.Name}
                     </A>
                   </td>
