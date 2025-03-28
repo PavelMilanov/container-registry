@@ -2,7 +2,6 @@ import { createSignal, onMount, lazy } from "solid-js";
 import { A, useParams, useNavigate } from "@solidjs/router";
 import axios from "axios";
 import { showToast } from "./utils/notification";
-
 const Delete = lazy(() => import("./modal/Delete"));
 
 const API_URL = window.API_URL;
@@ -67,7 +66,6 @@ function Repo() {
       }
     }
   }
-
   onMount(async () => {
     await getRepo();
   });
