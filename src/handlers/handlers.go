@@ -30,7 +30,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{h.ENV.Server.Url},
+		AllowOrigins:     []string{h.ENV.Server.Url, "http://localhost:3000"},
 		AllowMethods:     []string{"GET", "POST", "DELETE"},
 		AllowHeaders:     []string{"Origin", "Authorization", "Content-Type"},
 		ExposeHeaders:    []string{"Content-Length"},

@@ -20,7 +20,7 @@ function App() {
       <NavBar />
       <Router>
         <Route path="/login" component={Login} />
-        <Route path="/logout" component={Logout} />
+        {/* <Route path="/logout" component={Logout} /> */}
         <Route path="/register" component={Register} />
         <Route path="/registry">
           <Route path="/" component={Registry} />
