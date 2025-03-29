@@ -1,4 +1,4 @@
-function NavBar() {
+export default function NavBar() {
   return (
     <>
       <div class="header text-2xl">Container Registry</div>
@@ -38,5 +38,3 @@ function NavBar() {
     </>
   );
 }
-
-export default NavBar;

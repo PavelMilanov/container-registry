@@ -1,9 +1,7 @@
 import { For } from "solid-js";
 import { A } from "@solidjs/router";
 
-const API_URL = window.API_URL;
-
-function Breadcrumb(props) {
+export default function Breadcrumb(props) {
   let segments = props.path.split("/").filter(Boolean);
   return (
     <nav
@@ -62,5 +60,3 @@ function Breadcrumb(props) {
     </nav>
   );
 }
-
-export default Breadcrumb;

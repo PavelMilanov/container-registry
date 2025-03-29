@@ -1,16 +1,16 @@
-import { createSignal, onMount, lazy, Show } from "solid-js";
+import { createSignal, onMount, lazy } from "solid-js";
 import { A, useNavigate, useLocation } from "@solidjs/router";
 import axios from "axios";
 import { showToast } from "./utils/notification";
 import Breadcrumb from "./utils/Breadcrumb";
-import Table from "./utils/Table";
+import RegistryTable from "./utils/RegistryTable";
 
 const AddRegistry = lazy(() => import("./modal/AddRegistry"));
 const Delete = lazy(() => import("./modal/Delete"));
 
 const API_URL = window.API_URL;
 
-function Registry() {
+export default function Registry() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isModalOpen, setModalOpen] = createSignal(false);
@@ -48,8 +48,6 @@ function Registry() {
   const newRegistry = (value) => setRegistry(value);
 
   const [isModalDeleteOpen, setModalDeleteOpen] = createSignal(false);
-
-  // let copyText = `${API_URL}`.split("//")[1];
 
   const openDeleteModal = (item) => {
     setModalDeleteOpen(true);
@@ -130,10 +128,8 @@ function Registry() {
           onClose={closeDeleteModal}
           onSubmit={submitDelete}
         />
-        <Table items={registryList()} />
+        <RegistryTable items={registryList()} />
       </div>
     </div>
   );
 }
-
-export default Registry;

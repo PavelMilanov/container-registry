@@ -1,4 +1,4 @@
-function GithubLink() {
+export default function GithubLink() {
   return (
     <a
       href="https://github.com/PavelMilanov/container-registry"
@@ -17,5 +17,3 @@ function GithubLink() {
     </a>
   );
 }
-
-export default GithubLink;

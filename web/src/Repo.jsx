@@ -4,11 +4,12 @@ import axios from "axios";
 import { showToast } from "./utils/notification";
 import Breadcrumb from "./utils/Breadcrumb";
 
+const RepoTable = lazy(() => import("./utils/RepoTable"));
 const Delete = lazy(() => import("./modal/Delete"));
 
 const API_URL = window.API_URL;
 
-function Repo() {
+export default function Repo() {
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
@@ -85,42 +86,8 @@ function Repo() {
           onClose={closeDeleteModal}
           onSubmit={submitDelete}
         />
-        <table>
-          <thead>
-            <tr>
-              <th>Репозиторий</th>
-              {/* <th>Размер</th> */}
-              <th>Создан</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <For each={imageList()}>
-              {(image, i) => (
-                <tr>
-                  <td>
-                    <A href={image.Name}>
-                      {API_URL.split("//")[1]}/{params.name}/{image.Name}
-                    </A>
-                  </td>
-                  {/* <td>{repo.Size}</td> */}
-                  <td>{image.CreatedAt}</td>
-                  <td>
-                    <button
-                      class="btn btn-secondary"
-                      onClick={() => openDeleteModal(image.Name)}
-                    >
-                      Удалить репозиторий
-                    </button>
-                  </td>
-                </tr>
-              )}
-            </For>
-          </tbody>
-        </table>
+        <RepoTable items={imageList()} />
       </div>
     </div>
   );
 }
-
-export default Repo;

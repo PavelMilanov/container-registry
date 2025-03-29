@@ -1,11 +1,9 @@
 import { createSignal, onMount } from "solid-js";
-import { query, useNavigate } from "@solidjs/router";
+import { useNavigate } from "@solidjs/router";
 import toast from "solid-toast";
 import axios from "axios";
 
-const API_URL = window.API_URL;
-
-function Settings() {
+export default function Settings() {
   const navigate = useNavigate();
   const [version, setVersion] = createSignal("");
   const [tagCount, setTagCount] = createSignal("");
@@ -127,5 +125,3 @@ function Settings() {
     </div>
   );
 }
-
-export default Settings;

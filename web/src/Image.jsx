@@ -4,11 +4,10 @@ import axios from "axios";
 import { showToast } from "./utils/notification";
 import Breadcrumb from "./utils/Breadcrumb";
 
+const ImageTable = lazy(() => import("./utils/ImageTable"));
 const Delete = lazy(() => import("./modal/Delete"));
 
-// const API_URL = window.API_URL;
-
-function Image() {
+export default function Image() {
   const navigate = useNavigate();
   const params = useParams();
   const location = useLocation();
@@ -22,8 +21,6 @@ function Image() {
     setTag(tag);
   };
   const closeDeleteModal = () => setModalDeleteOpen(false);
-
-  let copyText = `${API_URL}/${params.name}/${params.image}`.split("//")[1];
 
   const submitDelete = async () => {
     setModalDeleteOpen(false);
@@ -86,42 +83,8 @@ function Image() {
           onClose={closeDeleteModal}
           onSubmit={submitDelete}
         />
-        <table>
-          <thead>
-            <tr>
-              <th>Образ</th>
-              <th>Хеш</th>
-              <th>Размер</th>
-              <th>Создан</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <For each={tagList()}>
-              {(tag, i) => (
-                <tr>
-                  <td>
-                    {copyText()}:{tag.Tag}
-                  </td>
-                  <td>{tag.Hash.slice(0, 15)}...</td>
-                  <td>{tag.SizeAlias}</td>
-                  <td>{tag.CreatedAt}</td>
-                  <td>
-                    <button
-                      class="btn btn-secondary"
-                      onClick={() => openDeleteModal(tag.Name, tag.Tag)}
-                    >
-                      Удалить образ
-                    </button>
-                  </td>
-                </tr>
-              )}
-            </For>
-          </tbody>
-        </table>
+        <ImageTable items={tagList()} />
       </div>
     </div>
   );
 }
-
-export default Image;

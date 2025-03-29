@@ -2,7 +2,7 @@ import { createSignal, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import axios from "axios";
 
-function Register() {
+export default function Register() {
   const navigate = useNavigate();
   const [errorMessage, setErrorMessage] = createSignal("");
   const [username, setUsername] = createSignal("");
@@ -82,5 +82,3 @@ function Register() {
     </div>
   );
 }
-
-export default Register;

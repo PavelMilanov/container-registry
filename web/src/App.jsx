@@ -13,7 +13,7 @@ const Logout = lazy(() => import("./modal/Logout"));
 const NotFound = lazy(() => import("./NotFound"));
 const Settings = lazy(() => import("./Settings"));
 
-function App() {
+export default function App() {
   return (
     <div>
       <NavBar />
@@ -34,5 +34,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
