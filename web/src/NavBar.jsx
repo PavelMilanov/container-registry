@@ -9,19 +9,25 @@ function NavBar() {
               <li>
                 <a
                   href="/registry"
-                  class="text-gray-900 hover:underline"
+                  class="text-gray-900 hover:underline text-base"
                   aria-current="page"
                 >
                   Реестр
                 </a>
               </li>
               <li>
-                <a href="/settings" class="text-gray-900 hover:underline">
+                <a
+                  href="/settings"
+                  class="text-gray-900 hover:underline text-base"
+                >
                   Настройки
                 </a>
               </li>
               <li>
-                <a href="/logout" class="text-gray-900 hover:underline">
+                <a
+                  href="/logout"
+                  class="text-gray-900 hover:underline text-base"
+                >
                   Выйти
                 </a>
               </li>
