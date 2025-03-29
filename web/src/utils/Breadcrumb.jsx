@@ -1,6 +1,8 @@
 import { For } from "solid-js";
 import { A } from "@solidjs/router";
 
+import Clipboard from "./Clipboard";
+
 export default function Breadcrumb(props) {
   let segments = props.path.split("/").filter(Boolean);
   return (
@@ -33,7 +35,7 @@ export default function Breadcrumb(props) {
                 )}
                 <A
                   href={url}
-                  class="ms-1 text-base font-medium text-gray-700 hover:text-blue-600 md:ms-2"
+                  class="ms-1 text-base font-medium hover:text-blue-600 md:ms-2"
                 >
                   {index() === 0 ? (
                     <div class="flex items-center gap-1">
@@ -57,6 +59,7 @@ export default function Breadcrumb(props) {
           }}
         </For>
       </ol>
+      <Clipboard />
     </nav>
   );
 }
