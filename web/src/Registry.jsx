@@ -3,6 +3,8 @@ import { A, useNavigate, useLocation } from "@solidjs/router";
 import axios from "axios";
 import { showToast } from "./utils/notification";
 import Breadcrumb from "./utils/Breadcrumb";
+import Table from "./utils/Table";
+
 const AddRegistry = lazy(() => import("./modal/AddRegistry"));
 const Delete = lazy(() => import("./modal/Delete"));
 
@@ -112,13 +114,10 @@ function Registry() {
         <button
           type="button"
           onClick={openModal}
-          class="text-white bg-main hover:bg-blue-900 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2"
+          class="text-white bg-main border hover:text-main hover:bg-white hover:border focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2"
         >
           Добавить реестр
         </button>
-        {/* <button class="btn btn-primary" onClick={openModal}>
-          Добавить реестр
-        </button> */}
         <AddRegistry
           isOpen={isModalOpen()}
           onNewRegistry={newRegistry}
@@ -131,39 +130,7 @@ function Registry() {
           onClose={closeDeleteModal}
           onSubmit={submitDelete}
         />
-        <table>
-          <thead>
-            <tr>
-              <th>Реестр</th>
-              {/* <th>Размер</th> */}
-              <th>Создан</th>
-              <th>...</th>
-            </tr>
-          </thead>
-          <tbody>
-            <For each={registryList()}>
-              {(registy, i) => (
-                <tr>
-                  <td>
-                    <div>
-                      <A href={registy.Name}>{registy.Name}</A>
-                    </div>
-                  </td>
-                  {/* <td>{registy.Size}</td> */}
-                  <td>{registy.CreatedAt}</td>
-                  <td>
-                    <button
-                      class="btn btn-secondary"
-                      onClick={() => openDeleteModal(registy.Name)}
-                    >
-                      Удалить реестр
-                    </button>
-                  </td>
-                </tr>
-              )}
-            </For>
-          </tbody>
-        </table>
+        <Table items={registryList()} />
       </div>
     </div>
   );
