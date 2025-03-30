@@ -35,7 +35,7 @@ export default function Breadcrumb(props) {
                 )}
                 <A
                   href={url}
-                  class="ms-1 text-base font-medium hover:text-blue-600 md:ms-2"
+                  class="ms-1 text-base font-medium hover:text-blue-600 md:ms-2 hover:bg-blue-50 hover:rounded-sm"
                 >
                   {index() === 0 ? (
                     <div class="flex items-center gap-1">
