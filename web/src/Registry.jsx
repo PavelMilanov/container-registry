@@ -4,7 +4,6 @@ import axios from "axios";
 import { showToast } from "./utils/notification";
 import Breadcrumb from "./utils/Breadcrumb";
 import RegistryTable from "./utils/RegistryTable";
-
 const AddRegistry = lazy(() => import("./modal/AddRegistry"));
 const Delete = lazy(() => import("./modal/Delete"));
 
@@ -109,19 +108,15 @@ export default function Registry() {
     <div class="container">
       <Breadcrumb path={location.pathname} />
       <div class="card">
-        <button
+        <AddRegistry onNewRegistry={newRegistry} onSubmit={submitAddRegistry} />
+        {/* <button
           type="button"
           onClick={openModal}
           class="text-white bg-main border hover:text-main hover:bg-white hover:border focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2"
         >
           Добавить реестр
-        </button>
-        <AddRegistry
-          isOpen={isModalOpen()}
-          onNewRegistry={newRegistry}
-          onClose={closeModal}
-          onSubmit={submitAddRegistry}
-        />
+        </button> */}
+        {/* <AddRegistry */}
         <Delete
           isOpen={isModalDeleteOpen()}
           message={"Все репозитории и образы Docker реестра будут удалены!"}
