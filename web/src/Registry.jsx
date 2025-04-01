@@ -108,7 +108,12 @@ export default function Registry() {
     <div class="container">
       <Breadcrumb path={location.pathname} />
       <div class="card">
-        <AddRegistry onNewRegistry={newRegistry} onSubmit={submitAddRegistry} />
+        <AddRegistry
+          // isOpen={setModalOpen(true)}
+          onNewRegistry={newRegistry}
+          // onClose={closeModal}
+          onSubmit={submitAddRegistry}
+        />
         {/* <button
           type="button"
           onClick={openModal}
