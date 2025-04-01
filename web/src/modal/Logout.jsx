@@ -1,5 +1,4 @@
 import { createSignal, Show } from "solid-js";
-import { Portal } from "solid-js/web";
 import { useNavigate } from "@solidjs/router";
 
 export default function Logout() {

@@ -1,7 +1,7 @@
 import { createSignal, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 
-function Delete(props) {
+export default function Delete(props) {
   const [showModal, setShowModal] = createSignal(false);
   const openModal = () => setShowModal(true);
   const closeModal = () => setShowModal(false);
@@ -93,5 +93,3 @@ function Delete(props) {
     </>
   );
 }
-
-export default Delete;
