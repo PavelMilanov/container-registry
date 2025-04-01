@@ -25,7 +25,7 @@ export default function Clipboard() {
         <input
           id="clipboard-input"
           type="text"
-          class="bg-blue-50 text-base text-sm rounded-lg focus:ring-blue-800 focus:border-blue-800 block w-full px-2.5 py-4"
+          class="bg-blue-50 text-xs rounded-lg focus:ring-blue-800 focus:border-blue-800 block w-full px-2.5 py-4"
           value={API_URL.split("//")[1]}
           disabled
           readonly
@@ -33,7 +33,7 @@ export default function Clipboard() {
         />
         <button
           onClick={copyToClipboard}
-          class="absolute end-2.5 top-1/2 -translate-y-1/2 text-base hover:bg-gray-100 rounded-lg py-2 px-2.5 inline-flex items-center justify-center bg-white border border-gray-200 h-8"
+          class="absolute end-2.5 top-1/2 -translate-y-1/2 text-xs hover:bg-gray-100 rounded-lg py-2 px-2.5 inline-flex items-center justify-center bg-white border border-gray-200 h-8"
         >
           {!copied() ? (
             <span id="default-message" class="inline-flex items-center">
@@ -65,7 +65,7 @@ export default function Clipboard() {
                   d="M1 5.917 5.724 10.5 15 1.5"
                 />
               </svg>
-              <span class="text-xs font-semibold text-base">Скопировано!</span>
+              <span class="text-xs font-semibold">Скопировано!</span>
             </span>
           )}
         </button>

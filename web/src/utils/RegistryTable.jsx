@@ -1,7 +1,36 @@
-import { For } from "solid-js";
+import { For, lazy } from "solid-js";
 import { A } from "@solidjs/router";
-function RegistryTable(props) {
+import axios from "axios";
+import { showToast } from "./notification";
+
+const Delete = lazy(() => import("../modal/Delete"));
+
+export default function RegistryTable(props) {
   let items = () => props.items;
+
+  const onDeleteRegistry = async (item) => {
+    let token = localStorage.getItem("token");
+    const headers = {
+      Authorization: `Bearer ${token}`,
+    };
+    try {
+      const response = await axios.delete(API_URL + `/api/registry/${item}`, {
+        headers: headers,
+      });
+      if (response.status == 202) {
+        showToast("Реестр удален!");
+      }
+      await props.delNotification();
+    } catch (error) {
+      if (error.response?.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/login", { replace: true });
+      } else {
+        console.error(error);
+        showToast("Ошибка!", "error");
+      }
+    }
+  };
   return (
     <div class="relative overflow-x-auto shadow-md sm:rounded-lg">
       <table class="w-full text-sm text-left rtl:text-right text-gray-500">
@@ -29,13 +58,12 @@ function RegistryTable(props) {
                 <td class="px-6 py-4 text-base">{item.CreatedAt}</td>
                 <td class="px-6 py-4 text-base">{item.Size}</td>
                 <td class="px-6 py-4">
-                  <button
-                    type="button"
-                    onClick={() => openDeleteModal(registy.Name)}
-                    class="text-gray-900 hover:text-white border border-gray-800 hover:bg-gray-900 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
-                  >
-                    Удалить реестр
-                  </button>
+                  <Delete
+                    message={
+                      "Все репозитории и образы Docker реестра будут удалены!"
+                    }
+                    onSubmit={() => onDeleteRegistry(item.Name)}
+                  />
                 </td>
               </tr>
             )}
@@ -45,5 +73,3 @@ function RegistryTable(props) {
     </div>
   );
 }
-
-export default RegistryTable;

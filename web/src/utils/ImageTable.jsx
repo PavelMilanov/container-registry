@@ -1,9 +1,39 @@
-import { For } from "solid-js";
+import { For, lazy } from "solid-js";
 import { A, useParams } from "@solidjs/router";
+import axios from "axios";
+import { showToast } from "./notification";
+
+const Delete = lazy(() => import("../modal/Delete"));
 
 export default function ImageTable(props) {
   let items = () => props.items;
   const params = useParams();
+
+  const onDeleteImage = async (image, tag) => {
+    let token = localStorage.getItem("token");
+    const headers = {
+      Authorization: `Bearer ${token}`,
+    };
+    try {
+      const response = await axios.delete(
+        API_URL + `/api/registry/${params.name}/${image}`,
+        { headers: headers, params: { tag: tag } },
+      );
+      if (response.status == 202) {
+        showToast("Образ удален!");
+      }
+      await props.delNotification();
+    } catch (error) {
+      if (error.response?.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/login", { replace: true });
+      } else {
+        console.error(error);
+        showToast("Ошибка!", "error");
+      }
+    }
+  };
+
   return (
     <div class="relative overflow-x-auto shadow-md sm:rounded-lg">
       <table class="w-full text-sm text-left rtl:text-right text-gray-500">
@@ -30,7 +60,8 @@ export default function ImageTable(props) {
               <tr class="bg-white hover:bg-gray-50 border-b border-gray-200">
                 <td class="px-6 py-4 text-base font-medium hover:underline">
                   <A href="#">
-                    {API_URL.split("//")[1]}/{params.name}/{params.image}
+                    {API_URL.split("//")[1]}/{params.name}/{params.image}:
+                    {item.Tag}
                   </A>
                 </td>
                 <td class="px-6 py-4 text-base">
@@ -38,7 +69,7 @@ export default function ImageTable(props) {
                     type="text"
                     id="disabled-input-2"
                     aria-label="disabled input 2"
-                    class="bg-gray-100 border border-gray-300 text-base text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 cursor-not-allowed"
+                    class="bg-gray-100 border border-gray-300 text-base rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 cursor-not-allowed"
                     value={item.Hash.slice(0, 15) + "..."}
                     disabled
                     readonly
@@ -47,13 +78,10 @@ export default function ImageTable(props) {
                 <td class="px-6 py-4 text-base">{item.SizeAlias}</td>
                 <td class="px-6 py-4 text-base">{item.CreatedAt}</td>
                 <td class="px-6 py-4">
-                  <button
-                    type="button"
-                    onClick={() => openDeleteModal(item.Name, item.Tag)}
-                    class="text-gray-900 hover:text-white border border-gray-800 hover:bg-gray-900 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
-                  >
-                    Удалить образ
-                  </button>
+                  <Delete
+                    message={"Образ Docker будет удален!"}
+                    onSubmit={() => onDeleteImage(item.Name, item.Tag)}
+                  />
                 </td>
               </tr>
             )}

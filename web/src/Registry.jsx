@@ -5,9 +5,6 @@ import { showToast } from "./utils/notification";
 import Breadcrumb from "./utils/Breadcrumb";
 import RegistryTable from "./utils/RegistryTable";
 const AddRegistry = lazy(() => import("./modal/AddRegistry"));
-const Delete = lazy(() => import("./modal/Delete"));
-
-const API_URL = window.API_URL;
 
 export default function Registry() {
   const navigate = useNavigate();
@@ -16,6 +13,7 @@ export default function Registry() {
   const [registryList, setRegistryList] = createSignal([]);
   const [registry, setRegistry] = createSignal("");
 
+  const newRegistry = (value) => setRegistry(value);
   const submitAddRegistry = async () => {
     let token = localStorage.getItem("token");
     const headers = {
@@ -41,40 +39,6 @@ export default function Registry() {
       }
     }
   };
-  const newRegistry = (value) => setRegistry(value);
-
-  const [isModalDeleteOpen, setModalDeleteOpen] = createSignal(false);
-
-  const openDeleteModal = (item) => {
-    setModalDeleteOpen(true);
-    setRegistry(item);
-  };
-  const closeDeleteModal = () => setModalDeleteOpen(false);
-  const submitDelete = async () => {
-    setModalDeleteOpen(false);
-    let token = localStorage.getItem("token");
-    const headers = {
-      Authorization: `Bearer ${token}`,
-    };
-    try {
-      const response = await axios.delete(
-        API_URL + `/api/registry/${registry()}`,
-        { headers: headers },
-      );
-      if (response.status == 202) {
-        showToast("Реестр удален!");
-      }
-      await getRegistry();
-    } catch (error) {
-      if (error.response.status === 401) {
-        localStorage.removeItem("token");
-        navigate("/login", { replace: true });
-      } else {
-        console.error(error);
-        showToast("Ошибка!", "error");
-      }
-    }
-  };
 
   async function getRegistry() {
     let token = localStorage.getItem("token");
@@ -87,7 +51,7 @@ export default function Registry() {
       });
       setRegistryList(response.data.data); // в ответе приходит массив "data"
     } catch (error) {
-      if (error.response.status === 401) {
+      if (error.response?.status === 401) {
         localStorage.removeItem("token");
         navigate("/login", { replace: true });
       } else {
@@ -105,17 +69,13 @@ export default function Registry() {
     <div class="container">
       <Breadcrumb path={location.pathname} />
       <div class="card">
-        <AddRegistry
-          onNewRegistry={newRegistry}
-          onSubmit={submitAddRegistry}
+        <AddRegistry onNewRegistry={newRegistry} onSubmit={submitAddRegistry} />
+        <RegistryTable
+          items={registryList()}
+          delNotification={() => {
+            getRegistry();
+          }}
         />
-        <Delete
-          isOpen={isModalDeleteOpen()}
-          message={"Все репозитории и образы Docker реестра будут удалены!"}
-          onClose={closeDeleteModal}
-          onSubmit={submitDelete}
-        />
-        <RegistryTable items={registryList()} />
       </div>
     </div>
   );
