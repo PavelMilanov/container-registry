@@ -12,14 +12,11 @@ const API_URL = window.API_URL;
 export default function Registry() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isModalOpen, setModalOpen] = createSignal(false);
+
   const [registryList, setRegistryList] = createSignal([]);
   const [registry, setRegistry] = createSignal("");
 
-  const openModal = () => setModalOpen(true);
-  const closeModal = () => setModalOpen(false);
   const submitAddRegistry = async () => {
-    setModalOpen(false);
     let token = localStorage.getItem("token");
     const headers = {
       Authorization: `Bearer ${token}`,
@@ -109,19 +106,9 @@ export default function Registry() {
       <Breadcrumb path={location.pathname} />
       <div class="card">
         <AddRegistry
-          // isOpen={setModalOpen(true)}
           onNewRegistry={newRegistry}
-          // onClose={closeModal}
           onSubmit={submitAddRegistry}
         />
-        {/* <button
-          type="button"
-          onClick={openModal}
-          class="text-white bg-main border hover:text-main hover:bg-white hover:border focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2"
-        >
-          Добавить реестр
-        </button> */}
-        {/* <AddRegistry */}
         <Delete
           isOpen={isModalDeleteOpen()}
           message={"Все репозитории и образы Docker реестра будут удалены!"}

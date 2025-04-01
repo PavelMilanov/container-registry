@@ -211,7 +211,7 @@ code {
     background-color: rgba(0, 0, 0, 0.4);
 }
 
-.modal-content {
+/* .modal-content {
     background-color: #fefefe;
     margin: 15% auto;
     padding: 20px;
@@ -220,22 +220,22 @@ code {
     max-width: 500px;
     border-radius: 8px;
     position: relative;
-}
+} */
 
-.close {
+/* .close {
     color: #aaa;
     float: right;
     font-size: 28px;
     font-weight: bold;
     cursor: pointer;
-}
+} */
 
-.close:hover,
+/* .close:hover,
 .close:focus {
     color: black;
     text-decoration: none;
     cursor: pointer;
-}
+} */
 
 .github-link {
     position: fixed;
