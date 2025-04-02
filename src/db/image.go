@@ -58,3 +58,12 @@ FROM ranked
 WHERE rn <= ?`, count).Scan(&images)
 	return images
 }
+
+func GetImage(sql *gorm.DB, condition string, args ...interface{}) (*Image, error) {
+	var i Image
+	if err := sql.Where(condition, args...).First(&i).Error; err != nil {
+		logrus.Error(err)
+		return nil, err
+	}
+	return &i, nil
+}

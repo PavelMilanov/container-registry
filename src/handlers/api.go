@@ -31,7 +31,6 @@ func (h *Handler) getRegistry(c *gin.Context) {
 // addRegistry -добавление нового реестра.
 func (h *Handler) addRegistry(c *gin.Context) {
 	data := c.Param("name")
-	// registry := db.Registry{Name: data}
 	if err := services.AddRegistry(data, h.DB.Sql); err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"err": err.Error()})
 		return
@@ -46,15 +45,6 @@ func (h *Handler) deleteRegistry(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"err": err.Error()})
 		return
 	}
-	// if err := h.STORAGE.DeleteRegistry(data); err != nil {
-	// 	c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
-	// 	return
-	// }
-	// registy := db.Registry{Name: data}
-	// if err := registy.Delete(h.DB.Sql); err != nil {
-	// 	c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
-	// 	return
-	// }
 	c.JSON(http.StatusAccepted, gin.H{})
 }
 
@@ -84,8 +74,6 @@ func (h *Handler) deleteImage(c *gin.Context) {
 func (h *Handler) getImage(c *gin.Context) {
 	ImageName := c.Param("image")
 	data := services.GetImages(ImageName, h.DB.Sql)
-	// repo := db.GetRepository(h.DB.Sql, ImageName)
-	// data := db.GetImageTags(h.DB.Sql, repo.ID, ImageName)
 	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 

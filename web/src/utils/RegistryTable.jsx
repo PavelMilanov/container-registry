@@ -56,7 +56,7 @@ export default function RegistryTable(props) {
                   <A href={item.Name}>{item.Name}</A>
                 </td>
                 <td class="px-6 py-4 text-base">{item.CreatedAt}</td>
-                <td class="px-6 py-4 text-base">{item.Size}</td>
+                <td class="px-6 py-4 text-base">{item.SizeAlias}</td>
                 <td class="px-6 py-4">
                   <Delete
                     message={

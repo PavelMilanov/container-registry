@@ -12,6 +12,8 @@ type Repository struct {
 	ID         int    `gorm:"primaryKey"`
 	Name       string `gorm:"unique"`
 	CreatedAt  string
+	Size       int
+	SizeAlias  string
 	Images     []Image `gorm:"constraint:OnDelete:CASCADE;"`
 	RegistryID int
 }
@@ -38,6 +40,15 @@ func (r *Repository) Delete(sql *gorm.DB) error {
 			sql.Delete(&image)
 		}
 	}()
+	return nil
+}
+
+func (r *Repository) UpdateSize(sql *gorm.DB) error {
+	result := sql.Raw("UPDATE repositories SET size = ?, size_alias = ? WHERE id = ?", r.Size, r.SizeAlias, r.ID).Scan(&r)
+	if result.Error != nil {
+		logrus.Error(result.Error)
+		return result.Error
+	}
 	return nil
 }
 

@@ -61,7 +61,7 @@ export default function RepoTable(props) {
                   </A>
                 </td>
                 <td class="px-6 py-4 text-base">{item.CreatedAt}</td>
-                <td class="px-6 py-4 text-base">{item.Size}</td>
+                <td class="px-6 py-4 text-base">{item.SizeAlias}</td>
                 <td class="px-6 py-4">
                   <Delete
                     message={"Образы Docker репозитория будут удалены!"}

@@ -4,6 +4,7 @@ package services
 import (
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/storage"
+	"github.com/PavelMilanov/container-registry/system"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
@@ -11,7 +12,6 @@ import (
 func AddRegistry(name string, sql *gorm.DB) error {
 	registry := db.Registry{Name: name}
 	if err := registry.Add(sql); err != nil {
-		// c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		return err
 	}
 	return nil
@@ -19,12 +19,10 @@ func AddRegistry(name string, sql *gorm.DB) error {
 
 func DeleteRegistry(data string, sql *gorm.DB, storage *storage.Storage) error {
 	if err := storage.DeleteRegistry(data); err != nil {
-		// c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		return err
 	}
 	registy := db.Registry{Name: data}
 	if err := registy.Delete(sql); err != nil {
-		// c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		return err
 	}
 	return nil
@@ -32,12 +30,28 @@ func DeleteRegistry(data string, sql *gorm.DB, storage *storage.Storage) error {
 
 func DeleteImage(name, image, tag string, sql *gorm.DB, storage *storage.Storage) error {
 	img := db.Image{Name: image, Tag: tag}
-	if err := img.Delete(sql); err != nil {
-		// c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
-		return err
-	}
+	sql.Transaction(func(tx *gorm.DB) error {
+		if err := img.Delete(tx); err != nil {
+			tx.Rollback()
+			return err
+		}
+		repo, _ := db.GetRepository(tx, "id", img.RepositoryID)
+		registry, _ := db.GetRegistry(tx, "id", repo.RegistryID)
+		repo.Size -= img.Size
+		repo.SizeAlias = system.ConvertSize(repo.Size)
+		if err := repo.UpdateSize(tx); err != nil {
+			tx.Rollback()
+			return err
+		}
+		registry.Size -= repo.Size
+		registry.SizeAlias = system.ConvertSize(registry.Size)
+		if err := registry.UpdateSize(tx); err != nil {
+			tx.Rollback()
+			return err
+		}
+		return nil
+	})
 	if err := storage.DeleteImage(name, img.Name, img.Tag, img.Hash); err != nil {
-		// c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		return err
 	}
 	return nil
@@ -46,11 +60,9 @@ func DeleteImage(name, image, tag string, sql *gorm.DB, storage *storage.Storage
 func DeleteRepository(name, image string, sql *gorm.DB, storage *storage.Storage) error {
 	repo := db.Repository{Name: image}
 	if err := repo.Delete(sql); err != nil {
-		// c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		return err
 	}
 	if err := storage.DeleteRepository(name, repo.Name); err != nil {
-		// c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		return err
 	}
 	return nil

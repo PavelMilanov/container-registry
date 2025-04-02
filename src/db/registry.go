@@ -13,6 +13,7 @@ type Registry struct {
 	ID           int    `gorm:"primaryKey"`
 	Name         string `gorm:"unique"`
 	Size         int
+	SizeAlias    string
 	CreatedAt    string
 	Repositories []Repository `gorm:"constraint:OnDelete:CASCADE;"`
 }
@@ -75,4 +76,22 @@ func (r *Registry) GetImages(sql *gorm.DB) error {
 		return result.Error
 	}
 	return nil
+}
+
+func (r *Registry) UpdateSize(sql *gorm.DB) error {
+	result := sql.Raw("UPDATE registries SET size = ?, size_alias = ? WHERE id = ?", r.Size, r.SizeAlias, r.ID).Scan(&r)
+	if result.Error != nil {
+		logrus.Error(result.Error)
+		return result.Error
+	}
+	return nil
+}
+
+func GetRegistry(sql *gorm.DB, condition string, args ...interface{}) (*Registry, error) {
+	var r Registry
+	if err := sql.Where(condition, args...).First(&r).Error; err != nil {
+		logrus.Error(err)
+		return nil, err
+	}
+	return &r, nil
 }
