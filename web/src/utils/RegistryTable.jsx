@@ -1,7 +1,7 @@
 import { For, lazy } from "solid-js";
 import { A } from "@solidjs/router";
 import axios from "axios";
-import { showToast } from "./notification";
+import { showAlert } from "./alertService";
 
 const Delete = lazy(() => import("../modal/Delete"));
 
@@ -18,7 +18,7 @@ export default function RegistryTable(props) {
         headers: headers,
       });
       if (response.status == 202) {
-        showToast("Реестр удален!");
+        showAlert("Реестр удален!");
       }
       await props.delNotification();
     } catch (error) {
@@ -27,7 +27,7 @@ export default function RegistryTable(props) {
         navigate("/login", { replace: true });
       } else {
         console.error(error);
-        showToast("Ошибка!", "error");
+        showAlert(error.response.data.error, "error");
       }
     }
   };

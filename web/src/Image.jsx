@@ -1,7 +1,7 @@
 import { createSignal, onMount, lazy } from "solid-js";
 import { useParams, useLocation, useNavigate } from "@solidjs/router";
 import axios from "axios";
-import { showToast } from "./utils/notification";
+import { showAlert } from "./utils/notification";
 import Breadcrumb from "./utils/Breadcrumb";
 import NavBar from "./NavBar";
 const ImageTable = lazy(() => import("./utils/ImageTable"));
@@ -29,7 +29,7 @@ export default function Image() {
         navigate("/login", { replace: true });
       } else {
         console.error(error);
-        showToast("Ошибка!", "error");
+        showAlert(error.response.data.error, "error");
       }
     }
   }

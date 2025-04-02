@@ -1,6 +1,6 @@
 import { lazy } from "solid-js";
 import { Router, Route } from "@solidjs/router";
-import { Toaster } from "solid-toast";
+import Alert  from "./utils/Alert";
 
 import Registry from "./Registry";
 import GithubLink from "./utils/GithubLink";
@@ -28,7 +28,7 @@ export default function App() {
         <Route path="*" component={NotFound} />
       </Router>
       <GithubLink />
-      <Toaster />
+      <Alert />
     </div>
   );
 }

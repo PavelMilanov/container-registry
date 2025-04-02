@@ -1,6 +1,6 @@
 import { createSignal, onMount } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-import toast from "solid-toast";
+import { showAlert } from "./utils/alertService";
 import axios from "axios";
 import NavBar from "./NavBar";
 
@@ -21,19 +21,17 @@ export default function Settings() {
         { headers: headers },
       );
       if (response.status === 202) {
-        toast(response.data.data, {
-          style: {
-            "background-color": "#1e3c72",
-            color: "white",
-          },
-          className: "notification info",
-        });
+        showAlert(response.data.data);
+      } else {
+        showAlert(error.response.data.error, "error");
       }
     } catch (error) {
       console.log(error.response.data);
       if (error.response.status === 401) {
         localStorage.removeItem("token");
         navigate("/login", { replace: true });
+      } else {
+        showAlert(error.response.data.error, "error");
       }
     }
   }
@@ -50,13 +48,7 @@ export default function Settings() {
         { headers: headers },
       );
       if (response.status === 202) {
-        toast(response.data.data, {
-          style: {
-            "background-color": "#1e3c72",
-            color: "white",
-          },
-          className: "notification info",
-        });
+        showAlert(response.data.data);
       }
     } catch (error) {
       console.log(error.response.data);

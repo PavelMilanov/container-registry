@@ -1,7 +1,7 @@
 import { createSignal, onMount, lazy } from "solid-js";
 import { useNavigate, useLocation } from "@solidjs/router";
 import axios from "axios";
-import { showToast } from "./utils/notification";
+import { showAlert } from "./utils/alertService";
 import Breadcrumb from "./utils/Breadcrumb";
 import RegistryTable from "./utils/RegistryTable";
 import NavBar from "./NavBar";
@@ -28,7 +28,7 @@ export default function Registry() {
       );
       if (response.status === 201) {
         await getRegistry();
-        showToast("Реестр добавлен!");
+        showAlert("Реестр добавлен!");
       }
     } catch (error) {
       if (error.response.status === 401) {
@@ -36,7 +36,7 @@ export default function Registry() {
         navigate("/login", { replace: true });
       } else {
         console.log(error);
-        showToast("Ошибка!", "error");
+        showAlert(error.response.data.error, "error");
       }
     }
   };
@@ -57,7 +57,7 @@ export default function Registry() {
         navigate("/login", { replace: true });
       } else {
         console.error(error);
-        showToast("Ошибка!", "error");
+        showAlert("Ошибка!", "error");
       }
     }
   }

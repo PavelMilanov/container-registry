@@ -1,7 +1,7 @@
 import { For, lazy } from "solid-js";
 import { A, useParams } from "@solidjs/router";
 import axios from "axios";
-import { showToast } from "./notification";
+import { showAlert } from "./alertService";
 
 const Delete = lazy(() => import("../modal/Delete"));
 
@@ -20,7 +20,7 @@ export default function RepoTable(props) {
         { headers: headers },
       );
       if (response.status == 202) {
-        showToast("Репозиторий удален!");
+        showAlert("Репозиторий удален!");
       }
       await props.delNotification();
     } catch (error) {
@@ -29,7 +29,7 @@ export default function RepoTable(props) {
         navigate("/login", { replace: true });
       } else {
         console.error(error);
-        showToast("Ошибка!", "error");
+        showAlert(error.response.data.error, "error");
       }
     }
   };

@@ -1,7 +1,7 @@
 import { createSignal, onMount, lazy } from "solid-js";
 import { useNavigate, useParams, useLocation } from "@solidjs/router";
 import axios from "axios";
-import { showToast } from "./utils/notification";
+import { showAlert } from "./utils/alertService";
 import Breadcrumb from "./utils/Breadcrumb";
 import NavBar from "./NavBar";
 const RepoTable = lazy(() => import("./utils/RepoTable"));
@@ -31,7 +31,7 @@ export default function Repo() {
         navigate("/login", { replace: true });
       } else {
         console.error(error);
-        showToast("Ошибка!", "error");
+        showAlert(error.response.data.error, "error");
       }
     }
   }
