@@ -1,7 +1,7 @@
 import { createSignal, onMount, lazy } from "solid-js";
 import { useParams, useLocation, useNavigate } from "@solidjs/router";
 import axios from "axios";
-import { showAlert } from "./utils/notification";
+import { showAlert } from "./utils/alertService";
 import Breadcrumb from "./utils/Breadcrumb";
 import NavBar from "./NavBar";
 const ImageTable = lazy(() => import("./utils/ImageTable"));
