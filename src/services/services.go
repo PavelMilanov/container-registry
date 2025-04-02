@@ -59,9 +59,21 @@ func DeleteImage(name, image, tag string, sql *gorm.DB, storage *storage.Storage
 
 func DeleteRepository(name, image string, sql *gorm.DB, storage *storage.Storage) error {
 	repo := db.Repository{Name: image}
-	if err := repo.Delete(sql); err != nil {
-		return err
-	}
+	sql.Transaction(func(tx *gorm.DB) error {
+		if err := repo.Delete(tx); err != nil {
+			tx.Rollback()
+			return err
+		}
+		registry, _ := db.GetRegistry(tx, "id", repo.RegistryID)
+		registry.Size -= repo.Size
+		registry.SizeAlias = system.ConvertSize(registry.Size)
+		if err := registry.UpdateSize(tx); err != nil {
+			tx.Rollback()
+			return err
+		}
+		return nil
+	})
+
 	if err := storage.DeleteRepository(name, repo.Name); err != nil {
 		return err
 	}
