@@ -8,10 +8,6 @@ export default function Login() {
   const [username, setUsername] = createSignal("");
   const [password, setPassword] = createSignal("");
 
-  // function toRegister() {
-  //   navigate("/register");
-  // }
-
   async function login() {
     let data = {
       username: username(),
@@ -38,9 +34,9 @@ export default function Login() {
 
   return (
     <div class="flex justify-center items-center h-screen">
-      <div class="relative bg-white rounded-lg shadow-sm w-1/6">
-        <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t border-gray-200">
-          <h3 class="text-xl font-semibold text-gray-900">Вход в систему</h3>
+      <div class="relative bg-white rounded-lg shadow-lg w-1/6">
+        <div class="flex bg-main items-center justify-between p-4 md:p-5 border-b rounded-t border-gray-200">
+          <h3 class="text-white text-xl font-semibold">Вход в систему</h3>
         </div>
 
         <div class="p-4 md:p-5">

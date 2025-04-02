@@ -1,17 +1,11 @@
 import { createSignal, Show } from "solid-js";
-import { useNavigate } from "@solidjs/router";
 import axios from "axios";
 
 export default function Register() {
-  const navigate = useNavigate();
   const [errorMessage, setErrorMessage] = createSignal("");
   const [username, setUsername] = createSignal("");
   const [password, setPassword] = createSignal("");
   const [confirmPassword, setConfirmPassword] = createSignal("");
-
-  function toLogin() {
-    navigate("/login");
-  }
 
   async function register() {
     let data = {
@@ -39,9 +33,9 @@ export default function Register() {
 
   return (
     <div class="flex justify-center items-center h-screen">
-      <div class="relative bg-white rounded-lg shadow-sm w-1/6">
-        <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t border-gray-200">
-          <h3 class="text-xl font-semibold text-gray-900">
+      <div class="relative bg-white rounded-lg shadow-lg w-1/6">
+        <div class="flex bg-main items-center justify-between p-4 md:p-5 border-b rounded-t border-gray-200">
+          <h3 class="text-white text-xl font-semibold">
             Регистрация в системе
           </h3>
         </div>
@@ -51,7 +45,7 @@ export default function Register() {
             <div>
               <label
                 for="username"
-                class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                class="block mb-2 text-sm font-medium text-gray-900"
               >
                 Имя пользователя
               </label>
