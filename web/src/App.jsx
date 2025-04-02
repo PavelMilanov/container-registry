@@ -4,7 +4,7 @@ import { Toaster } from "solid-toast";
 
 import Registry from "./Registry";
 import GithubLink from "./utils/GithubLink";
-const Register = lazy(() => import("./Register"));
+const Registration = lazy(() => import("./Registration"));
 const Repo = lazy(() => import("./Repo"));
 const Image = lazy(() => import("./Image"));
 const Login = lazy(() => import("./Login"));
@@ -18,7 +18,7 @@ export default function App() {
       <Router>
         <Route path="/login" component={Login} />
         <Route path="/logout" component={Logout} />
-        <Route path="/register" component={Register} />
+        <Route path="/register" component={Registration} />
         <Route path="/registry">
           <Route path="/" component={Registry} />
           <Route path="/:name" component={Repo} />
