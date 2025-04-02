@@ -35,8 +35,8 @@ func DeleteImage(name, image, tag string, sql *gorm.DB, storage *storage.Storage
 			tx.Rollback()
 			return err
 		}
-		repo, _ := db.GetRepository(tx, "id", img.RepositoryID)
-		registry, _ := db.GetRegistry(tx, "id", repo.RegistryID)
+		repo, _ := db.GetRepository(tx, "ID = ?", img.RepositoryID)
+		registry, _ := db.GetRegistry(tx, "ID = ?", repo.RegistryID)
 		repo.Size -= img.Size
 		repo.SizeAlias = system.ConvertSize(repo.Size)
 		if err := repo.UpdateSize(tx); err != nil {
@@ -64,7 +64,7 @@ func DeleteRepository(name, image string, sql *gorm.DB, storage *storage.Storage
 			tx.Rollback()
 			return err
 		}
-		registry, _ := db.GetRegistry(tx, "id", repo.RegistryID)
+		registry, _ := db.GetRegistry(tx, "ID = ?", repo.RegistryID)
 		registry.Size -= repo.Size
 		registry.SizeAlias = system.ConvertSize(registry.Size)
 		if err := registry.UpdateSize(tx); err != nil {
