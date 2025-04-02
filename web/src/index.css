@@ -162,7 +162,7 @@ code {
     margin-bottom: 1rem;
 } */
 
-.btn {
+/* .btn {
     display: inline-block;
     padding: 0.375rem 0.75rem;
     border: none;
@@ -172,7 +172,7 @@ code {
     text-decoration: none;
     cursor: pointer;
     transition: background-color 0.15s ease-in-out;
-}
+} */
 
 /* .btn-form {
     margin: 0%;
@@ -305,13 +305,13 @@ code {
     margin-bottom: 1rem;
 } */
 
-.setting-input {
+/* .setting-input {
     width: 20%;
-}
+} */
 
-.login-input {
+/* .login-input {
     width: 95%;
-}
+} */
 
 .register-input {
     width: 55%;

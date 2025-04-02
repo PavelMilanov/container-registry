@@ -2,15 +2,15 @@ import { createSignal, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import axios from "axios";
 
-function Login() {
+export default function Login() {
   const navigate = useNavigate();
   const [errorMessage, setErrorMessage] = createSignal("");
   const [username, setUsername] = createSignal("");
   const [password, setPassword] = createSignal("");
 
-  function toRegister() {
-    navigate("/register");
-  }
+  // function toRegister() {
+  //   navigate("/register");
+  // }
 
   async function login() {
     let data = {
@@ -37,40 +37,66 @@ function Login() {
   };
 
   return (
-    <div class="login-container" id="app">
-      <h1>Вход в систему</h1>
-      <label for="username">Имя пользователя:</label>
-      <input
-        class="login-input"
-        id="username"
-        type="text"
-        required
-        onInput={(e) => setUsername(e.target.value)}
-        onKeyDown={handleKeyDown}
-      />
-      <label for="password">Пароль:</label>
-      <input
-        class="login-input"
-        id="password"
-        type="password"
-        required
-        onInput={(e) => setPassword(e.target.value)}
-        onKeyDown={handleKeyDown}
-      />
-      <Show when={errorMessage()}>
-        <p class="error-message">{errorMessage()}</p>
-      </Show>
-      <button class="btn login-button" onClick={login}>
-        Войти
-      </button>
-      <div class="divider">
-        <span>или</span>
+    <div class="flex justify-center items-center h-screen">
+      <div class="relative bg-white rounded-lg shadow-sm w-1/6">
+        <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t border-gray-200">
+          <h3 class="text-xl font-semibold text-gray-900">Вход в систему</h3>
+        </div>
+
+        <div class="p-4 md:p-5">
+          <div class="space-y-4">
+            <div>
+              <label
+                for="username"
+                class="block mb-2 text-sm font-medium text-gray-900"
+              >
+                Логин
+              </label>
+              <input
+                type="text"
+                name="username"
+                id="username"
+                onInput={(e) => setUsername(e.target.value)}
+                onKeyDown={handleKeyDown}
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                placeholder=""
+                required
+              />
+            </div>
+            <div>
+              <label
+                for="password"
+                class="block mb-2 text-sm font-medium text-gray-900"
+              >
+                Пароль
+              </label>
+              <input
+                type="password"
+                name="password"
+                id="password"
+                placeholder="••••••••"
+                onInput={(e) => setPassword(e.target.value)}
+                onKeyDown={handleKeyDown}
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              onClick={login}
+              class="w-full text-white bg-main border hover:text-main hover:bg-white hover:border focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
+            >
+              Войти
+            </button>
+            <div class="text-sm font-medium text-gray-500">
+              Не зарегистрированы?
+              <a href="/register" class="text-blue-700 hover:underline">
+                Зарегистрироваться
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
-      <button class="btn register-button" onClick={toRegister}>
-        Зарегистрироваться
-      </button>
     </div>
   );
 }
-
-export default Login;
