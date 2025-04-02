@@ -1,9 +1,9 @@
 import { createSignal, onMount, lazy } from "solid-js";
-import { A, useParams, useLocation, useNavigate } from "@solidjs/router";
+import { useParams, useLocation, useNavigate } from "@solidjs/router";
 import axios from "axios";
 import { showToast } from "./utils/notification";
 import Breadcrumb from "./utils/Breadcrumb";
-
+import NavBar from "./NavBar";
 const ImageTable = lazy(() => import("./utils/ImageTable"));
 
 export default function Image() {
@@ -38,16 +38,19 @@ export default function Image() {
     await getImages();
   });
   return (
-    <div class="container">
-      <Breadcrumb path={location.pathname} />
-      <div class="card">
-        <ImageTable
-          items={tagList()}
-          delNotification={() => {
-            getImages();
-          }}
-        />
+    <>
+      <NavBar />
+      <div class="container">
+        <Breadcrumb path={location.pathname} />
+        <div class="card">
+          <ImageTable
+            items={tagList()}
+            delNotification={() => {
+              getImages();
+            }}
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

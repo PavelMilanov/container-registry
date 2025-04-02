@@ -1,9 +1,9 @@
 import { createSignal, onMount, lazy } from "solid-js";
-import { A, useNavigate, useParams, useLocation } from "@solidjs/router";
+import { useNavigate, useParams, useLocation } from "@solidjs/router";
 import axios from "axios";
 import { showToast } from "./utils/notification";
 import Breadcrumb from "./utils/Breadcrumb";
-
+import NavBar from "./NavBar";
 const RepoTable = lazy(() => import("./utils/RepoTable"));
 
 export default function Repo() {
@@ -41,16 +41,19 @@ export default function Repo() {
   });
 
   return (
-    <div class="container">
-      <Breadcrumb path={location.pathname} />
-      <div class="card">
-        <RepoTable
-          items={imageList()}
-          delNotification={() => {
-            getRepo();
-          }}
-        />
+    <>
+      <NavBar />
+      <div class="container">
+        <Breadcrumb path={location.pathname} />
+        <div class="card">
+          <RepoTable
+            items={imageList()}
+            delNotification={() => {
+              getRepo();
+            }}
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

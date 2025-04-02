@@ -4,6 +4,7 @@ import axios from "axios";
 import { showToast } from "./utils/notification";
 import Breadcrumb from "./utils/Breadcrumb";
 import RegistryTable from "./utils/RegistryTable";
+import NavBar from "./NavBar";
 const AddRegistry = lazy(() => import("./modal/AddRegistry"));
 
 export default function Registry() {
@@ -66,17 +67,23 @@ export default function Registry() {
   });
 
   return (
-    <div class="container">
-      <Breadcrumb path={location.pathname} />
-      <div class="card">
-        <AddRegistry onNewRegistry={newRegistry} onSubmit={submitAddRegistry} />
-        <RegistryTable
-          items={registryList()}
-          delNotification={() => {
-            getRegistry();
-          }}
-        />
+    <>
+      <NavBar />
+      <div class="container">
+        <Breadcrumb path={location.pathname} />
+        <div class="card">
+          <AddRegistry
+            onNewRegistry={newRegistry}
+            onSubmit={submitAddRegistry}
+          />
+          <RegistryTable
+            items={registryList()}
+            delNotification={() => {
+              getRegistry();
+            }}
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 }
