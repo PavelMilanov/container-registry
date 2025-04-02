@@ -112,7 +112,7 @@ export default function Register() {
             <div class="text-sm font-medium text-gray-500">
               вернуться
               <a href="/login" class="text-blue-700 hover:underline">
-                на главную
+                назад
               </a>
             </div>
           </div>
