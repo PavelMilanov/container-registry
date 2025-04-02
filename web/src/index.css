@@ -103,7 +103,7 @@ label {
     font-weight: bold;
 }
 
-input[type="text"],
+/* input[type="text"],
 input[type="email"],
 input[type="password"],
 select,
@@ -112,7 +112,7 @@ textarea {
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 1rem;
-}
+} */
 
 div a {
     color: #1e3c72;
@@ -158,9 +158,9 @@ code {
     padding: 2px 4px;
 }
 
-.form-group {
+/* .form-group {
     margin-bottom: 1rem;
-}
+} */
 
 .btn {
     display: inline-block;
@@ -174,7 +174,7 @@ code {
     transition: background-color 0.15s ease-in-out;
 }
 
-.btn-form {
+/* .btn-form {
     margin: 0%;
     padding: 0%;
 }
@@ -195,7 +195,7 @@ code {
 
 .btn-secondary:hover {
     background-color: #5a6268;
-}
+} */
 
 .modal {
     display: flex;
@@ -299,11 +299,11 @@ code {
     }
 }
 
-.copy-container {
+/* .copy-container {
     align-items: center;
     width: 40%;
     margin-bottom: 1rem;
-}
+} */
 
 .setting-input {
     width: 20%;

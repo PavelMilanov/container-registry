@@ -1,5 +1,5 @@
 import { createSignal, onMount, lazy } from "solid-js";
-import { A, useNavigate, useLocation } from "@solidjs/router";
+import { useNavigate, useLocation } from "@solidjs/router";
 import axios from "axios";
 import { showToast } from "./utils/notification";
 import Breadcrumb from "./utils/Breadcrumb";
