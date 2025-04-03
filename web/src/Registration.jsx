@@ -33,7 +33,7 @@ export default function Registration() {
 
   return (
     <div class="flex justify-center items-center h-screen">
-      <div class="relative bg-white rounded-lg shadow-lg w-1/6">
+      <div class="relative bg-white rounded-lg shadow-lg w-1/5">
         <div class="flex bg-main items-center justify-between p-4 md:p-5 border-b rounded-t border-gray-200">
           <h3 class="text-white text-xl font-semibold">
             Регистрация в системе
