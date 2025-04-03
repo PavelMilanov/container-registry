@@ -1,12 +1,10 @@
 import { lazy } from "solid-js";
 import { Router, Route } from "@solidjs/router";
-import { Toaster } from "solid-toast";
+import Alert  from "./utils/Alert";
 
 import Registry from "./Registry";
-import NavBar from "./NavBar";
 import GithubLink from "./utils/GithubLink";
-
-const Register = lazy(() => import("./Register"));
+const Registration = lazy(() => import("./Registration"));
 const Repo = lazy(() => import("./Repo"));
 const Image = lazy(() => import("./Image"));
 const Login = lazy(() => import("./Login"));
@@ -14,14 +12,13 @@ const Logout = lazy(() => import("./modal/Logout"));
 const NotFound = lazy(() => import("./NotFound"));
 const Settings = lazy(() => import("./Settings"));
 
-function App() {
+export default function App() {
   return (
     <div>
-      <NavBar />
       <Router>
         <Route path="/login" component={Login} />
         <Route path="/logout" component={Logout} />
-        <Route path="/register" component={Register} />
+        <Route path="/register" component={Registration} />
         <Route path="/registry">
           <Route path="/" component={Registry} />
           <Route path="/:name" component={Repo} />
@@ -31,9 +28,7 @@ function App() {
         <Route path="*" component={NotFound} />
       </Router>
       <GithubLink />
-      <Toaster />
+      <Alert />
     </div>
   );
 }
-
-export default App;

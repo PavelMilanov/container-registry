@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
+	"github.com/PavelMilanov/container-registry/services"
 	"github.com/gin-gonic/gin"
 )
 
@@ -29,27 +31,21 @@ func (h *Handler) getRegistry(c *gin.Context) {
 // addRegistry -добавление нового реестра.
 func (h *Handler) addRegistry(c *gin.Context) {
 	data := c.Param("name")
-	registry := db.Registry{Name: data}
-	if err := registry.Add(h.DB.Sql); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+	if err := services.AddRegistry(data, h.DB.Sql); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"err": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"data": registry})
+	c.JSON(http.StatusCreated, gin.H{})
 }
 
 // deleteRegistry -удаление указанного реестра.
 func (h *Handler) deleteRegistry(c *gin.Context) {
 	data := c.Param("name")
-	if err := h.STORAGE.DeleteRegistry(data); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+	if err := services.DeleteRegistry(data, h.DB.Sql, h.STORAGE); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"err": err.Error()})
 		return
 	}
-	registy := db.Registry{Name: data}
-	if err := registy.Delete(h.DB.Sql); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
-		return
-	}
-	c.JSON(http.StatusAccepted, gin.H{"data": registy})
+	c.JSON(http.StatusAccepted, gin.H{})
 }
 
 // deleteRepository -удаление указанного репозитория или образа.
@@ -60,34 +56,24 @@ func (h *Handler) deleteImage(c *gin.Context) {
 	image := c.Param("image")
 	tag := c.Query("tag")
 	if tag != "" { // удаляется только образ
-		img := db.Image{Name: image, Tag: tag}
-		if err := img.Delete(h.DB.Sql); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+		if err := services.DeleteImage(name, image, tag, h.DB.Sql, h.STORAGE); err != nil {
+			c.JSON(http.StatusForbidden, gin.H{"err": err.Error()})
 			return
 		}
-		if err := h.STORAGE.DeleteImage(name, img.Name, img.Tag, img.Hash); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
-		}
-		c.JSON(http.StatusAccepted, gin.H{"data": img})
+		c.JSON(http.StatusAccepted, gin.H{})
 	} else { // удаляется весь репозиторий
-		repo := db.Repository{Name: image}
-		if err := repo.Delete(h.DB.Sql); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+		if err := services.DeleteRepository(name, image, h.DB.Sql, h.STORAGE); err != nil {
+			c.JSON(http.StatusForbidden, gin.H{"err": err.Error()})
 			return
 		}
-		if err := h.STORAGE.DeleteRepository(name, image); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
-			return
-		}
-		c.JSON(http.StatusAccepted, gin.H{"data": repo})
+		c.JSON(http.StatusAccepted, gin.H{})
 	}
 }
 
 // getImage -получение образа.
 func (h *Handler) getImage(c *gin.Context) {
 	ImageName := c.Param("image")
-	repo := db.GetRepository(h.DB.Sql, ImageName)
-	data := db.GetImageTags(h.DB.Sql, repo.ID, ImageName)
+	data := services.GetImages(ImageName, h.DB.Sql)
 	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
@@ -136,12 +122,23 @@ func (h *Handler) login(c *gin.Context) {
 
 func (h *Handler) settings(c *gin.Context) {
 	if c.Request.Method == "GET" {
-		c.JSON(http.StatusOK, gin.H{"version": config.VERSION})
+		count, _ := db.GetCountTag(h.DB.Sql)
+		c.JSON(http.StatusOK, gin.H{"version": config.VERSION, "count": count})
 	} else if c.Request.Method == "POST" {
 		q := c.Query("garbage")
+		t := c.Query("tag")
 		if q == "true" {
 			h.STORAGE.GarbageCollection()
 			c.JSON(http.StatusAccepted, gin.H{"data": "Очистка завершена"})
+			return
+		}
+		if t != "" {
+			count, _ := strconv.Atoi(t)
+			if err := db.SetCountTag(h.DB.Sql, count); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusAccepted, gin.H{"data": "Настройки сохранены"})
 			return
 		}
 	}

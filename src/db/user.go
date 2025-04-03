@@ -37,7 +37,7 @@ func (u *User) Login(sql *gorm.DB, jwtKey []byte) error {
 		logrus.Error("неверные логин или пароль")
 		return errors.New("неверные логин или пароль")
 	}
-	newToken, err := system.GenerateJWT(jwtKey)
+	newToken, err := system.GenerateJWT(u.Name, jwtKey)
 	if err != nil {
 		logrus.Error(err)
 		return err

@@ -1,21 +1,18 @@
-// Package handlers реализует основную логику REST API приложения.
+// Package handlers реализует REST API приложения.
 // Интеграция спецификации https://distribution.github.io/distribution/spec/api/
 // с кастомным API.
 package handlers
 
 import (
-	"fmt"
 	"net/http"
-	"strings"
+
 	"time"
 
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/storage"
-	"github.com/PavelMilanov/container-registry/system"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 // Handler основная сущность взаимодействия с API.
@@ -27,52 +24,6 @@ type Handler struct {
 
 func NewHandler(storage *storage.Storage, db *db.SQLite, env *config.Env) *Handler {
 	return &Handler{STORAGE: storage, DB: db, ENV: env}
-}
-
-// baseApiMiddleware мидлварь для авторизации на уровне REST-API.
-func baseApiMiddleware(jwtKey []byte) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		data := c.GetHeader("Authorization")
-		payload := strings.TrimPrefix(data, "Bearer ")
-		if !system.ValidateJWT(payload, jwtKey) {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "token is not valid"})
-			c.Abort()
-			return
-		}
-		c.Next()
-	}
-}
-
-// baseRegistryMiddleware мидлварь для авторизации на уровне docker client.
-func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		repository := c.Param("repository")
-		var registry db.Registry
-		if err := registry.Get(sql, repository); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get registry"})
-			c.Abort()
-			return
-		}
-		c.Next()
-	}
-}
-
-// loginRegistryMiddleware мидлварь для авторизации на уровне docker client.
-// см. https://distribution.github.io/distribution/spec/auth/token/
-func loginRegistryMiddleware(url string, jwtKey []byte) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		data := c.GetHeader("Authorization")
-		payload := strings.TrimPrefix(data, "Bearer ")
-		valid := system.ValidateJWT(payload, jwtKey)
-		if !valid {
-			realm := fmt.Sprintf(`Bearer realm="%s/v2/auth",service="Docker Registry"`, url)
-			c.Header("WWW-Authenticate", realm)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			c.Abort()
-			return
-		}
-		c.Next()
-	}
 }
 
 func (h *Handler) InitRouters() *gin.Engine {
@@ -88,10 +39,6 @@ func (h *Handler) InitRouters() *gin.Engine {
 	}))
 	router.LoadHTMLGlob("./index.html")
 	router.Static("/assets/", "./assets")
-
-	router.NoRoute(func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", gin.H{"URL": h.ENV.Server.Url})
-	})
 
 	router.POST("/login", h.login)
 	router.GET("/check", func(c *gin.Context) {
@@ -135,5 +82,9 @@ func (h *Handler) InitRouters() *gin.Engine {
 		api.POST("/settings", h.settings)
 		api.GET("/settings", h.settings)
 	}
+
+	router.NoRoute(func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.html", gin.H{"URL": h.ENV.Server.Url})
+	})
 	return router
 }

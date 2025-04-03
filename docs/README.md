@@ -22,8 +22,10 @@ ___
 ### Docker
 
 ```bash
+docker volume create registry-data
 docker run -d --restart unless-stopped -p 5050:5050 \
--v ./registry:/registry/var \
+-v ./conf:/registry/conf.d \
+-v registry-data:/registry/var \
 --name registry rosomilanov/container-registry 
 ```
 
@@ -38,10 +40,14 @@ services:
     ports:
       - 5050:5050
     volumes:
-      - ./registry:/registry/var
+	  - ./conf:/registry/conf.d
+     - registry-data:/registry/var
+
+volumes:
+	registry-data:
 ```
 
-Сервис будет доступен по адресу http://localhost:5050/login
+Сервис будет доступен по адресу http://192.168.1.38:5050/login
 
 ![вход](./images/start.png)
 
@@ -51,7 +57,7 @@ services:
 - Пример конфигурации для локального хранилища:
 ```bash config.yaml
 server:
-  url: "http://127.0.0.1:5050"
+  url: "http://192.168.1.38:5050"
   jwt: "qwerty"
 
 storage:
@@ -61,7 +67,7 @@ storage:
 - Пример конфигурации для S3 хранилища:
 ```bash config.yaml
 server:
-  url: "http://127.0.0.1:5050"
+  url: "http://192.168.1.38:5050"
   jwt: "qwerty"
 
 storage:
@@ -72,7 +78,7 @@ storage:
     secret_key: "your_secret_key"
     ssl: true
 ```
-- папку с файлом `config.yaml` необходимо смонтировать в контейнер по пути `/registry/var`
+- папку с файлом `config.yaml` необходимо смонтировать в контейнер по пути `/registry/conf.d`
 ## Использование
 
 - создать реестр через веб-интерфейс:
@@ -82,7 +88,7 @@ storage:
 - авторизоваться в container registry:
 
 ```bash
-docker login -u test -p test localhost:5050
+docker login -u test -p test 192.168.1.38:5050
 ```
 
 - собрать образ по правилу <адрес docker registry>/<название реестра>:<тег> - localhost:5050/dev/alpine
@@ -90,11 +96,13 @@ docker login -u test -p test localhost:5050
 - загрузить образ:
 
 ```bash
-docker push localhost:5050/test/alpine
+docker push 192.168.1.38:5050/dev/postgres:17
 ```
 
 - скачать образ:
 
 ```bash
-docker pull localhost:5050/test/alpine
+docker pull 192.168.1.38:5050/dev/postgres:17
 ```
+
+![образ](./images/images.png)

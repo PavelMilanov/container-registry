@@ -1,7 +1,8 @@
 container-registry
-tmp
+conf.d
 var
 .DS_Store
 src/assets
 .obsidian
+.vagrant
 config.yaml

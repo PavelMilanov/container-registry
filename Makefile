@@ -4,7 +4,7 @@ build:
 	docker buildx build . --build-arg VERSION=dev -t registry:local
 
 local: build
-	docker run --rm -d -p 5050:5050 -v ./src/var:/registry/var --name registry registry:local
+	docker run --rm -d -p 5050:5050 -v ./src/conf.d:/registry/conf.d -v ./src/var:/registry/var --name registry registry:local
 
 release:
 	@docker buildx build --platform linux/amd64 . --build-arg VERSION=${version} -t rosomilanov/container-registry:${version} -t rosomilanov/container-registry:latest

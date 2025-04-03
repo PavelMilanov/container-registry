@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -43,4 +44,43 @@ func GetImageTags(sql *gorm.DB, id int, name string) []Image {
 	var i []Image
 	sql.Where("repository_id =? AND name =?", id, name).Find(&i)
 	return i
+}
+
+func GetLastTagImages(sql *gorm.DB, count int) []Image {
+	var images []Image
+	sql.Raw(`WITH ranked AS (
+  SELECT
+  *,
+    ROW_NUMBER() OVER (PARTITION BY name ORDER BY created_at DESC) AS rn
+  FROM images
+)
+SELECT *
+FROM ranked
+WHERE rn <= ?`, count).Scan(&images)
+	return images
+}
+
+func GetImage(sql *gorm.DB, condition string, args ...interface{}) (*Image, error) {
+	var i Image
+	if err := sql.Where(condition, args...).First(&i).Error; err != nil {
+		logrus.Error(err)
+		return nil, err
+	}
+	return &i, nil
+}
+
+func GetImages(sql *gorm.DB, condition string, args ...interface{}) ([]Image, error) {
+	var images []Image
+	if err := sql.Where(condition, args...).Find(&images).Error; err != nil {
+		logrus.Error(err)
+		return nil, err
+	}
+	return images, nil
+}
+
+func (i *Image) GetSize(sql *gorm.DB, condition string, args ...interface{}) int {
+	var size int
+	script := fmt.Sprintf("select SUM(size) from images WHERE %s", condition)
+	sql.Raw(script, args...).Scan(&size)
+	return size
 }
