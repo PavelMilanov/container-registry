@@ -35,15 +35,17 @@ func DeleteImage(name, image, tag string, sql *gorm.DB, storage *storage.Storage
 			tx.Rollback()
 			return err
 		}
+		imgSize := img.GetSize(tx, "repository_id = ?", img.RepositoryID)
 		repo, _ := db.GetRepository(tx, "ID = ?", img.RepositoryID)
-		registry, _ := db.GetRegistry(tx, "ID = ?", repo.RegistryID)
-		repo.Size -= img.Size
+		repo.Size = imgSize
 		repo.SizeAlias = system.ConvertSize(repo.Size)
 		if err := repo.UpdateSize(tx); err != nil {
 			tx.Rollback()
 			return err
 		}
-		registry.Size -= repo.Size
+		repoSize := repo.GetSize(tx, "registry_id = ?", repo.RegistryID)
+		registry, _ := db.GetRegistry(tx, "ID = ?", repo.RegistryID)
+		registry.Size = repoSize
 		registry.SizeAlias = system.ConvertSize(registry.Size)
 		if err := registry.UpdateSize(tx); err != nil {
 			tx.Rollback()
@@ -64,8 +66,9 @@ func DeleteRepository(name, image string, sql *gorm.DB, storage *storage.Storage
 			tx.Rollback()
 			return err
 		}
+		repoSize := repo.GetSize(tx, "registry_id = ?", repo.RegistryID)
 		registry, _ := db.GetRegistry(tx, "ID = ?", repo.RegistryID)
-		registry.Size -= repo.Size
+		registry.Size = repoSize
 		registry.SizeAlias = system.ConvertSize(registry.Size)
 		if err := registry.UpdateSize(tx); err != nil {
 			tx.Rollback()
@@ -90,13 +93,12 @@ func GetImages(image string, sql *gorm.DB) []db.Image {
 func DeleteOlderImages(sql *gorm.DB, storage *storage.Storage) {
 	tagCount, err := db.GetCountTag(sql)
 	if err != nil {
-		logrus.Printf("Failed to get tag count: %v", err)
+		logrus.Printf("Не найден тег: %v", err)
 		return
 	}
 	data := db.GetLastTagImages(sql, tagCount)
 	for _, item := range data {
 		repo, _ := db.GetRepository(sql, "ID = ?", item.RepositoryID)
-		storage.DeleteImage(repo.Name, item.Name, item.Tag, item.Hash)
-		sql.Delete(&item)
+		DeleteImage(repo.Name, item.Name, item.Tag, sql, storage)
 	}
 }

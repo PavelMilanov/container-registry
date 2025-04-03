@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -50,6 +51,13 @@ func (r *Repository) UpdateSize(sql *gorm.DB) error {
 		return result.Error
 	}
 	return nil
+}
+
+func (r *Repository) GetSize(sql *gorm.DB, condition string, args ...interface{}) int {
+	var size int
+	script := fmt.Sprintf("select SUM(size) from repositories WHERE %s", condition)
+	sql.Raw(script, args...).Scan(&size)
+	return size
 }
 
 func GetRepository(sql *gorm.DB, condition string, args ...interface{}) (*Repository, error) {

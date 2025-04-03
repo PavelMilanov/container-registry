@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -66,4 +67,20 @@ func GetImage(sql *gorm.DB, condition string, args ...interface{}) (*Image, erro
 		return nil, err
 	}
 	return &i, nil
+}
+
+func GetImages(sql *gorm.DB, condition string, args ...interface{}) ([]Image, error) {
+	var images []Image
+	if err := sql.Where(condition, args...).Find(&images).Error; err != nil {
+		logrus.Error(err)
+		return nil, err
+	}
+	return images, nil
+}
+
+func (i *Image) GetSize(sql *gorm.DB, condition string, args ...interface{}) int {
+	var size int
+	script := fmt.Sprintf("select SUM(size) from images WHERE %s", condition)
+	sql.Raw(script, args...).Scan(&size)
+	return size
 }

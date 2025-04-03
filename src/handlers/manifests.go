@@ -75,10 +75,12 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 			RepositoryID: repo.ID,
 		}
 		image.Add(h.DB.Sql)
-		repo.Size += image.Size
+		imgSize := image.GetSize(h.DB.Sql, "repository_id = ?", image.RepositoryID)
+		repo.Size = imgSize
 		repo.SizeAlias = system.ConvertSize(repo.Size)
 		repo.UpdateSize(h.DB.Sql)
-		registry.Size += repo.Size
+		repoSize := repo.GetSize(h.DB.Sql, "registry_id = ?", repo.RegistryID)
+		registry.Size = repoSize
 		registry.SizeAlias = system.ConvertSize(registry.Size)
 		registry.UpdateSize(h.DB.Sql)
 	}()
