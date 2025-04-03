@@ -8,6 +8,7 @@ var (
 	VERSION  string
 
 	DATA_PATH     = "var"
+	CONFIG_PATH   = "conf.d"
 	STORAGE_PATH  = filepath.Join(DATA_PATH, "data")
 	MANIFEST_PATH = filepath.Join(DATA_PATH, "data", "manifests")
 	BLOBS_PATH    = filepath.Join(DATA_PATH, "data", "blobs")
