@@ -17,7 +17,7 @@ export default function Clipboard() {
   };
 
   return (
-    <div class="w-full max-w-[26rem] ml-4">
+    <div class="w-full max-w-[28rem] ml-4">
       <div class="relative">
         <label for="clipboard-input" class="sr-only">
           Label
