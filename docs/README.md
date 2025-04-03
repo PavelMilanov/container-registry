@@ -26,7 +26,7 @@ docker volume create registry-data
 docker run -d --restart unless-stopped -p 5050:5050 \
 -v ./conf:/registry/conf.d \
 -v registry-data:/registry/var \
---name registry rosomilanov/container-registry 
+--name registry rosomilanov/container-registry
 ```
 
 ### Docker compose
@@ -40,11 +40,11 @@ services:
     ports:
       - 5050:5050
     volumes:
-	  - ./conf:/registry/conf.d
-     - registry-data:/registry/var
+      - ./conf:/registry/conf.d
+      - registry-data:/registry/var
 
 volumes:
-	registry-data:
+  registry-data:
 ```
 
 Сервис будет доступен по адресу http://192.168.1.38:5050/login
