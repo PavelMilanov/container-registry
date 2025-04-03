@@ -41,7 +41,7 @@ services:
       - 5050:5050
     volumes:
 	  - ./conf:/registry/conf.d
-      - registry-data:/registry/var
+     - registry-data:/registry/var
 
 volumes:
 	registry-data:
