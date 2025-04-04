@@ -17,7 +17,7 @@ export default function Clipboard() {
   };
 
   return (
-    <div class="w-full max-w-[28rem] ml-4">
+    <div class="w-full max-w-[26rem] ml-4">
       <div class="relative">
         <label for="clipboard-input" class="sr-only">
           Label
@@ -25,7 +25,7 @@ export default function Clipboard() {
         <input
           id="clipboard-input"
           type="text"
-          class="bg-blue-50 text-base rounded-lg focus:ring-blue-800 focus:border-blue-800 block w-full px-2.5 py-4"
+          class="bg-blue-50 text-sm rounded-lg focus:ring-blue-800 focus:border-blue-800 block w-full px-2.5 py-4"
           value={API_URL.split("//")[1]}
           disabled
           readonly
@@ -39,7 +39,6 @@ export default function Clipboard() {
             <span id="default-message" class="inline-flex items-center">
               <svg
                 class="w-3 h-3 me-1.5"
-                aria-hidden="true"
                 xmlns="http://www.w3.org/2000/svg"
                 fill="currentColor"
                 viewBox="0 0 18 20"
@@ -52,7 +51,6 @@ export default function Clipboard() {
             <span id="success-message" class="inline-flex items-center">
               <svg
                 class="w-3 h-3 text-base me-1.5"
-                aria-hidden="true"
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 16 12"

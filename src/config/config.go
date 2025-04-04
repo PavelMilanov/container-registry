@@ -9,9 +9,9 @@ var (
 
 	DATA_PATH     = "var"
 	CONFIG_PATH   = "conf.d"
-	STORAGE_PATH  = filepath.Join(DATA_PATH, "data")
-	MANIFEST_PATH = filepath.Join(DATA_PATH, "data", "manifests")
-	BLOBS_PATH    = filepath.Join(DATA_PATH, "data", "blobs")
+	STORAGE_PATH  = filepath.Join(DATA_PATH)
+	MANIFEST_PATH = filepath.Join(DATA_PATH, "manifests")
+	BLOBS_PATH    = filepath.Join(DATA_PATH, "blobs")
 	TMP_PATH      = filepath.Join(DATA_PATH, "tmp")
 
 	BACKET_NAME              = "registry"

@@ -59,8 +59,7 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 		for _, layer := range data.Layers {
 			size += layer.Size
 		}
-		var registry db.Registry
-		registry.Get(h.DB.Sql, repository)
+		registry, _ := db.GetRegistry(h.DB.Sql, "name = ?", repository)
 		repo := db.Repository{
 			Name:       imageName,
 			RegistryID: registry.ID,

@@ -89,7 +89,7 @@ export default function Settings() {
       <div class="container">
         <h2>Общие настройки</h2>
         <div class="card">
-          <div class="relative w-1/4 m-2">
+          <div class="relative w-1/5 m-2">
             <p>Удалить неиспользуемые файлы реестра:</p>
           </div>
           <button
@@ -98,7 +98,7 @@ export default function Settings() {
           >
             Сборщик мусора
           </button>
-          <div class="relative w-1/4 m-2 mt-4">
+          <div class="relative w-1/5 m-2 mt-4">
             <input
               type="text"
               id="floating_outlined"
@@ -109,7 +109,7 @@ export default function Settings() {
             />
             <label
               for="floating_outlined"
-              class="absolute text-sm text-gray-500 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-2 peer-focus:px-2 peer-focus:text-blue-600 peer-focus:dark:text-blue-500 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 rtl:peer-focus:translate-x-1/4 rtl:peer-focus:left-auto start-1"
+              class="absolute text-sm text-gray-500 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-2 peer-focus:px-2 peer-focus:text-blue-600 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 rtl:peer-focus:translate-x-1/4 rtl:peer-focus:left-auto start-1"
             >
               Удалять теги образов старше:
             </label>

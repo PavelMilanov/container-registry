@@ -51,15 +51,6 @@ func GetRegistires(sql *gorm.DB) []Registry {
 	return r
 }
 
-func (r *Registry) Get(sql *gorm.DB, name string) error {
-	result := sql.Where("name = ?", name).First(&r)
-	if result.RowsAffected == 0 {
-		logrus.Error(result.Error)
-		return result.Error
-	}
-	return nil
-}
-
 func (r *Registry) GetRepositories(sql *gorm.DB, name string) error {
 	result := sql.Preload("Repositories").Where("name = ?", name).First(&r)
 	if result.Error != nil {

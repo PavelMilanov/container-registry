@@ -2,6 +2,7 @@ package db
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/PavelMilanov/container-registry/system"
 	"github.com/sirupsen/logrus"
@@ -11,23 +12,27 @@ import (
 // User абстракция таблицы users.
 type User struct {
 	ID       int    `gorm:"primaryKey"`
-	Name     string `gorm:"not null,unique"`
+	Name     string `gorm:"not null;unique"`
 	Password string `gorm:"not null"`
 	Token    string
 }
 
 func (u *User) Add(sql *gorm.DB) error {
-	result := sql.Where("name = ? AND password = ?", u.Name, u.Password).First(&u)
-	if result.RowsAffected == 0 {
-		hash := system.Hashed(u.Password)
-		u.Password = hash
-		sql.Create(&u)
-		logrus.Infof("Создан новый пользователь %+v", u)
-	} else {
-		logrus.Errorf("пользователь %+v уже существует", u)
-		return errors.New("пользователь уже существует")
+	result := sql.Where("name = ?", u.Name).First(&u)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			hash := system.Hashed(u.Password)
+			u.Password = hash
+			sql.Create(&u)
+			logrus.Infof("Создан новый пользователь %+v", u)
+			return nil
+		} else {
+			logrus.Error(result.Error)
+			return result.Error
+		}
 	}
-	return nil
+	errStr := fmt.Sprintf("Пользователь %s уже существует", u.Name)
+	return errors.New(errStr)
 }
 
 func (u *User) Login(sql *gorm.DB, jwtKey []byte) error {
