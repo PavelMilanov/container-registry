@@ -52,11 +52,11 @@ export default function RegistryTable(props) {
           <For each={items()}>
             {(item, index) => (
               <tr class="bg-white hover:bg-gray-50 border-b border-gray-200">
-                <td class="px-6 py-4 text-base font-medium hover:underline">
+                <td class="px-6 py-4 text-sm font-medium hover:underline">
                   <A href={item.Name}>{item.Name}</A>
                 </td>
-                <td class="px-6 py-4 text-base">{item.CreatedAt}</td>
-                <td class="px-6 py-4 text-base">{item.SizeAlias}</td>
+                <td class="px-6 py-4 text-sm">{item.CreatedAt}</td>
+                <td class="px-6 py-4 text-sm">{item.SizeAlias}</td>
                 <td class="px-6 py-4">
                   <Delete
                     message={

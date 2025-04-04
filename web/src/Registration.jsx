@@ -1,7 +1,9 @@
 import { createSignal, Switch, Match } from "solid-js";
+import { useNavigate } from "@solidjs/router";
 import axios from "axios";
 
 export default function Registration() {
+  const navigate = useNavigate();
   const [errorMessage, setErrorMessage] = createSignal("");
   const [username, setUsername] = createSignal("");
   const [password, setPassword] = createSignal("");
@@ -18,7 +20,7 @@ export default function Registration() {
         API_URL + "/registration",
         JSON.stringify(data),
       );
-      toLogin();
+      navigate("/login", { replace: true });
     } catch (error) {
       const msg = error.response.data.error;
       setErrorMessage(msg);

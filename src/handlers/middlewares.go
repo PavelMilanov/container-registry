@@ -29,8 +29,9 @@ func baseApiMiddleware(jwtKey []byte) gin.HandlerFunc {
 func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		repository := c.Param("repository")
-		var registry db.Registry
-		if err := registry.Get(sql, repository); err != nil {
+		// var registry db.Registry
+		_, err := db.GetRegistry(sql, "name = ?", repository)
+		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get registry"})
 			c.Abort()
 			return

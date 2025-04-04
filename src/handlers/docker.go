@@ -30,16 +30,4 @@ func (h *Handler) authHandler(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"token": tokenString})
-	// c.JSON(http.StatusOK, gin.H{"token": user.Token})
 }
-
-// // generateJWT генерирует JWT-токен с использованием алгоритма HS256.
-// func generateJWT(username, secret string) (string, error) {
-// 	claims := jwt.MapClaims{
-// 		"sub": username,
-// 		"iat": time.Now().Unix(),
-// 		"exp": time.Now().Add(24 * time.Hour).Unix(),
-// 	}
-// 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-// 	return token.SignedString([]byte(secret))
-// }
