@@ -24,7 +24,7 @@ ___
 ```bash
 docker volume create registry-data
 docker run -d --restart unless-stopped -p 5050:5050 \
--v ./conf:/registry/conf.d \
+-v ./conf:/registry/conf.d:ro \
 -v registry-data:/registry/var \
 --name registry rosomilanov/container-registry
 ```
@@ -40,7 +40,7 @@ services:
     ports:
       - 5050:5050
     volumes:
-      - ./conf:/registry/conf.d
+      - ./conf:/registry/conf.d:ro
       - registry-data:/registry/var
 
 volumes:
@@ -79,6 +79,7 @@ storage:
     ssl: true
 ```
 - папку с файлом `config.yaml` необходимо смонтировать в контейнер по пути `/registry/conf.d`
+
 ## Использование
 
 - создать реестр через веб-интерфейс:
@@ -91,7 +92,7 @@ storage:
 docker login -u test -p test 192.168.1.38:5050
 ```
 
-- собрать образ по правилу <адрес docker registry>/<название реестра>:<тег> - localhost:5050/dev/alpine
+- собрать образ по правилу <адрес docker registry>/<название реестра>:<тег> - 192.168.1.38:5050/dev/alpine
 
 - загрузить образ:
 
