@@ -24,13 +24,24 @@ func TestRegistyAPI(t *testing.T) {
 	srv := h.InitRouters()
 	token := ""
 	t.Run("registration", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		body := `{"username": "test","password":"test","confirmPassword":"test"}`
-		req, _ := http.NewRequest("POST", "/registration", strings.NewReader(body))
-		srv.ServeHTTP(w, req)
-		if w.Code != http.StatusCreated {
-			t.Error("ошибка при регистрации")
-		}
+		t.Run("first", func(t *testing.T) {
+			w := httptest.NewRecorder()
+			body := `{"username": "test","password":"test","confirmPassword":"test"}`
+			req, _ := http.NewRequest("POST", "/registration", strings.NewReader(body))
+			srv.ServeHTTP(w, req)
+			if w.Code != http.StatusCreated {
+				t.Error("ошибка при регистрации")
+			}
+		})
+		t.Run("second", func(t *testing.T) {
+			w := httptest.NewRecorder()
+			body := `{"username": "test","password":"test","confirmPassword":"test"}`
+			req, _ := http.NewRequest("POST", "/registration", strings.NewReader(body))
+			srv.ServeHTTP(w, req)
+			if w.Code != http.StatusBadRequest {
+				t.Error("ошибка при регистрации")
+			}
+		})
 	})
 	t.Run("login", func(t *testing.T) {
 		w := httptest.NewRecorder()
