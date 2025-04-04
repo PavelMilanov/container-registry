@@ -55,13 +55,13 @@ export default function RepoTable(props) {
           <For each={items()}>
             {(item, index) => (
               <tr class="bg-white hover:bg-gray-50 border-b border-gray-200">
-                <td class="px-6 py-4 text-base font-medium hover:underline">
+                <td class="px-6 py-4 text-sm font-medium hover:underline">
                   <A href={item.Name}>
                     {API_URL.split("//")[1]}/{params.name}/{item.Name}
                   </A>
                 </td>
-                <td class="px-6 py-4 text-base">{item.CreatedAt}</td>
-                <td class="px-6 py-4 text-base">{item.SizeAlias}</td>
+                <td class="px-6 py-4 text-sm">{item.CreatedAt}</td>
+                <td class="px-6 py-4 text-sm">{item.SizeAlias}</td>
                 <td class="px-6 py-4">
                   <Delete
                     message={"Образы Docker репозитория будут удалены!"}

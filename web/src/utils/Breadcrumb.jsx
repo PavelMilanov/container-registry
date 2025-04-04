@@ -6,10 +6,7 @@ import Clipboard from "./Clipboard";
 export default function Breadcrumb(props) {
   let segments = props.path.split("/").filter(Boolean);
   return (
-    <nav
-      class="flex mb-1 p-4 py-3 text-gray-700 border border-gray-200 rounded-lg bg-gray-50"
-      aria-label="Breadcrumb"
-    >
+    <nav class="flex mb-1 p-4 py-3 text-gray-700 border border-gray-200 rounded-lg bg-gray-50">
       <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
         <For each={segments}>
           {(segment, index) => {
@@ -35,7 +32,7 @@ export default function Breadcrumb(props) {
                 )}
                 <A
                   href={url}
-                  class="ms-1 text-base font-medium hover:text-blue-600 md:ms-2 hover:bg-blue-50 hover:rounded-sm"
+                  class="ms-1 text-sm font-medium hover:text-blue-600 md:ms-2 hover:bg-blue-50 hover:rounded-sm"
                 >
                   {index() === 0 ? (
                     <div class="flex items-center gap-1">
