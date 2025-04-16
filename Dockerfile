@@ -31,7 +31,7 @@ COPY web/ .
 RUN npm run build
 
 
-FROM alpine:3.20
+FROM alpine:3.21
 
 ENV TZ=Europe/Moscow
 ENV GIN_MODE=release

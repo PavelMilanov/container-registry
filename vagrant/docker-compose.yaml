@@ -1,0 +1,13 @@
+services:
+  registry:
+    image: rosomilanov/container-registry:latest
+    container_name: registry
+    restart: unless-stopped
+    ports:
+      - 5050:5050
+    volumes:
+      - ./conf:/registry/conf.d:ro
+      - registry-data:/registry/var
+
+volumes:
+  registry-data:

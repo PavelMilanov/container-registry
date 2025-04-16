@@ -2,19 +2,17 @@ Vagrant.configure("2") do |config|
   config.vm.box = "hashicorp-education/ubuntu-24-04"
   config.vm.box_version = "0.1.0"
 
-  config.vm.synced_folder ".", "/project"
-
-  config.vm.network "forwarded_port", guest: 5050, host: 5050
-
-  config.vm.provision "shell", inline: <<-SHELL
-    wget https://go.dev/dl/go1.24.1.linux-amd64.tar.gz
-    sudo tar -C /usr/local -xzf go1.24.1.linux-amd64.tar.gz
-    echo "export PATH=$PATH:/usr/local/go/bin" >> ~/.profile
-    source ~/.profile
+  config.vm.define "registry" do |registry|
+  registry.vm.synced_folder "vagrant", "/registry"
+  registry.vm.network "forwarded_port", guest: 5050, host: 5050
+  registry.vm.provision "shell", inline: <<-SHELL
+    sudo apt-get update
+    sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+    sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+    sudo apt-get update
+    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    sudo usermod -aG docker vagrant
   SHELL
-
-  config.vm.provider "virtualbox" do |vb|
-    vb.memory = "2048"
-    vb.cpus = 2
   end
 end
