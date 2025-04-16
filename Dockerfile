@@ -31,13 +31,7 @@ COPY web/ .
 RUN npm run build
 
 
-FROM alpine:3.20
-
-ARG USER_DOCKER=registry
-ARG UID_DOCKER=10000
-
-ENV USER_DOCKER="$USER_DOCKER"
-ENV UID_DOCKER="$UID_DOCKER"
+FROM alpine:3.21
 
 ENV TZ=Europe/Moscow
 ENV GIN_MODE=release
@@ -47,15 +41,10 @@ WORKDIR /registry
 COPY --from=app /go/bin/container-registry /registry/registry
 COPY --from=web /app/dist /registry/
 
-RUN apk --update --no-cache add tzdata sqlite-libs curl && \
-    addgroup -g ${UID_DOCKER} ${USER_DOCKER} && \
-    adduser -u ${UID_DOCKER} -G ${USER_DOCKER} -s /bin/sh -D -H ${USER_DOCKER} && \
-    chown -R ${USER_DOCKER}:${USER_DOCKER} /registry
+RUN apk --update --no-cache add tzdata sqlite-libs curl
 
 EXPOSE 5050/tcp
 
 HEALTHCHECK --interval=10m --timeout=3s --start-period=5s --retries=3 CMD curl -f http://localhost:5050/check || exit 1
 
 ENTRYPOINT ["./registry" ]
-
-USER ${USER_DOCKER}:${USER_DOCKER}
