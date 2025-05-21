@@ -57,7 +57,9 @@ volumes:
 - Пример конфигурации для локального хранилища:
 ```bash config.yaml
 server:
-  url: "http://192.168.1.38:5050"
+  realm: "http://192.168.1.38:5050"
+  service: "192.168.1.38:5050"
+  issuer: "local-registry"
   jwt: "qwerty"
 
 storage:
@@ -67,7 +69,9 @@ storage:
 - Пример конфигурации для S3 хранилища:
 ```bash config.yaml
 server:
-  url: "http://192.168.1.38:5050"
+  realm: "http://192.168.1.38:5050"
+  service: "192.168.1.38:5050"
+  issuer: "local-registry"
   jwt: "qwerty"
 
 storage:
