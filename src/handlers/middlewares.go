@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/system"
 	"github.com/gin-gonic/gin"
@@ -41,13 +42,13 @@ func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 
 // loginRegistryMiddleware мидлварь для авторизации на уровне docker client.
 // см. https://distribution.github.io/distribution/spec/auth/token/
-func loginRegistryMiddleware(url string, jwtKey []byte) gin.HandlerFunc {
+func loginRegistryMiddleware(cred *config.Env) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		payload := strings.TrimPrefix(authHeader, "Bearer ")
 		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 			// Формируем challenge согласно спецификации
-			challenge := fmt.Sprintf(`Bearer realm="%s/v2/auth",service="Docker Registry"`, url)
+			challenge := fmt.Sprintf(`Bearer realm="%s/v2/auth"`, cred.Server.Realm)
 			if service := c.Query("service"); service != "" {
 				challenge += fmt.Sprintf(`,service="%s"`, service)
 			}
@@ -55,12 +56,11 @@ func loginRegistryMiddleware(url string, jwtKey []byte) gin.HandlerFunc {
 				challenge += fmt.Sprintf(`,scope="%s"`, scope)
 			}
 			c.Header("WWW-Authenticate", challenge)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized - missing token"})
-			c.Abort()
+			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
-		if !system.ValidateJWT(payload, jwtKey) {
-			challenge := fmt.Sprintf(`Bearer realm="%s/v2/auth",service="Docker Registry"`, url)
+		if !system.ValidateJWT(payload, []byte(cred.Server.Jwt)) {
+			challenge := fmt.Sprintf(`Bearer realm="%s/v2/auth"`, cred.Server.Realm)
 			if service := c.Query("service"); service != "" {
 				challenge += fmt.Sprintf(`,service="%s"`, service)
 			}
@@ -68,8 +68,7 @@ func loginRegistryMiddleware(url string, jwtKey []byte) gin.HandlerFunc {
 				challenge += fmt.Sprintf(`,scope="%s"`, scope)
 			}
 			c.Header("WWW-Authenticate", challenge)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized - invalid token"})
-			c.Abort()
+			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 		c.Next()

@@ -2,11 +2,14 @@ package system
 
 import (
 	"testing"
+
+	"github.com/PavelMilanov/container-registry/config"
 )
 
+var env = config.NewEnv(config.CONFIG_PATH, "config")
+
 func TestGenerateJWT(t *testing.T) {
-	key := []byte("secret")
-	token, err := GenerateJWT("test", key)
+	token, err := GenerateJWT("test", "local", env)
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -14,9 +17,8 @@ func TestGenerateJWT(t *testing.T) {
 }
 
 func TestValidateJWT(t *testing.T) {
-	key := []byte("secret")
-	token, _ := GenerateJWT("test", key)
-	if !ValidateJWT(token, key) {
+	token, _ := GenerateJWT("test", "local", env)
+	if !ValidateJWT(token, []byte(env.Server.Jwt)) {
 		t.Error("токен не валиден")
 	}
 }
