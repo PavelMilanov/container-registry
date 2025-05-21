@@ -30,7 +30,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{h.ENV.Server.Url},
+		AllowOrigins:     []string{h.ENV.Server.Realm},
 		AllowMethods:     []string{"GET", "POST", "DELETE"},
 		AllowHeaders:     []string{"Origin", "Authorization", "Content-Type"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -47,7 +47,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 	router.POST("/registration", h.registration)
 	router.GET("/v2/auth", h.authHandler)
 
-	v2 := router.Group("/v2/", loginRegistryMiddleware(h.ENV.Server.Url, []byte(h.ENV.Server.Jwt)))
+	v2 := router.Group("/v2/", loginRegistryMiddleware(h.ENV))
 	{
 		// Пинг для проверки
 		v2.GET("/", func(c *gin.Context) {
@@ -84,7 +84,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 	}
 
 	router.NoRoute(func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", gin.H{"URL": h.ENV.Server.Url})
+		c.HTML(http.StatusOK, "index.html", gin.H{"URL": h.ENV.Server.Realm})
 	})
 	return router
 }

@@ -3,17 +3,20 @@ package system
 import (
 	"time"
 
+	"github.com/PavelMilanov/container-registry/config"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func GenerateJWT(username string, key []byte) (string, error) {
+func GenerateJWT(username, aud string, cred *config.Env) (string, error) {
 	payload := jwt.MapClaims{
 		"sub": username,
+		"aud": aud,
+		"iss": cred.Server.Issuer,
 		"exp": time.Now().Add(24 * time.Hour).Unix(),
 		"iat": time.Now().Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, payload)
-	return token.SignedString(key)
+	return token.SignedString([]byte(cred.Server.Jwt))
 }
 
 // Валидирует токен аутентификации.

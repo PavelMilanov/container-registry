@@ -13,8 +13,10 @@ type Env struct {
 
 // server описывает конфигурацию сервера.
 type server struct {
-	Url string `mapstructure:"url"`
-	Jwt string `mapstructure:"jwt"`
+	Realm   string `mapstructure:"realm"`
+	Service string `mapstructure:"service"`
+	Issuer  string `mapstructure:"issuer"`
+	Jwt     string `mapstructure:"jwt"`
 }
 
 // storage описывает конфигурацию хранилища.
