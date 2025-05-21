@@ -1,5 +1,7 @@
 server:
-  url: "http://localhost:5050"
+  realm: "http://localhost:5050"
+  service: "localhost:5050"
+  issuer: "localhost-registry"
   jwt: "qwerty"
 
 storage:
