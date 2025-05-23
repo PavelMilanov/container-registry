@@ -18,7 +18,7 @@ ENV CGO_ENABLED=1
 RUN go install -ldflags="-s -w -X 'github.com/PavelMilanov/container-registry/config.VERSION=${VERSION}'"
 
 
-FROM node:22 AS web
+FROM node:22-alpine AS web
 
 WORKDIR /app
 

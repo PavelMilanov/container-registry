@@ -30,6 +30,13 @@ func (h *Handler) startBlobUpload(c *gin.Context) {
 	imageName := c.Param("name")
 	// Генерируем уникальный UUID для загрузки
 	uuid := uid.New().String()
+	f, err := os.OpenFile(filepath.Join(config.TMP_PATH, uuid), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		logrus.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot resume upload"})
+		return
+	}
+	defer f.Close()
 	// Возвращаем URL для продолжения загрузки
 	c.Header("Location", fmt.Sprintf("/v2/%s/%s/blobs/uploads/%s", repository, imageName, uuid))
 	c.Header("Docker-Upload-UUID", uuid)
@@ -38,24 +45,15 @@ func (h *Handler) startBlobUpload(c *gin.Context) {
 
 func (h *Handler) uploadBlobPart(c *gin.Context) {
 	uuid := c.Param("uuid") // Уникальный идентификатор загрузки
-	// Читаем тело запроса (часть блоба в бинарном формате)
-	file, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		logrus.Error(err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read blob part"})
-		return
-	}
 	// Путь к временному файлу
-	tempPath := filepath.Join(config.TMP_PATH, uuid)
-	f, err := os.OpenFile(tempPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(filepath.Join(config.TMP_PATH, uuid), os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		logrus.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to open temporary file"})
 		return
 	}
 	defer f.Close()
-	// Записываем данные во временный файл
-	_, err = f.Write(file)
+	_, err = io.Copy(f, c.Request.Body)
 	if err != nil {
 		logrus.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write to temporary file"})
@@ -105,7 +103,8 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 	calculatedDigest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
 	// сравнение хешей
 	if calculatedDigest != digest {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Digest mismatch", "digest": digest, "calculatedDigest": calculatedDigest})
+		logrus.Error("Digest mismatch", digest, calculatedDigest)
+		c.JSON(http.StatusBadRequest, gin.H{})
 		return
 	}
 	// переименование временного файла в итоговый файл

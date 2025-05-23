@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -49,10 +48,6 @@ func (h *Handler) authHandler(c *gin.Context) {
 			}
 		}
 	}
-	fmt.Println("account:", c.Query("account"))
-	fmt.Println("service:", c.Query("service"))
-	fmt.Println("scope:", c.Query("scope"))
-	fmt.Println("client_id:", c.Query("client_id"))
 	c.Header("Content-Type", "application/json")
 	c.JSON(http.StatusOK, gin.H{
 		"token":      tokenString,
