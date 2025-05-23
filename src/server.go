@@ -18,8 +18,8 @@ func (s *Server) Run(handler http.Handler) error {
 	s.httpServer = &http.Server{
 		Addr:         "0.0.0.0:5050",
 		Handler:      handler,
-		ReadTimeout:  60 * time.Second,
-		WriteTimeout: 60 * time.Second,
+		ReadTimeout:  300 * time.Second,
+		WriteTimeout: 300 * time.Second,
 	}
 	logrus.Infof("Сервер запущен: %+v | Версия сборки: %s | Версия go: %s", s.httpServer.Addr, config.VERSION, runtime.Version())
 	return s.httpServer.ListenAndServe()

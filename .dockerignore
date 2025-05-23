@@ -2,3 +2,5 @@ src/index.html
 vagrant
 .obsidian
 .vagrant
+builder.sh
+buildkitd.toml
