@@ -87,7 +87,7 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 	if err != nil {
 		logrus.Error(err)
 		if os.IsNotExist(err) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Temporary file not found"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Temporary file not found"})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -103,7 +103,7 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 	calculatedDigest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
 	// сравнение хешей
 	if calculatedDigest != digest {
-		logrus.Error("Digest mismatch", digest, calculatedDigest)
+		logrus.Error("Digest mismatch")
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
 	}
