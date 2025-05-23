@@ -46,6 +46,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 	})
 	router.POST("/registration", h.registration)
 	router.GET("/v2/auth", h.authHandler)
+	router.POST("/v2/auth", h.authHandler)
 
 	v2 := router.Group("/v2/", loginRegistryMiddleware(h.ENV))
 	{

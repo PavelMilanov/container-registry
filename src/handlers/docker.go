@@ -16,12 +16,14 @@ func (h *Handler) authHandler(c *gin.Context) {
 	username, password, ok := c.Request.BasicAuth()
 	if !ok {
 		c.Header("WWW-Authenticate", `Basic realm="registry"`)
+		c.Header("Content-Type", "application/json")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization required"})
 		return
 	}
 	user := db.User{Name: username, Password: password}
 	if err := user.Login(h.DB.Sql, c.Query("service"), h.ENV); err != nil {
 		c.Header("WWW-Authenticate", `Basic realm="registry"`)
+		c.Header("Content-Type", "application/json")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
 		return
 	}
@@ -29,6 +31,7 @@ func (h *Handler) authHandler(c *gin.Context) {
 	tokenString, err := system.GenerateJWT(username, c.Query("service"), h.ENV)
 	if err != nil {
 		logrus.Errorf("Failed to generate token: %v", err)
+		c.Header("Content-Type", "application/json")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
 	}
@@ -50,6 +53,7 @@ func (h *Handler) authHandler(c *gin.Context) {
 	fmt.Println("service:", c.Query("service"))
 	fmt.Println("scope:", c.Query("scope"))
 	fmt.Println("client_id:", c.Query("client_id"))
+	c.Header("Content-Type", "application/json")
 	c.JSON(http.StatusOK, gin.H{
 		"token":      tokenString,
 		"access":     access,

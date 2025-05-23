@@ -61,9 +61,17 @@ func (h *Handler) uploadBlobPart(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write to temporary file"})
 		return
 	}
+	// Получаем текущий размер файла после записи
+	fInfo, err := f.Stat()
+	if err != nil {
+		logrus.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to stat temporary file"})
+		return
+	}
+	currentSize := fInfo.Size()
 	c.Header("Docker-Upload-UUID", uuid)
-	c.Header("Range", fmt.Sprintf("%d-%d", 0, len(file)-1))
-	c.JSON(http.StatusNoContent, gin.H{"message": "Blob part uploaded"})
+	c.Header("Range", fmt.Sprintf("0-%d", currentSize-1))
+	c.JSON(http.StatusNoContent, gin.H{})
 }
 
 func (h *Handler) finalizeBlobUpload(c *gin.Context) {
