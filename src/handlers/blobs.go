@@ -45,31 +45,32 @@ func (h *Handler) startBlobUpload(c *gin.Context) {
 
 func (h *Handler) uploadBlobPart(c *gin.Context) {
 	uuid := c.Param("uuid") // Уникальный идентификатор загрузки
+	// Читаем тело запроса (часть блоба в бинарном формате)
+	file, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		logrus.Error(err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read blob part"})
+		return
+	}
 	// Путь к временному файлу
-	f, err := os.OpenFile(filepath.Join(config.TMP_PATH, uuid), os.O_WRONLY|os.O_APPEND, 0644)
+	tempPath := filepath.Join(config.TMP_PATH, uuid)
+	f, err := os.OpenFile(tempPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		logrus.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to open temporary file"})
 		return
 	}
 	defer f.Close()
-	_, err = io.Copy(f, c.Request.Body)
+	// Записываем данные во временный файл
+	_, err = f.Write(file)
 	if err != nil {
 		logrus.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write to temporary file"})
 		return
 	}
-	// Получаем текущий размер файла после записи
-	fInfo, err := f.Stat()
-	if err != nil {
-		logrus.Error(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to stat temporary file"})
-		return
-	}
-	currentSize := fInfo.Size()
 	c.Header("Docker-Upload-UUID", uuid)
-	c.Header("Range", fmt.Sprintf("0-%d", currentSize-1))
-	c.JSON(http.StatusNoContent, gin.H{})
+	c.Header("Range", fmt.Sprintf("%d-%d", 0, len(file)-1))
+	c.JSON(http.StatusNoContent, gin.H{"message": "Blob part uploaded"})
 }
 
 func (h *Handler) finalizeBlobUpload(c *gin.Context) {
