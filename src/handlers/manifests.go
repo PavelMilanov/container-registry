@@ -98,7 +98,7 @@ func (h *Handler) getManifest(c *gin.Context) {
 	hasher.Write(manifest)
 	calculatedDigest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
 	// Возвращаем манифест клиенту
-	c.Header("Content-Type", "application/vnd.docker.distribution.manifest.v2+json")
+	// c.Header("Content-Type", "application/vnd.docker.distribution.manifest.v2+json")
 	c.Header("Docker-Content-Digest", calculatedDigest)
 	c.Header("Content-Length", fmt.Sprintf("%d", len(manifest)))
 	c.Data(http.StatusOK, "application/vnd.docker.distribution.manifest.v2+json", manifest)
