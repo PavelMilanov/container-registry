@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"net/http"
@@ -29,13 +30,6 @@ func (h *Handler) startBlobUpload(c *gin.Context) {
 	imageName := c.Param("name")
 	// Генерируем уникальный UUID для загрузки
 	uuid := uid.New().String()
-	f, err := os.OpenFile(filepath.Join(config.TMP_PATH, uuid), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		logrus.Error(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot resume upload"})
-		return
-	}
-	defer f.Close()
 	// Возвращаем URL для продолжения загрузки
 	c.Header("Location", fmt.Sprintf("/v2/%s/%s/blobs/uploads/%s", repository, imageName, uuid))
 	c.Header("Docker-Upload-UUID", uuid)
@@ -43,8 +37,7 @@ func (h *Handler) startBlobUpload(c *gin.Context) {
 }
 
 func (h *Handler) uploadBlobPart(c *gin.Context) {
-	uuid := c.Param("uuid") // Уникальный идентификатор загрузки
-	// Читаем тело запроса (часть блоба в бинарном формате)
+	uuid := c.Param("uuid")
 	file, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		logrus.Error(err)
@@ -73,58 +66,59 @@ func (h *Handler) uploadBlobPart(c *gin.Context) {
 }
 
 func (h *Handler) finalizeBlobUpload(c *gin.Context) {
-	ct := c.Request.Header["Content-Type"]
-	cr := c.Request.Header["Content-Range"]
-	cl := c.Request.Header["Content-Length"]
-	logrus.Infof("Content-Type: %s, Content-Range: %s, Content-Length: %s", ct, cr, cl)
 	uuid := c.Param("uuid")
-	// Получаем digest из query параметров
+	status := c.Request.Header.Get("Content-Type")
+	// если есть заголовок Content-Type, то это не первый запрос и образ грузится частями
 	digest := c.Query("digest")
 	if digest == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing digest query parameter"})
 		return
 	}
-	file, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		logrus.Error(err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read blob part"})
-		return
-	}
-	// // Путь к временному и конечному файлам
 	tempPath := filepath.Join(config.TMP_PATH, uuid)
-	// // Открытие временного файла
-	// file, err := os.Open(tempPath)
-	// if err != nil {
-	// 	logrus.Error(err)
-	// 	if os.IsNotExist(err) {
-	// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Temporary file not found"})
-	// 		return
-	// 	}
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-	// }
-	// defer file.Close()
-	f, err := os.OpenFile(filepath.Join(config.TMP_PATH, uuid), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		logrus.Error(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot resume upload"})
+	hasher := sha256.New()
+	if status == "" {
+		file, err := os.Open(tempPath)
+		if err != nil {
+			logrus.Error(err)
+			if os.IsNotExist(err) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Temporary file not found"})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		defer file.Close()
+		if _, err := io.Copy(hasher, file); err != nil {
+			logrus.Error(err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	} else {
+		body, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			logrus.Error(err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read blob part"})
+			return
+		}
+		f, err := os.OpenFile(tempPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			logrus.Error(err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot resume upload"})
+			return
+		}
+		defer f.Close()
+		_, err = f.Write(body)
+		f.Seek(0, 0)
+		n, err := io.Copy(hasher, f)
+		logrus.Info(n)
+		hasher.Write(body)
+	}
+	calculatedDigest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
+	if calculatedDigest != digest {
+		logrus.Error("Digest mismatch")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Digest mismatch"})
 		return
 	}
-	defer f.Close()
-	_, err = f.Write(file)
-	// Вычисление хеша от содержимого файла
-	// hasher := sha256.New()
-	// if _, err := io.Copy(hasher, file); err != nil {
-	// 	logrus.Error(err)
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-	// 	return
-	// }
-	// calculatedDigest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
-	// // сравнение хешей
-	// if calculatedDigest != digest {
-	// 	logrus.Error("Digest mismatch")
-	// 	c.JSON(http.StatusBadRequest, gin.H{})
-	// 	return
-	// }
+
 	// переименование временного файла в итоговый файл
 	if err := h.STORAGE.SaveBlob(tempPath, digest); err != nil {
 		logrus.Error(err)
