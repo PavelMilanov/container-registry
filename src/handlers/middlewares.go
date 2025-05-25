@@ -26,7 +26,7 @@ func baseApiMiddleware(jwtKey []byte) gin.HandlerFunc {
 	}
 }
 
-// baseRegistryMiddleware мидлварь для авторизации на уровне docker client.
+// baseRegistryMiddleware мидлварь для проверки корректности указанного репозитория.
 func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		repository := c.Param("repository")
@@ -40,6 +40,20 @@ func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 	}
 }
 
+// urlChallenge перенапрваление на url авторизации по специцифкации docker.
+func urlChallenge(c *gin.Context, realm string) {
+	challenge := fmt.Sprintf(`Bearer realm="%s/v2/auth"`, realm)
+	if service := c.Query("service"); service != "" {
+		challenge += fmt.Sprintf(`,service="%s"`, service)
+	}
+	if scope := c.Query("scope"); scope != "" {
+		challenge += fmt.Sprintf(`,scope="%s"`, scope)
+	}
+	c.Header("WWW-Authenticate", challenge)
+	c.AbortWithStatus(http.StatusUnauthorized)
+	return
+}
+
 // loginRegistryMiddleware мидлварь для авторизации на уровне docker client.
 // см. https://distribution.github.io/distribution/spec/auth/token/
 func loginRegistryMiddleware(cred *config.Env) gin.HandlerFunc {
@@ -48,28 +62,11 @@ func loginRegistryMiddleware(cred *config.Env) gin.HandlerFunc {
 		payload := strings.TrimPrefix(authHeader, "Bearer ")
 		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 			// Формируем challenge согласно спецификации
-			challenge := fmt.Sprintf(`Bearer realm="%s/v2/auth"`, cred.Server.Realm)
-			if service := c.Query("service"); service != "" {
-				challenge += fmt.Sprintf(`,service="%s"`, service)
-			}
-			if scope := c.Query("scope"); scope != "" {
-				challenge += fmt.Sprintf(`,scope="%s"`, scope)
-			}
-			c.Header("WWW-Authenticate", challenge)
-			c.AbortWithStatus(http.StatusUnauthorized)
-			return
+			urlChallenge(c, cred.Server.Realm)
 		}
 		if !system.ValidateJWT(payload, []byte(cred.Server.Jwt)) {
-			challenge := fmt.Sprintf(`Bearer realm="%s/v2/auth"`, cred.Server.Realm)
-			if service := c.Query("service"); service != "" {
-				challenge += fmt.Sprintf(`,service="%s"`, service)
-			}
-			if scope := c.Query("scope"); scope != "" {
-				challenge += fmt.Sprintf(`,scope="%s"`, scope)
-			}
-			c.Header("WWW-Authenticate", challenge)
-			c.AbortWithStatus(http.StatusUnauthorized)
-			return
+			// Формируем challenge согласно спецификации
+			urlChallenge(c, cred.Server.Realm)
 		}
 		c.Next()
 	}
