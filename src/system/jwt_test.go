@@ -9,7 +9,7 @@ import (
 var env = config.NewEnv(config.CONFIG_PATH, "config")
 
 func TestGenerateJWT(t *testing.T) {
-	token, err := GenerateJWT("test", "local", env)
+	token, err := GenerateJWT("test", env)
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -17,7 +17,7 @@ func TestGenerateJWT(t *testing.T) {
 }
 
 func TestValidateJWT(t *testing.T) {
-	token, _ := GenerateJWT("test", "local", env)
+	token, _ := GenerateJWT("test", env)
 	if !ValidateJWT(token, []byte(env.Server.Jwt)) {
 		t.Error("токен не валиден")
 	}

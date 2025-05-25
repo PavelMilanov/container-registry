@@ -36,14 +36,14 @@ func (u *User) Add(sql *gorm.DB) error {
 	return errors.New(errStr)
 }
 
-func (u *User) Login(sql *gorm.DB, aud string, cred *config.Env) error {
+func (u *User) Login(sql *gorm.DB, cred *config.Env) error {
 	pwd := system.Hashed(u.Password)
 	result := sql.Where("name = ? AND password = ?", u.Name, pwd).First(&u)
 	if result.RowsAffected == 0 {
 		logrus.Error("неверные логин или пароль")
 		return errors.New("неверные логин или пароль")
 	}
-	newToken, err := system.GenerateJWT(u.Name, aud, cred)
+	newToken, err := system.GenerateJWT(u.Name, cred)
 	if err != nil {
 		logrus.Error(err)
 		return err

@@ -7,10 +7,10 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func GenerateJWT(username, aud string, cred *config.Env) (string, error) {
+func GenerateJWT(username string, cred *config.Env) (string, error) {
 	payload := jwt.MapClaims{
 		"sub": username,
-		"aud": aud,
+		"aud": cred.Server.Service,
 		"iss": cred.Server.Issuer,
 		"exp": time.Now().Add(24 * time.Hour).Unix(),
 		"iat": time.Now().Unix(),

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/system"
 	"github.com/gin-gonic/gin"
@@ -45,19 +46,11 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 	c.Header("Docker-Content-Digest", calculatedDigest)
 	c.JSON(http.StatusCreated, gin.H{"message": "Manifest uploaded", "digest": calculatedDigest})
 	go func() {
-		// Считаем размер
-		type layers struct {
-			Size int `json:"size"`
-		}
-		type manifest struct {
-			Layers []layers `json:"layers"`
-		}
-
-		data := manifest{}
-		json.Unmarshal(body, &data)
-		var size int
-		for _, layer := range data.Layers {
-			size += layer.Size
+		var manifest config.Manifest
+		json.Unmarshal(body, &manifest)
+		var sum int
+		for _, descriptor := range manifest.Layers {
+			sum += descriptor.Size
 		}
 		registry, _ := db.GetRegistry(h.DB.Sql, "name = ?", repository)
 		repo := db.Repository{
@@ -69,8 +62,8 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 			Name:         imageName,
 			Hash:         calculatedDigest,
 			Tag:          reference,
-			Size:         size,
-			SizeAlias:    system.ConvertSize(size),
+			Size:         sum,
+			SizeAlias:    system.ConvertSize(sum),
 			RepositoryID: repo.ID,
 		}
 		image.Add(h.DB.Sql)
@@ -89,17 +82,19 @@ func (h *Handler) getManifest(c *gin.Context) {
 	repository := c.Param("repository")
 	imageName := c.Param("name")
 	reference := c.Param("reference")
-	manifest, err := h.STORAGE.GetManifest(repository, imageName, reference)
+	data, err := h.STORAGE.GetManifest(repository, imageName, reference)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err})
 		return
 	}
 	hasher := sha256.New()
-	hasher.Write(manifest)
+	hasher.Write(data)
 	calculatedDigest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
-	// Возвращаем манифест клиенту
-	// c.Header("Content-Type", "application/vnd.docker.distribution.manifest.v2+json")
+	var manifest config.Manifest
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err})
+	}
 	c.Header("Docker-Content-Digest", calculatedDigest)
-	c.Header("Content-Length", fmt.Sprintf("%d", len(manifest)))
-	c.Data(http.StatusOK, "application/vnd.docker.distribution.manifest.v2+json", manifest)
+	c.Header("Content-Length", fmt.Sprintf("%d", len(data)))
+	c.Data(http.StatusOK, manifest.MediaType, data)
 }

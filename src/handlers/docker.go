@@ -20,13 +20,13 @@ func (h *Handler) authHandler(c *gin.Context) {
 		return
 	}
 	user := db.User{Name: username, Password: password}
-	if err := user.Login(h.DB.Sql, c.Query("service"), h.ENV); err != nil {
+	if err := user.Login(h.DB.Sql, h.ENV); err != nil {
 		c.Header("WWW-Authenticate", `Basic realm="registry"`)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
 		return
 	}
 	// Генерируем JWT-токен (срок действия 24 часа)
-	tokenString, err := system.GenerateJWT(username, c.Query("service"), h.ENV)
+	tokenString, err := system.GenerateJWT(username, h.ENV)
 	if err != nil {
 		logrus.Errorf("Failed to generate token: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})

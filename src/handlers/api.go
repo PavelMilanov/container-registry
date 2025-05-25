@@ -113,7 +113,7 @@ func (h *Handler) login(c *gin.Context) {
 		return
 	}
 	user := db.User{Name: req.Username, Password: req.Password}
-	if err := user.Login(h.DB.Sql, c.Query("service"), h.ENV); err != nil {
+	if err := user.Login(h.DB.Sql, h.ENV); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
