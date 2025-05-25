@@ -48,7 +48,7 @@ func setDefaultSettings(db *gorm.DB) {
 
 func automigrate(db *gorm.DB) {
 	if err := db.AutoMigrate(&Registry{}, &Repository{}, &Image{}, &User{}, &Settings{}); err != nil {
-		logrus.Fatalf("%s", err)
+		logrus.Fatal(err)
 		return
 	}
 }

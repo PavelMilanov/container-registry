@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -99,38 +98,37 @@ func (s *Storage) SaveBlob(tmpPath string, digest string) error {
 // GetBlob
 // Return:
 //
-//	map["path"] - путь к файлу.
-//	map["size"] - размер файла.
-func (s *Storage) GetBlob(digest string) (map[string]string, error) {
-	info := make(map[string]string)
-	blobPath := filepath.Join(config.BLOBS_PATH, strings.Replace(digest, "sha256:", "", 1))
+//	config.Blob
+func (s *Storage) GetBlob(digest string) (config.Blob, error) {
+	var data config.Blob
+	digest = strings.Replace(digest, "sha256:", "", 1)
+	blobPath := filepath.Join(config.BLOBS_PATH, digest)
 	switch s.Type {
 	case "local":
-		// Открываем файл блоба
 		file, err := os.Open(blobPath)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return info, errors.New("Blob not found")
+				return data, errors.New("Blob not found")
 			}
-			return info, err
+			return data, err
 		}
 		defer file.Close()
 		fileInfo, err := file.Stat()
 		if err != nil {
-			return info, errors.New("Failed to stat blob file")
+			return data, errors.New("Failed to stat blob file")
 		}
-		info["path"] = blobPath
-		info["size"] = fmt.Sprintf("%d", fileInfo.Size())
+		data.Digest = digest
+		data.Size = fileInfo.Size()
 	case "s3":
 		reader, err := s.S3.GetObject(context.Background(), config.BACKET_NAME, blobPath, minio.GetObjectOptions{})
 		if err != nil {
-			return info, err
+			return data, err
 		}
 		defer reader.Close()
 		//создание временного файла и отложенное удаление
-		data, _ := io.ReadAll(reader)
+		body, _ := io.ReadAll(reader)
 		path := filepath.Join(config.TMP_PATH, digest)
-		err = os.WriteFile(path, data, 0644)
+		err = os.WriteFile(path, body, 0644)
 		timer := time.NewTimer(5 * time.Second)
 		go func() {
 			<-timer.C
@@ -139,37 +137,37 @@ func (s *Storage) GetBlob(digest string) (map[string]string, error) {
 		//
 		fileInfo, err := reader.Stat()
 		if err != nil {
-			return info, errors.New("Failed to stat blob file")
+			return data, errors.New("Failed to stat blob file")
 		}
-		info["path"] = path
-		info["size"] = fmt.Sprintf("%d", fileInfo.Size)
+		data.Digest = path
+		data.Size = fileInfo.Size
 	}
-	return info, nil
+	return data, nil
 }
 
 // SaveManifest
-func (s *Storage) SaveManifest(body []byte, repository string, image string, reference string, calculatedDigest string) error {
+func (s *Storage) SaveManifest(body []byte, repository , image , reference , calculatedDigest string) (string, error) {
 	manifestPath := filepath.Join(config.MANIFEST_PATH, repository, image, calculatedDigest)
 	tagPath := filepath.Join(config.MANIFEST_PATH, repository, image, "tags", reference)
 	switch s.Type {
 	case "local":
 		err := os.MkdirAll(filepath.Dir(manifestPath), 0755)
 		if err != nil {
-			return errors.New("Failed to create manifest directory")
+			return "", errors.New("Failed to create manifest directory")
 		}
 		err = os.WriteFile(manifestPath, body, 0644)
 		if err != nil {
-			return errors.New("Failed to save manifest")
+			return "", errors.New("Failed to save manifest")
 		}
 		// Если это тег (а не digest), создаём символическую ссылку
 		if !strings.HasPrefix(reference, "sha256:") {
 			err = os.MkdirAll(filepath.Dir(tagPath), 0755)
 			if err != nil {
-				return errors.New("Failed to create tag directory")
+				return "", errors.New("Failed to create tag directory")
 			}
 			err = os.WriteFile(tagPath, []byte(calculatedDigest), 0644)
 			if err != nil {
-				return errors.New("Failed to save tag reference")
+				return "", errors.New("Failed to save tag reference")
 			}
 		}
 	case "s3":
@@ -188,7 +186,7 @@ func (s *Storage) SaveManifest(body []byte, repository string, image string, ref
 			}
 		}
 	}
-	return nil
+	return manifestPath, nil
 }
 
 // GetManifest

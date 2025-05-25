@@ -14,7 +14,8 @@ type Image struct {
 	Name         string
 	Hash         string
 	Tag          string
-	Size         int
+	Platform     string
+	Size         int64
 	SizeAlias    string
 	CreatedAt    string
 	RepositoryID int `gorm:"constraint:OnDelete:CASCADE;"`
@@ -78,8 +79,8 @@ func GetImages(sql *gorm.DB, condition string, args ...interface{}) ([]Image, er
 	return images, nil
 }
 
-func (i *Image) GetSize(sql *gorm.DB, condition string, args ...interface{}) int {
-	var size int
+func (i *Image) GetSize(sql *gorm.DB, condition string, args ...interface{}) int64 {
+	var size int64
 	script := fmt.Sprintf("select SUM(size) from images WHERE %s", condition)
 	sql.Raw(script, args...).Scan(&size)
 	return size

@@ -15,12 +15,11 @@ import (
 	"github.com/PavelMilanov/container-registry/storage"
 )
 
-var env = config.NewEnv(".", "test.config")
-var s = storage.NewStorage(env)
-var sqlite = db.NewDatabase("test.db")
-var h = handlers.NewHandler(s, &sqlite, env)
-
 func TestRegistyAPI(t *testing.T) {
+	env := config.NewEnv(".", "test.config")
+	s := storage.NewStorage(env)
+	sqlite := db.NewDatabase("test.db")
+	h := handlers.NewHandler(s, &sqlite, env)
 	srv := h.InitRouters()
 	token := ""
 	t.Run("registration", func(t *testing.T) {

@@ -28,11 +28,10 @@ func (h *Handler) checkBlob(c *gin.Context) {
 func (h *Handler) startBlobUpload(c *gin.Context) {
 	repository := c.Param("repository")
 	imageName := c.Param("name")
-	// Генерируем уникальный UUID для загрузки
 	uuid := uid.New().String()
-	// Возвращаем URL для продолжения загрузки
 	c.Header("Location", fmt.Sprintf("/v2/%s/%s/blobs/uploads/%s", repository, imageName, uuid))
 	c.Header("Docker-Upload-UUID", uuid)
+	c.Header("Range", fmt.Sprintf("%d-%d", 0, 0))
 	c.JSON(http.StatusAccepted, gin.H{})
 }
 
@@ -106,10 +105,21 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 			return
 		}
 		defer f.Close()
-		_, err = f.Write(body)
-		f.Seek(0, 0)
-		n, err := io.Copy(hasher, f)
-		logrus.Info(n)
+		if _, err = f.Write(body); err != nil {
+			logrus.Error(err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if _, err := f.Seek(0, 0); err != nil {
+			logrus.Error(err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if _, err := io.Copy(hasher, f); err != nil {
+			logrus.Error(err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
 		hasher.Write(body)
 	}
 	calculatedDigest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
@@ -130,9 +140,9 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 }
 
 func (h *Handler) getBlob(c *gin.Context) {
-	digest := c.Param("digest")
+	uuid := c.Param("uuid")
 	// Определяем путь к блобу
-	info, err := h.STORAGE.GetBlob(digest)
+	info, err := h.STORAGE.GetBlob(uuid)
 	if err != nil {
 		if err.Error() == "Blob not found" {
 			logrus.Error(err)
@@ -145,7 +155,7 @@ func (h *Handler) getBlob(c *gin.Context) {
 	}
 	// Возвращаем блоб клиенту
 	c.Header("Content-Type", "application/octet-stream")
-	c.Header("Content-Length", info["size"])
-	c.Header("Docker-Content-Digest", digest)
-	c.File(info["path"])
+	c.Header("Content-Length", fmt.Sprintf("%d", info.Size))
+	c.Header("Docker-Content-Digest", info.Digest)
+	c.File(filepath.Join(config.BLOBS_PATH, info.Digest))
 }

@@ -17,3 +17,8 @@ var (
 	BACKET_NAME              = "registry"
 	DEFAULT_TAG_EXPIRED_DAYS = 0
 )
+
+var MANIFEST_TYPE = map[string]string{
+	"docker": "application/vnd.docker.distribution.manifest.v2+json",
+	"oci":    "application/vnd.oci.image.index.v1+json",
+}
