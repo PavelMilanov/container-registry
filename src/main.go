@@ -1,3 +1,7 @@
+/*
+Copyright 2025 Pavel Milanov
+Licensed under the Apache License, Version 2.0 (see LICENSE file)
+*/
 package main
 
 import (
