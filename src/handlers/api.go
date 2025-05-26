@@ -16,7 +16,7 @@ getRegistry - получение информации о реестрах.
 	<name> - название реестра.
 
 	/api/registry -вывод всех реестров.
-	/api/registry/<name> - вывод репозиториев указанного реестра.
+	/api/registry/<name> - вывод всех образов репозитория.
 */
 func (h *Handler) getRegistry(c *gin.Context) {
 	name := c.Param("name")
@@ -94,20 +94,28 @@ func (h *Handler) deleteImage(c *gin.Context) {
 }
 
 /*
-getImage - получение всех образов в репозитории.
+getImages - получение всех тегов образа.
 
 	<name> - название репозитория.
 	<image> - название образа.
 
-	/api/registry/<name>/<image> - получение всех образов в репозитории.
+	/api/registry/<name>/<image>
 */
-func (h *Handler) getImage(c *gin.Context) {
+func (h *Handler) getImages(c *gin.Context) {
 	ImageName := c.Param("image")
 	data := services.GetImages(ImageName, h.DB.Sql)
 	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
-// registration - регистрация.
+/*
+registration - регистрация.
+
+	<Username> - логин. (обязательное поле)
+	<Password> - пароль. (обязательное поле)
+	<ConfirmPassword> - подтверждение пароля. (обязательное поле)
+
+	/registration
+*/
 func (h *Handler) registration(c *gin.Context) {
 	type userRegisterData struct {
 		Username        string `json:"username" binding:"required"`
@@ -131,7 +139,14 @@ func (h *Handler) registration(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{})
 }
 
-// login - авторизация.
+/*
+login - авторизация.
+
+	<Username> - логин. (обязательное поле)
+	<Password> - пароль. (обязательное поле)
+
+	/login
+*/
 func (h *Handler) login(c *gin.Context) {
 	type userLoginData struct {
 		Username string `json:"username" binding:"required"`
