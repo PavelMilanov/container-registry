@@ -42,7 +42,10 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 	}
 	c.Header("Docker-Content-Digest", calculatedDigest)
 	c.JSON(http.StatusCreated, gin.H{})
-	go services.SaveManifestToDB(mediaType, link, reference, h.DB.Sql)
+	if err := services.SaveManifestToDB(mediaType, link, reference, h.DB.Sql); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		return
+	}
 }
 
 func (h *Handler) getManifest(c *gin.Context) {

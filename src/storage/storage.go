@@ -343,69 +343,147 @@ func (s *Storage) GarbageCollection() {
 		}
 		return blobs
 	}()
-	manifests := getManifestDigest(config.MANIFEST_PATH)
-	var cache []string
+	actualBlobs := inventoryBlobs(config.MANIFEST_PATH)
+	var buffer []string
 	for _, v := range blobs {
-		if !slices.Contains(manifests, v) {
-			cache = append(cache, v)
+		if !slices.Contains(actualBlobs, v) {
+			buffer = append(buffer, v)
 		}
 	}
-
-	for _, i := range cache {
+	for _, i := range buffer {
 		if err := os.Remove(filepath.Join(config.BLOBS_PATH, i)); err != nil {
 			logrus.Error(err)
 		}
 	}
-	logrus.Infof("Удален кеш %d", len(cache))
+	logrus.Infof("Инвентаризация blob произведена. Удалено файлов %d", len(buffer))
 }
 
-func getManifestDigest(dir string) []string {
-	var digests []string
-	registies, _ := os.ReadDir(dir)
+func inventoryBlobs(path string) []string {
+	var blobsBuffer []string
+	var buffer []string
+	registies, _ := os.ReadDir(path)
 	for _, d := range registies {
-		repoDir := filepath.Join(dir, d.Name())
-		repositories, _ := os.ReadDir(repoDir)
+		registryDir := filepath.Join(path, d.Name()) // var/manifests/dev
+		repositories, _ := os.ReadDir(registryDir)
 		for _, file := range repositories {
-			tagDir := filepath.Join(repoDir, file.Name())
-			manifests, _ := os.ReadDir(tagDir)
-			tagsDir := filepath.Join(tagDir, "tags")
+			repositoryDir := filepath.Join(registryDir, file.Name()) // var/manifests/dev/registry
+			checkManifests(repositoryDir)
+			manifests, _ := os.ReadDir(repositoryDir)
+			tagsDir := filepath.Join(repositoryDir, "tags")
 			tags, _ := os.ReadDir(tagsDir)
-			var buffer []string
 			for _, tag := range tags { // ищем ссылки на манифесты в тегах, добавляем в буффер
 				data, _ := os.ReadFile(filepath.Join(tagsDir, tag.Name()))
 				buffer = append(buffer, string(data))
 			}
+			var m config.Manifest
 			for _, manifest := range manifests {
-				if !manifest.IsDir() { // читаем файлы sha256:...
-					if !slices.Contains(buffer, manifest.Name()) { // ищем манифесты без ссылок на теги, удаляем
-						os.Remove(filepath.Join(tagDir, manifest.Name()))
-					}
-					data, _ := os.ReadFile(filepath.Join(tagDir, manifest.Name()))
-					type config struct {
-						Digest string `json:"digest"`
-					}
-					type layers struct {
-						Digest string `json:"digest"`
-					}
-					type manifest struct {
-						Config config   `json:"config"`
-						Layers []layers `json:"layers"`
-					}
-					jsonData := manifest{}
-					json.Unmarshal(data, &jsonData)
-					for _, layer := range jsonData.Layers {
+				data, _ := os.ReadFile(filepath.Join(repositoryDir, manifest.Name()))
+				json.Unmarshal(data, &m)
+				// ищем манифесты, в которых есть ссылки на blob-ы и копируем ссылку
+				if m.MediaType == "application/vnd.docker.distribution.manifest.v2+json" || m.MediaType == "application/vnd.oci.image.manifest.v1+json" {
+					for _, layer := range m.Layers {
 						layerDigestString := strings.Split(layer.Digest, ":")
 						layerDigest := layerDigestString[1]
-						digests = append(digests, layerDigest)
-					}
-					manifestDigestString := strings.Split(jsonData.Config.Digest, ":")
-					if len(manifestDigestString) > 1 {
-						manifestDigest := manifestDigestString[1]
-						digests = append(digests, manifestDigest)
+						blobsBuffer = append(blobsBuffer, layerDigest)
 					}
 				}
 			}
 		}
 	}
-	return digests
+
+	// var digests []string
+	// registies, _ := os.ReadDir(dir)
+	// for _, d := range registies {
+	// 	repoDir := filepath.Join(dir, d.Name()) // var/manifests/dev
+	// 	repositories, _ := os.ReadDir(repoDir)
+	// 	for _, file := range repositories {
+	// 		tagDir := filepath.Join(repoDir, file.Name()) // var/manifests/dev/registry
+	// 		checkManifests(tagDir)
+	// 		manifests, _ := os.ReadDir(tagDir)
+	// 		tagsDir := filepath.Join(tagDir, "tags")
+	// 		tags, _ := os.ReadDir(tagsDir)
+	// 		var buffer []string
+	// 		for _, tag := range tags { // ищем ссылки на манифесты в тегах, добавляем в буффер
+	// 			data, _ := os.ReadFile(filepath.Join(tagsDir, tag.Name()))
+	// 			buffer = append(buffer, string(data))
+	// 		}
+	// 		for _, manifest := range manifests {
+	// 			if !manifest.IsDir() { // читаем файлы sha256:...
+	// 				if !slices.Contains(buffer, manifest.Name()) { // ищем манифесты без ссылок на теги, удаляем
+	// 					os.Remove(filepath.Join(tagDir, manifest.Name()))
+	// 				}
+	// 				data, _ := os.ReadFile(filepath.Join(tagDir, manifest.Name()))
+	// 				type config struct {
+	// 					Digest string `json:"digest"`
+	// 				}
+	// 				type layers struct {
+	// 					Digest string `json:"digest"`
+	// 				}
+	// 				type manifest struct {
+	// 					Config config   `json:"config"`
+	// 					Layers []layers `json:"layers"`
+	// 				}
+	// 				jsonData := manifest{}
+	// 				json.Unmarshal(data, &jsonData)
+	// 				for _, layer := range jsonData.Layers {
+	// 					layerDigestString := strings.Split(layer.Digest, ":")
+	// 					layerDigest := layerDigestString[1]
+	// 					digests = append(digests, layerDigest)
+	// 				}
+	// 				manifestDigestString := strings.Split(jsonData.Config.Digest, ":")
+	// 				if len(manifestDigestString) > 1 {
+	// 					manifestDigest := manifestDigestString[1]
+	// 					digests = append(digests, manifestDigest)
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
+	return blobsBuffer
+}
+
+// CheckManifests сканирует директорию и удаляет лишние файлы манифестов.
+// path - путь к директории с манифестами для конкретного репозитория.
+func checkManifests(path string) {
+	var tagList []string
+	var buffer []string
+	tags, _ := os.ReadDir(filepath.Join(path, "tags"))
+	// проходим по тегам и забираем их digest
+	for _, file := range tags {
+		digest, err := os.ReadFile(filepath.Join(path, "tags", file.Name()))
+		if err != nil {
+			logrus.Error("Error reading file:", err)
+		}
+		tagList = append(tagList, string(digest))
+		buffer = append(buffer, string(digest))
+	}
+	var manifest config.Manifest
+	// читаем манифесты и сканируем зависимости
+	// сохраняем манифесты в буфер
+	for _, file := range tagList {
+		data, err := os.ReadFile(filepath.Join(path, file))
+		if err != nil {
+			logrus.Error("Error reading file:", err)
+		}
+		json.Unmarshal(data, &manifest)
+		switch manifest.MediaType {
+		// стандартные манифесты с сылками на блобы
+		case config.MANIFEST_TYPE["docker"]:
+			buffer = append(buffer, file)
+		// ищем манифесты, в которых ссылки на манифесты мультиплатформенных сборок
+		case config.MANIFEST_TYPE["oci"]:
+			for _, item := range manifest.Manifests {
+				buffer = append(buffer, item.Digest)
+			}
+		}
+	}
+	manifests, _ := os.ReadDir(path)
+	//заново проходим по директории и удаляет файлы, которые не содержатся в буфере
+	for _, file := range manifests {
+		if !file.IsDir() {
+			if !slices.Contains(buffer, file.Name()) {
+				os.Remove(filepath.Join(path, file.Name()))
+			}
+		}
+	}
 }

@@ -109,7 +109,12 @@ func DeleteOlderImages(sql *gorm.DB, storage *storage.Storage) {
 	}
 }
 
-func SaveManifestToDB(mediaType, link, tag string, sql *gorm.DB) {
+// SaveManifestToDB сохраняет манифест в базу данных и обновляет зависимости.
+// mediaType - тип медиа-файла (например, "application/vnd.docker.distribution.manifest.v2+json").
+// link - ссылка на манифест.
+// tag - тег образа.
+// sql - экземпляр базы данных.
+func SaveManifestToDB(mediaType, link, tag string, sql *gorm.DB) error {
 	resizeRegistry := func(repository, imageName, manifestFile, platform string, sum int64) {
 		registry, _ := db.GetRegistry(sql, "name = ?", repository)
 		repo := db.Repository{
@@ -142,10 +147,10 @@ func SaveManifestToDB(mediaType, link, tag string, sql *gorm.DB) {
 	var manifest config.Manifest
 	body, err := os.ReadFile(link)
 	if err != nil {
-		logrus.Error(err)
+		return err
 	}
 	if err := json.Unmarshal(body, &manifest); err != nil {
-		logrus.Error(err)
+		return err
 	}
 	switch mediaType {
 	case config.MANIFEST_TYPE["docker"]:
@@ -164,11 +169,11 @@ func SaveManifestToDB(mediaType, link, tag string, sql *gorm.DB) {
 				platforms = append(platforms, item.Platform.OS+"/"+item.Platform.Architecture)
 				body, err := os.ReadFile(path + item.Digest)
 				if err != nil {
-					logrus.Error(err)
+					return err
 				}
 				var m2 config.Manifest
 				if err := json.Unmarshal(body, &m2); err != nil {
-					logrus.Error(err)
+					return err
 				}
 				var sum int64
 				for _, descriptor := range m2.Layers {
@@ -179,4 +184,5 @@ func SaveManifestToDB(mediaType, link, tag string, sql *gorm.DB) {
 		}
 		resizeRegistry(repository, imageName, manifestFile, strings.Join(platforms, ","), sizes[0])
 	}
+	return nil
 }
