@@ -110,6 +110,32 @@ func DeleteOlderImages(sql *gorm.DB, storage *storage.Storage) {
 }
 
 func SaveManifestToDB(mediaType, link, tag string, sql *gorm.DB) {
+	resizeRegistry := func(repository, imageName, manifestFile, platform string, sum int64) {
+		registry, _ := db.GetRegistry(sql, "name = ?", repository)
+		repo := db.Repository{
+			Name:       imageName,
+			RegistryID: registry.ID,
+		}
+		repo.Add(sql)
+		image := db.Image{
+			Name:         imageName,
+			Hash:         manifestFile,
+			Tag:          tag,
+			Platform:     platform,
+			Size:         sum,
+			SizeAlias:    system.ConvertSize(sum),
+			RepositoryID: repo.ID,
+		}
+		image.Add(sql)
+		imgSize := image.GetSize(sql, "repository_id = ?", image.RepositoryID)
+		repo.Size = imgSize
+		repo.SizeAlias = system.ConvertSize(repo.Size)
+		repo.UpdateSize(sql)
+		repoSize := repo.GetSize(sql, "registry_id = ?", repo.RegistryID)
+		registry.Size = repoSize
+		registry.SizeAlias = system.ConvertSize(registry.Size)
+		registry.UpdateSize(sql)
+	}
 	path, manifestFile := filepath.Split(link) // var/manifests/dev/alpine/ sha256:33fe5b4ced5027766381b0c5578efa7217c5cc4498b10d1ab7275182197933c8
 	repository := strings.Split(path, "/")[2]
 	imageName := strings.Split(path, "/")[3]
@@ -127,36 +153,8 @@ func SaveManifestToDB(mediaType, link, tag string, sql *gorm.DB) {
 		for _, descriptor := range manifest.Layers {
 			sum += descriptor.Size
 		}
-		registry, _ := db.GetRegistry(sql, "name = ?", repository)
-		repo := db.Repository{
-			Name:       imageName,
-			RegistryID: registry.ID,
-		}
-		repo.Add(sql)
-		image := db.Image{
-			Name:         imageName,
-			Hash:         manifestFile,
-			Tag:          tag,
-			Size:         sum,
-			SizeAlias:    system.ConvertSize(sum),
-			RepositoryID: repo.ID,
-		}
-		image.Add(sql)
-		imgSize := image.GetSize(sql, "repository_id = ?", image.RepositoryID)
-		repo.Size = imgSize
-		repo.SizeAlias = system.ConvertSize(repo.Size)
-		repo.UpdateSize(sql)
-		repoSize := repo.GetSize(sql, "registry_id = ?", repo.RegistryID)
-		registry.Size = repoSize
-		registry.SizeAlias = system.ConvertSize(registry.Size)
-		registry.UpdateSize(sql)
+		resizeRegistry(repository, imageName, manifestFile, "", sum)
 	case config.MANIFEST_TYPE["oci"]:
-		registry, _ := db.GetRegistry(sql, "name = ?", repository)
-		repo := db.Repository{
-			Name:       imageName,
-			RegistryID: registry.ID,
-		}
-		repo.Add(sql)
 		platforms := []string{}
 		sizes := []int64{}
 		for _, item := range manifest.Manifests {
@@ -179,23 +177,6 @@ func SaveManifestToDB(mediaType, link, tag string, sql *gorm.DB) {
 				sizes = append(sizes, sum)
 			}
 		}
-		image := db.Image{
-			Name:         imageName,
-			Hash:         manifestFile,
-			Tag:          tag,
-			Platform:     strings.Join(platforms, ","),
-			Size:         sizes[0], // суммарный размер для разнвх платформ отличается незначительно, для упращения берем 1ое значение
-			SizeAlias:    system.ConvertSize(sizes[0]),
-			RepositoryID: repo.ID,
-		}
-		image.Add(sql)
-		imgSize := image.GetSize(sql, "repository_id = ?", image.RepositoryID)
-		repo.Size = imgSize
-		repo.SizeAlias = system.ConvertSize(repo.Size)
-		repo.UpdateSize(sql)
-		repoSize := repo.GetSize(sql, "registry_id = ?", repo.RegistryID)
-		registry.Size = repoSize
-		registry.SizeAlias = system.ConvertSize(registry.Size)
-		registry.UpdateSize(sql)
+		resizeRegistry(repository, imageName, manifestFile, strings.Join(platforms, ","), sizes[0])
 	}
 }

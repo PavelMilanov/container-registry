@@ -16,10 +16,7 @@ export default function Registration() {
       confirmPassword: confirmPassword(),
     };
     try {
-      const response = await axios.post(
-        API_URL + "/registration",
-        JSON.stringify(data),
-      );
+      await axios.post(API_URL + "/registration", JSON.stringify(data));
       navigate("/login", { replace: true });
     } catch (error) {
       const msg = error.response.data.error;
