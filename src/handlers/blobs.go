@@ -115,11 +115,6 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		if _, err := io.Copy(hasher, f); err != nil {
-			logrus.Error(err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
 		hasher.Write(body)
 	}
 	calculatedDigest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))

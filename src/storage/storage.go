@@ -146,7 +146,7 @@ func (s *Storage) GetBlob(digest string) (config.Blob, error) {
 }
 
 // SaveManifest
-func (s *Storage) SaveManifest(body []byte, repository , image , reference , calculatedDigest string) (string, error) {
+func (s *Storage) SaveManifest(body []byte, repository, image, reference, calculatedDigest string) (string, error) {
 	manifestPath := filepath.Join(config.MANIFEST_PATH, repository, image, calculatedDigest)
 	tagPath := filepath.Join(config.MANIFEST_PATH, repository, image, "tags", reference)
 	switch s.Type {
@@ -334,7 +334,15 @@ func (s *Storage) DeleteRepository(name string, image string) error {
 }
 
 func (s *Storage) GarbageCollection() {
-	blobs := getBlobDigest(config.BLOBS_PATH)
+	// получаем названия файлов всех blob.
+	blobs := func() []string {
+		var blobs []string
+		digests, _ := os.ReadDir(config.BLOBS_PATH)
+		for _, blob := range digests {
+			blobs = append(blobs, blob.Name())
+		}
+		return blobs
+	}()
 	manifests := getManifestDigest(config.MANIFEST_PATH)
 	var cache []string
 	for _, v := range blobs {
@@ -348,7 +356,7 @@ func (s *Storage) GarbageCollection() {
 			logrus.Error(err)
 		}
 	}
-	logrus.Infof("Удален кеш blobs %+v", cache)
+	logrus.Infof("Удален кеш %d", len(cache))
 }
 
 func getManifestDigest(dir string) []string {
@@ -400,13 +408,4 @@ func getManifestDigest(dir string) []string {
 		}
 	}
 	return digests
-}
-
-func getBlobDigest(dir string) []string {
-	var blobs []string
-	digests, _ := os.ReadDir(dir)
-	for _, blob := range digests {
-		blobs = append(blobs, blob.Name())
-	}
-	return blobs
 }
