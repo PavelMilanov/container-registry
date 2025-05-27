@@ -15,9 +15,9 @@ type LocalStorage struct {
 }
 
 func newLocalStorage() (*LocalStorage, error) {
-	if err := os.Mkdir(config.DATA_PATH, 0755); err != nil {
-		return &LocalStorage{}, err
-	}
+	// if err := os.Mkdir(config.DATA_PATH, 0755); err != nil {
+	// 	return &LocalStorage{}, err
+	// }
 	if err := os.MkdirAll(config.TMP_PATH, 0755); err != nil {
 		return &LocalStorage{}, err
 	}
@@ -150,7 +150,7 @@ func (lc *LocalStorage) DeleteRepository(name string, image string) error {
 }
 
 func (lc *LocalStorage) GarbageCollection() {
-	// получаем названия файлов всех blob.
+	// получаем список всех blob.
 	blobs := func() []string {
 		var blobs []string
 		digests, _ := os.ReadDir(config.BLOBS_PATH)
@@ -159,7 +159,7 @@ func (lc *LocalStorage) GarbageCollection() {
 		}
 		return blobs
 	}()
-	actualBlobs := inventoryBlobs(config.MANIFEST_PATH)
+	actualBlobs := inventoryBlobs()
 	var buffer []string
 	for _, v := range blobs {
 		if !slices.Contains(actualBlobs, v) {

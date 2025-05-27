@@ -1,7 +1,8 @@
+// Package storage реализовывает логику работы с разными видами хранилищами данных.
 package storage
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/PavelMilanov/container-registry/config"
 )
@@ -24,21 +25,24 @@ type Storage interface {
 	GarbageCollection()
 }
 
+/*
+NewStorage инициализирует хранилище на основе конфигурации.
+*/
 func NewStorage(env *config.Env) (Storage, error) {
 	switch env.Storage.Type {
 	case "local":
 		storage, err := newLocalStorage()
 		if err != nil {
-			return nil, fmt.Errorf("failed to create local storage: %w", err)
+			return nil, err
 		}
 		return storage, nil
 	case "s3":
 		storage, err := newS3Storage(env)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create S3 storage: %w", err)
+			return nil, err
 		}
 		return storage, nil
 	default:
-		return nil, fmt.Errorf("unsupported storage type: %s", env.Storage.Type)
+		return nil, errors.New("Не удалось инициализировать хранилище")
 	}
 }
