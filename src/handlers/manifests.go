@@ -14,6 +14,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+/*
+uploadManifest реализация
+
+	https://distribution.github.io/distribution/spec/api/#pulling-an-image-manifest
+*/
 func (h *Handler) uploadManifest(c *gin.Context) {
 	repository := c.Param("repository")
 	imageName := c.Param("name")      // название образа
@@ -48,6 +53,11 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 	}
 }
 
+/*
+getManifest реализация
+
+https://distribution.github.io/distribution/spec/api/#existing-manifests
+*/
 func (h *Handler) getManifest(c *gin.Context) {
 	repository := c.Param("repository")
 	imageName := c.Param("name")

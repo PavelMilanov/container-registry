@@ -11,6 +11,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+/*
+authHandler аутентификация на уровне docker client и api.
+
+	/v2/auth
+*/
 func (h *Handler) authHandler(c *gin.Context) {
 	username, password, ok := c.Request.BasicAuth()
 	c.Header("Content-Type", "application/json")

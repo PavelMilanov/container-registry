@@ -4,7 +4,7 @@ package config
 import "path/filepath"
 
 var (
-	DURATION = 5
+	DURATION = 3
 	VERSION  string
 
 	DATA_PATH     = "var"

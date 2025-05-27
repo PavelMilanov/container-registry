@@ -14,7 +14,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// checkBlob реализация
+/*
+checkBlob реализация
+
+	https://distribution.github.io/distribution/spec/api/#existing-layers
+*/
 func (h *Handler) checkBlob(c *gin.Context) {
 	uuid := c.Param("uuid")
 	// Проверяем, существует ли слой
@@ -25,6 +29,11 @@ func (h *Handler) checkBlob(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{})
 }
 
+/*
+startBlobUpload реализация
+
+	https://distribution.github.io/distribution/spec/api/#starting-an-upload
+*/
 func (h *Handler) startBlobUpload(c *gin.Context) {
 	repository := c.Param("repository")
 	imageName := c.Param("name")
@@ -35,6 +44,11 @@ func (h *Handler) startBlobUpload(c *gin.Context) {
 	c.JSON(http.StatusAccepted, gin.H{})
 }
 
+/*
+uploadBlobPart реализация
+
+	https://distribution.github.io/distribution/spec/api/#chunked-upload
+*/
 func (h *Handler) uploadBlobPart(c *gin.Context) {
 	uuid := c.Param("uuid")
 	file, err := io.ReadAll(c.Request.Body)
@@ -64,6 +78,12 @@ func (h *Handler) uploadBlobPart(c *gin.Context) {
 	c.JSON(http.StatusNoContent, gin.H{"message": "Blob part uploaded"})
 }
 
+/*
+finalizeBlobUpload реализация
+
+	https://distribution.github.io/distribution/spec/api/#completed-upload - при загрузке чанками.
+	https://distribution.github.io/distribution/spec/api/#monolithic-upload - при монолитной загрузке.
+*/
 func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 	uuid := c.Param("uuid")
 	status := c.Request.Header.Get("Content-Type")
@@ -134,6 +154,11 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "Blob finalized", "digest": digest})
 }
 
+/*
+getBlob реализация
+
+	https://distribution.github.io/distribution/spec/api/#pulling-a-layer
+*/
 func (h *Handler) getBlob(c *gin.Context) {
 	uuid := c.Param("uuid")
 	// Определяем путь к блобу
