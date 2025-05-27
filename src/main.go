@@ -21,6 +21,12 @@ import (
 )
 
 func main() {
+	logrus.SetLevel(logrus.TraceLevel)
+	logrus.SetReportCaller(true)
+	logrus.SetFormatter(&logrus.TextFormatter{
+		FullTimestamp:   true,
+		TimestampFormat: "2006/01/02 15:04:00",
+	})
 	env, err := config.NewEnv(config.CONFIG_PATH, "config")
 	if err != nil {
 		logrus.Fatal(err)
@@ -29,19 +35,16 @@ func main() {
 	if err != nil {
 		logrus.Fatal(err)
 	}
-	logrus.SetLevel(logrus.TraceLevel)
-	logrus.SetReportCaller(true)
-	logrus.SetFormatter(&logrus.TextFormatter{
-		FullTimestamp:   true,
-		TimestampFormat: "2006/01/02 15:04:00",
-	})
 	location, _ := time.LoadLocation(os.Getenv("TZ"))
 	c := cron.New(
 		cron.WithLocation(location),
 	)
 
 	sqliteFIle := fmt.Sprintf("%s/registry.db", config.DATA_PATH)
-	sqlite := db.NewDatabase(sqliteFIle)
+	sqlite, err := db.NewDatabase(sqliteFIle)
+	if err != nil {
+		logrus.Fatal(err)
+	}
 	defer db.CloseDatabase(sqlite.Sql)
 
 	c.AddFunc("0 1 * * 0", func() {
