@@ -15,7 +15,7 @@ import (
 )
 
 /*
-uploadManifest реализация
+uploadManifest реализация.
 
 	https://distribution.github.io/distribution/spec/api/#pulling-an-image-manifest
 */
@@ -54,7 +54,7 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 }
 
 /*
-getManifest реализация
+getManifest реализация.
 
 https://distribution.github.io/distribution/spec/api/#existing-manifests
 */

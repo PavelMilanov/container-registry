@@ -1,17 +1,22 @@
 package config
 
 import (
-	"github.com/sirupsen/logrus"
+	"errors"
+
 	"github.com/spf13/viper"
 )
 
-// Env описывает конфигурацию приложения.
+/*
+Env описывает конфигурацию приложения.
+*/
 type Env struct {
 	Server  server
 	Storage storage
 }
 
-// server описывает конфигурацию сервера.
+/*
+server описывает конфигурацию сервера.
+*/
 type server struct {
 	Realm   string `mapstructure:"realm"`
 	Service string `mapstructure:"service"`
@@ -19,12 +24,17 @@ type server struct {
 	Jwt     string `mapstructure:"jwt"`
 }
 
-// storage описывает конфигурацию хранилища.
+/*
+storage описывает конфигурацию хранилища.
+*/
 type storage struct {
 	Type        string      `mapstructure:"type"`
 	Credentials credentials `mapstructure:"credentials,omitzero"`
 }
 
+/*
+credentials описывает параметры подключения к S3.
+*/
 type credentials struct {
 	Endpoint  string `mapstructure:"endpoint"`
 	AccessKey string `mapstructure:"access_key"`
@@ -32,26 +42,35 @@ type credentials struct {
 	SSL       bool   `mapstructure:"ssl"`
 }
 
-func NewEnv(path, file string) *Env {
-	env := Env{}
+/*
+NewEnv инициализирует переменные из файла конфигурации.
+
+	path - путь к файлу конфигурации. (относительный)
+	file - название файла. (без расширения)
+
+	Пример: NewEnv("var/conf.d", "config")
+*/
+func NewEnv(path, file string) (*Env, error) {
+	var env Env
 	viper.SetConfigName(file) // имя файла без расширения
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(path)
 
 	err := viper.ReadInConfig()
 	if err != nil {
-		logrus.Fatal("не найден файл конфигурации : ", err)
+		return &env, err
+
 	}
 
 	err = viper.Unmarshal(&env)
 	if err != nil {
-		logrus.Fatal("не загружен файл конфигурации: ", err)
+		return &env, err
 	}
 	switch env.Storage.Type {
 	case "s3":
 		if env.Storage.Credentials.Endpoint == "" || env.Storage.Credentials.AccessKey == "" || env.Storage.Credentials.SecretKey == "" {
-			logrus.Fatal("не указан конфиг для подключения к S3 storage")
+			return &env, errors.New("не указан конфиг для подключения к S3 storage")
 		}
 	}
-	return &env
+	return &env, nil
 }

@@ -21,10 +21,14 @@ import (
 )
 
 func main() {
-	env := config.NewEnv(config.CONFIG_PATH, "config")
-
-	storage := storage.NewStorage(env)
-
+	env, err := config.NewEnv(config.CONFIG_PATH, "config")
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	store, err := storage.NewStorage(env)
+	if err != nil {
+		logrus.Fatal(err)
+	}
 	logrus.SetLevel(logrus.TraceLevel)
 	logrus.SetReportCaller(true)
 	logrus.SetFormatter(&logrus.TextFormatter{
@@ -41,13 +45,15 @@ func main() {
 	defer db.CloseDatabase(sqlite.Sql)
 
 	c.AddFunc("0 1 * * 0", func() {
-		storage.GarbageCollection()
+		logrus.Info("Запуск задания Garbage Collection")
+		go store.GarbageCollection()
 	}) // каждое воскресенье в 01:00
 	c.AddFunc("0 0 * * 0", func() {
-		services.DeleteOlderImages(sqlite.Sql, storage)
+		logrus.Info("Запуск задания удаления старых образов")
+		go services.DeleteOlderImages(sqlite.Sql, store)
 	}) // каждое воскресенье в 00:00
 
-	handler := handlers.NewHandler(storage, &sqlite, env)
+	handler := handlers.NewHandler(store, &sqlite, env)
 	srv := new(Server)
 	go func() {
 		if err := srv.Run(handler.InitRouters()); err != nil {
@@ -58,7 +64,6 @@ func main() {
 	c.Start()
 	defer c.Stop()
 
-	logrus.Info("Планировщик запущен")
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit

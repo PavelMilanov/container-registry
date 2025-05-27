@@ -23,7 +23,7 @@ func AddRegistry(name string, sql *gorm.DB) error {
 	return nil
 }
 
-func DeleteRegistry(data string, sql *gorm.DB, storage *storage.Storage) error {
+func DeleteRegistry(data string, sql *gorm.DB, storage storage.Storage) error {
 	if err := storage.DeleteRegistry(data); err != nil {
 		return err
 	}
@@ -34,7 +34,7 @@ func DeleteRegistry(data string, sql *gorm.DB, storage *storage.Storage) error {
 	return nil
 }
 
-func DeleteImage(name, image, tag string, sql *gorm.DB, storage *storage.Storage) error {
+func DeleteImage(name, image, tag string, sql *gorm.DB, storage storage.Storage) error {
 	img := db.Image{Name: image, Tag: tag}
 	sql.Transaction(func(tx *gorm.DB) error {
 		if err := img.Delete(tx); err != nil {
@@ -65,7 +65,7 @@ func DeleteImage(name, image, tag string, sql *gorm.DB, storage *storage.Storage
 	return nil
 }
 
-func DeleteRepository(name, image string, sql *gorm.DB, storage *storage.Storage) error {
+func DeleteRepository(name, image string, sql *gorm.DB, storage storage.Storage) error {
 	repo := db.Repository{Name: image}
 	sql.Transaction(func(tx *gorm.DB) error {
 		if err := repo.Delete(tx); err != nil {
@@ -96,7 +96,7 @@ func GetImages(image string, sql *gorm.DB) []db.Image {
 }
 
 // DeleteOlderImages удаляет старые образы из базы данных и хранилища.
-func DeleteOlderImages(sql *gorm.DB, storage *storage.Storage) {
+func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {
 	tagCount, err := db.GetCountTag(sql)
 	if err != nil {
 		logrus.Printf("Не найден тег: %v", err)

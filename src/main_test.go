@@ -16,8 +16,14 @@ import (
 )
 
 func TestRegistyAPI(t *testing.T) {
-	env := config.NewEnv(".", "test.config")
-	s := storage.NewStorage(env)
+	env, err := config.NewEnv(".", "test.config")
+	if err != nil {
+		t.Error(err)
+	}
+	s, err := storage.NewStorage(env)
+	if err != nil {
+		t.Error(err)
+	}
 	sqlite := db.NewDatabase("test.db")
 	h := handlers.NewHandler(s, &sqlite, env)
 	srv := h.InitRouters()

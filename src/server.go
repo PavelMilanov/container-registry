@@ -14,6 +14,9 @@ type Server struct {
 	httpServer *http.Server
 }
 
+/*
+Run запускает http-сервер.
+*/
 func (s *Server) Run(handler http.Handler) error {
 	s.httpServer = &http.Server{
 		Addr:         "0.0.0.0:5050",
@@ -25,6 +28,9 @@ func (s *Server) Run(handler http.Handler) error {
 	return s.httpServer.ListenAndServe()
 }
 
+/*
+Shutdown останавливет http-сервер.
+*/
 func (s *Server) Shutdown(grace time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), grace*time.Second)
 	defer cancel()

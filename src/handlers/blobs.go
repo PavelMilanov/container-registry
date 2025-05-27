@@ -15,7 +15,7 @@ import (
 )
 
 /*
-checkBlob реализация
+checkBlob реализация.
 
 	https://distribution.github.io/distribution/spec/api/#existing-layers
 */
@@ -30,7 +30,7 @@ func (h *Handler) checkBlob(c *gin.Context) {
 }
 
 /*
-startBlobUpload реализация
+startBlobUpload реализация.
 
 	https://distribution.github.io/distribution/spec/api/#starting-an-upload
 */
@@ -45,7 +45,7 @@ func (h *Handler) startBlobUpload(c *gin.Context) {
 }
 
 /*
-uploadBlobPart реализация
+uploadBlobPart реализация.
 
 	https://distribution.github.io/distribution/spec/api/#chunked-upload
 */
@@ -79,7 +79,7 @@ func (h *Handler) uploadBlobPart(c *gin.Context) {
 }
 
 /*
-finalizeBlobUpload реализация
+finalizeBlobUpload реализация.
 
 	https://distribution.github.io/distribution/spec/api/#completed-upload - при загрузке чанками.
 	https://distribution.github.io/distribution/spec/api/#monolithic-upload - при монолитной загрузке.
@@ -155,7 +155,7 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 }
 
 /*
-getBlob реализация
+getBlob реализация.
 
 	https://distribution.github.io/distribution/spec/api/#pulling-a-layer
 */

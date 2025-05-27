@@ -12,7 +12,11 @@ import (
 	"gorm.io/gorm"
 )
 
-// baseApiMiddleware мидлварь для авторизации на уровне REST-API.
+/*
+baseApiMiddleware для авторизации на уровне REST-API.
+
+	проверяет валидность токена для REST-API.
+*/
 func baseApiMiddleware(jwtKey []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data := c.GetHeader("Authorization")
@@ -26,7 +30,11 @@ func baseApiMiddleware(jwtKey []byte) gin.HandlerFunc {
 	}
 }
 
-// baseRegistryMiddleware мидлварь для проверки корректности указанного репозитория.
+/*
+baseRegistryMiddleware для проверки корректности указанного репозитория.
+
+	проверяет соответствие указанного образа репозиторию.
+*/
 func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		repository := c.Param("repository")
@@ -40,7 +48,9 @@ func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-// urlChallenge перенапрваление на url авторизации по специцифкации docker.
+/*
+urlChallenge перенапрваление на url авторизации для docker client.
+*/
 func urlChallenge(c *gin.Context, realm string) {
 	challenge := fmt.Sprintf(`Bearer realm="%s/v2/auth"`, realm)
 	if service := c.Query("service"); service != "" {
@@ -54,8 +64,11 @@ func urlChallenge(c *gin.Context, realm string) {
 	return
 }
 
-// loginRegistryMiddleware мидлварь для авторизации на уровне docker client.
-// см. https://distribution.github.io/distribution/spec/auth/token/
+/*
+loginRegistryMiddleware мидлварь для авторизации на уровне docker client.
+
+	https://distribution.github.io/distribution/spec/auth/token/
+*/
 func loginRegistryMiddleware(cred *config.Env) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
