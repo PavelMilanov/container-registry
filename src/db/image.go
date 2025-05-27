@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -26,7 +25,6 @@ func (i *Image) Add(sql *gorm.DB) {
 	i.CreatedAt = now.Format("2006-01-02 15:04:05")
 	if sql.Model(&i).Where("name = ? AND tag = ?", i.Name, i.Tag).Updates(&i).RowsAffected == 0 {
 		sql.Create(&i)
-		logrus.Infof("Добавлен новый образ %+v", i)
 	}
 }
 
@@ -34,10 +32,8 @@ func (i *Image) Delete(sql *gorm.DB) error {
 	sql.Where("name = ? AND tag = ?", i.Name, i.Tag).First(&i)
 	result := sql.Delete(&i)
 	if result.Error != nil {
-		logrus.Error(result.Error)
 		return result.Error
 	}
-	logrus.Infof("Удален образ %+v", i)
 	return nil
 }
 
@@ -64,7 +60,6 @@ WHERE rn <= ?`, count).Scan(&images)
 func GetImage(sql *gorm.DB, condition string, args ...interface{}) (*Image, error) {
 	var i Image
 	if err := sql.Where(condition, args...).First(&i).Error; err != nil {
-		logrus.Error(err)
 		return nil, err
 	}
 	return &i, nil
@@ -73,7 +68,6 @@ func GetImage(sql *gorm.DB, condition string, args ...interface{}) (*Image, erro
 func GetImages(sql *gorm.DB, condition string, args ...interface{}) ([]Image, error) {
 	var images []Image
 	if err := sql.Where(condition, args...).Find(&images).Error; err != nil {
-		logrus.Error(err)
 		return nil, err
 	}
 	return images, nil
