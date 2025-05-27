@@ -41,8 +41,7 @@ func (lc *LocalStorage) CheckBlob(uuid string) error {
 
 // SaveBlob
 func (lc *LocalStorage) SaveBlob(tmpPath, digest string) error {
-	finalPath := filepath.Join(config.BLOBS_PATH, strings.Replace(digest, "sha256:", "", 1))
-	if err := os.Rename(tmpPath, finalPath); err != nil {
+	if err := os.Rename(tmpPath, filepath.Join(config.BLOBS_PATH, strings.Replace(digest, "sha256:", "", 1))); err != nil {
 		return err
 	}
 	os.Remove(tmpPath)
@@ -95,9 +94,8 @@ func (lc *LocalStorage) SaveManifest(body []byte, repository, image, reference, 
 	return manifestPath, nil
 }
 
-func (lc *LocalStorage) GetManifest(repository string, image string, reference string) ([]byte, error) {
-	var manifest []byte
-	manifestPath := ""
+func (lc *LocalStorage) GetManifest(repository , image , reference string) ([]byte, error) {
+	var manifestPath string
 	tagPath := filepath.Join(config.MANIFEST_PATH, repository, image, "tags", reference)
 	// Определяем путь к файлу манифеста
 	if strings.HasPrefix(reference, "sha256:") {
@@ -107,7 +105,7 @@ func (lc *LocalStorage) GetManifest(repository string, image string, reference s
 		// Если reference — это тег
 		tagData, err := os.ReadFile(tagPath)
 		if err != nil {
-			return manifest, errors.New("Tag not found")
+			return []byte{}, errors.New("Tag not found")
 		}
 		manifestDigest := string(tagData)
 		manifestPath = filepath.Join(config.MANIFEST_PATH, repository, image, manifestDigest)
@@ -115,35 +113,32 @@ func (lc *LocalStorage) GetManifest(repository string, image string, reference s
 	// Читаем содержимое манифеста
 	data, err := os.ReadFile(manifestPath)
 	if err != nil {
-		return manifest, errors.New("Manifest not found")
+		return []byte{}, errors.New("Manifest not found")
 	}
-	manifest = data
-	return manifest, nil
+	return data, nil
 }
 
 func (lc *LocalStorage) DeleteRegistry(registry string) error {
-	path := filepath.Join(config.MANIFEST_PATH, registry)
-	if err := os.RemoveAll(path); err != nil {
+	if err := os.RemoveAll(filepath.Join(config.MANIFEST_PATH, registry)); err != nil {
 		return err
 	}
-
 	return nil
 }
 
-func (lc *LocalStorage) DeleteImage(repository string, imageName string, imageTag string, imageHash string) error {
+func (lc *LocalStorage) DeleteImage(repository, imageName, imageTag, imageHash string) error {
 	path := filepath.Join(config.MANIFEST_PATH, repository, imageName, imageHash)
 	tagPath := filepath.Join(config.MANIFEST_PATH, repository, imageName, "tags", imageTag)
-	err := os.Remove(tagPath)
-	err = os.Remove(path)
-	if err != nil {
+	if err := os.Remove(tagPath); err != nil {
+		return err
+	}
+	if err := os.Remove(path); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (lc *LocalStorage) DeleteRepository(name string, image string) error {
-	path := filepath.Join(config.MANIFEST_PATH, name, image)
-	if err := os.RemoveAll(path); err != nil {
+func (lc *LocalStorage) DeleteRepository(name, image string) error {
+	if err := os.RemoveAll(filepath.Join(config.MANIFEST_PATH, name, image)); err != nil {
 		return err
 	}
 	return nil
