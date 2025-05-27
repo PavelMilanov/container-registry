@@ -17,24 +17,26 @@ authHandler аутентификация на уровне docker client и api.
 	/v2/auth
 */
 func (h *Handler) authHandler(c *gin.Context) {
-	username, password, ok := c.Request.BasicAuth()
+	username, password, _ := c.Request.BasicAuth()
 	c.Header("Content-Type", "application/json")
-	if !ok {
-		c.Header("WWW-Authenticate", `Basic realm="registry"`)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization required"})
-		return
-	}
 	user := db.User{Name: username, Password: password}
 	if err := user.Login(h.DB.Sql, h.ENV); err != nil {
 		c.Header("WWW-Authenticate", `Basic realm="registry"`)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"errors": []gin.H{
+				{
+					"code":    "UNAUTHORIZED",
+					"message": "invalid username or password",
+				},
+			},
+		})
 		return
 	}
 	// Генерируем JWT-токен (срок действия 24 часа)
 	tokenString, err := system.GenerateJWT(username, h.ENV)
 	if err != nil {
-		logrus.Errorf("Failed to generate token: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		logrus.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
 	scope := c.Query("scope")
@@ -52,9 +54,9 @@ func (h *Handler) authHandler(c *gin.Context) {
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"token":      tokenString,
-		"access":     access,
-		"expires_in": 86400,
-		"issued_at":  time.Now().UTC().Format(time.RFC3339),
+		"access_token": tokenString,
+		"scope":        access,
+		"expires_in":   86400,
+		"issued_at":    time.Now().UTC().Format(time.RFC3339),
 	})
 }

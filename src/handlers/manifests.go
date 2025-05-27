@@ -37,18 +37,26 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 	calculatedDigest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
 	// Проверяем, что клиент передал digest как reference, если это digest (а не тег)
 	if strings.HasPrefix(reference, "sha256:") && reference != calculatedDigest {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Manifest digest mismatch"})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"errors": []gin.H{
+				{
+					"code":    "MANIFEST_UNVERIFIED",
+					"message": "digest mismatch",
+					"detail":  "The provided digest does not match the calculated digest.",
+				},
+			},
+		})
 		return
 	}
 	link, err := h.STORAGE.SaveManifest(body, repository, imageName, reference, calculatedDigest)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
 	c.Header("Docker-Content-Digest", calculatedDigest)
 	c.JSON(http.StatusCreated, gin.H{})
 	if err := services.SaveManifestToDB(mediaType, link, reference, h.DB.Sql); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
 }
@@ -64,7 +72,15 @@ func (h *Handler) getManifest(c *gin.Context) {
 	reference := c.Param("reference")
 	data, err := h.STORAGE.GetManifest(repository, imageName, reference)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err})
+		c.JSON(http.StatusNotFound, gin.H{
+			"errors": []gin.H{
+				{
+					"code":    "MANIFEST_UNKNOWN",
+					"message": "manifest unknown",
+					"detail":  "The requested manifest was not found.",
+				},
+			},
+		})
 		return
 	}
 	hasher := sha256.New()
@@ -72,7 +88,15 @@ func (h *Handler) getManifest(c *gin.Context) {
 	calculatedDigest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
 	var manifest config.Manifest
 	if err := json.Unmarshal(data, &manifest); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err})
+		c.JSON(http.StatusNotFound, gin.H{
+			"errors": []gin.H{
+				{
+					"code":    "MANIFEST_UNKNOWN",
+					"message": "manifest unknown",
+					"detail":  "The requested manifest was not found.",
+				},
+			},
+		})
 	}
 	c.Header("Docker-Content-Digest", calculatedDigest)
 	c.Header("Content-Length", fmt.Sprintf("%d", len(data)))

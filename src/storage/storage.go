@@ -37,9 +37,10 @@ func inventoryBlobs() []string {
 				json.Unmarshal(data, &m)
 				// ищем манифесты, в которых есть ссылки на blob-ы и копируем ссылку
 				if m.MediaType == "application/vnd.docker.distribution.manifest.v2+json" || m.MediaType == "application/vnd.oci.image.manifest.v1+json" {
+					configDigest := strings.Split(m.Config.Digest, ":")[1]
+					blobsBuffer = append(blobsBuffer, configDigest)
 					for _, layer := range m.Layers {
-						layerDigestString := strings.Split(layer.Digest, ":")
-						layerDigest := layerDigestString[1]
+						layerDigest := strings.Split(layer.Digest, ":")[1]
 						blobsBuffer = append(blobsBuffer, layerDigest)
 					}
 				}

@@ -48,7 +48,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 	router.GET("/v2/auth", h.authHandler)
 	router.POST("/v2/auth", h.authHandler)
 
-	v2 := router.Group("/v2/", loginRegistryMiddleware(h.ENV))
+	v2 := router.Group("/v2/", loginRegistryMiddleware(h.ENV), baseRegistryMiddleware())
 	{
 		// Пинг для проверки
 		v2.GET("/", func(c *gin.Context) {
@@ -60,7 +60,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 		v2.PUT("/:repository/:name/manifests/:reference", h.uploadManifest)
 		// blobs
 		v2.GET("/:repository/:name/blobs/:uuid", h.getBlob)
-		v2.HEAD("/:repository/:name/blobs/:uuid", h.checkBlob, baseRegistryMiddleware(h.DB.Sql))
+		v2.HEAD("/:repository/:name/blobs/:uuid", h.checkBlob)
 		v2.POST("/:repository/:name/blobs/uploads/", h.startBlobUpload)
 		v2.PATCH("/:repository/:name/blobs/uploads/:uuid", h.uploadBlobPart)
 		v2.PUT("/:repository/:name/blobs/uploads/:uuid", h.finalizeBlobUpload)

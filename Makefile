@@ -14,4 +14,4 @@ push: release
 	@docker push rosomilanov/container-registry:latest
 
 buildx:
-	@docker buildx build . --builder=insecure-builder -t 192.168.1.38:5050/dev/registry --cache-from type=local,src=./cache --cache-to type=local,dest=./cache --push
+	@docker buildx build . --builder=insecure-builder --platform=linux/amd64,linux/arm64 -t 192.168.1.38:5050/dev/registry --cache-from type=local,src=./cache --cache-to type=local,dest=./cache --push

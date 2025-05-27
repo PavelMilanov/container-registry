@@ -3,13 +3,13 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/PavelMilanov/container-registry/config"
-	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/system"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 /*
@@ -35,14 +35,22 @@ baseRegistryMiddleware для проверки корректности указ
 
 	проверяет соответствие указанного образа репозиторию.
 */
-func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
+func baseRegistryMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		repository := c.Param("repository")
-		_, err := db.GetRegistry(sql, "name = ?", repository)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get registry"})
-			c.Abort()
-			return
+		repo := c.Param("repository")
+		if _, err := os.Stat(filepath.Join(config.MANIFEST_PATH, repo)); err != nil {
+			if os.IsNotExist(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"errors": []gin.H{
+						{
+							"code":    "NAME_UNKNOWN",
+							"message": "registry does not exist",
+						},
+					},
+				})
+				c.Abort()
+				return
+			}
 		}
 		c.Next()
 	}
