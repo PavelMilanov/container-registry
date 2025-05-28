@@ -17,38 +17,42 @@ type SQLite struct {
 	Mutex *sync.Mutex
 }
 
-func NewDatabase(sql string) SQLite {
+func NewDatabase(sql string) (SQLite, error) {
 	conn, err := gorm.Open(sqlite.Open(sql), &gorm.Config{
 		PrepareStmt: true,
 		Logger:      logger.Default.LogMode(logger.Silent)})
 	if err != nil {
-		logrus.Fatal(err.Error())
+		return SQLite{}, err
 	}
 	var mutex sync.Mutex
 	db := SQLite{Sql: conn, Mutex: &mutex}
-	automigrate(db.Sql)
-	setDefaultSettings(db.Sql)
-	return db
+	if err := automigrate(db.Sql); err != nil {
+		return db, err
+	}
+	if err := setDefaultSettings(db.Sql); err != nil {
+		return db, err
+	}
+	return db, nil
 }
 
 func CloseDatabase(db *gorm.DB) {
 	sqlDB, _ := db.DB()
 	if err := sqlDB.Close(); err != nil {
-		logrus.Fatal("Ошибка при закрытии соединения с базой данных:", err)
+		logrus.Fatal(err)
 	}
 }
 
-func setDefaultSettings(db *gorm.DB) {
+func setDefaultSettings(db *gorm.DB) error {
 	var settings Settings
 	if err := db.FirstOrCreate(&settings, Settings{TagCount: config.DEFAULT_TAG_EXPIRED_DAYS}).Error; err != nil {
-		logrus.Fatal(err)
-		return
+		return err
 	}
+	return nil
 }
 
-func automigrate(db *gorm.DB) {
+func automigrate(db *gorm.DB) error {
 	if err := db.AutoMigrate(&Registry{}, &Repository{}, &Image{}, &User{}, &Settings{}); err != nil {
-		logrus.Fatalf("%s", err)
-		return
+		return err
 	}
+	return nil
 }

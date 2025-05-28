@@ -3,16 +3,20 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/PavelMilanov/container-registry/config"
-	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/system"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
-// baseApiMiddleware мидлварь для авторизации на уровне REST-API.
+/*
+baseApiMiddleware для авторизации на уровне REST-API.
+
+	проверяет валидность токена для REST-API.
+*/
 func baseApiMiddleware(jwtKey []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data := c.GetHeader("Authorization")
@@ -26,50 +30,64 @@ func baseApiMiddleware(jwtKey []byte) gin.HandlerFunc {
 	}
 }
 
-// baseRegistryMiddleware мидлварь для авторизации на уровне docker client.
-func baseRegistryMiddleware(sql *gorm.DB) gin.HandlerFunc {
+/*
+baseRegistryMiddleware для проверки корректности указанного репозитория.
+
+	проверяет соответствие указанного образа репозиторию.
+*/
+func baseRegistryMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		repository := c.Param("repository")
-		_, err := db.GetRegistry(sql, "name = ?", repository)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get registry"})
-			c.Abort()
-			return
+		repo := c.Param("repository")
+		if _, err := os.Stat(filepath.Join(config.MANIFEST_PATH, repo)); err != nil {
+			if os.IsNotExist(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"errors": []gin.H{
+						{
+							"code":    "NAME_UNKNOWN",
+							"message": "registry does not exist",
+						},
+					},
+				})
+				c.Abort()
+				return
+			}
 		}
 		c.Next()
 	}
 }
 
-// loginRegistryMiddleware мидлварь для авторизации на уровне docker client.
-// см. https://distribution.github.io/distribution/spec/auth/token/
+/*
+urlChallenge перенапрваление на url авторизации для docker client.
+*/
+func urlChallenge(c *gin.Context, realm string) {
+	challenge := fmt.Sprintf(`Bearer realm="%s/v2/auth"`, realm)
+	if service := c.Query("service"); service != "" {
+		challenge += fmt.Sprintf(`,service="%s"`, service)
+	}
+	if scope := c.Query("scope"); scope != "" {
+		challenge += fmt.Sprintf(`,scope="%s"`, scope)
+	}
+	c.Header("WWW-Authenticate", challenge)
+	c.AbortWithStatus(http.StatusUnauthorized)
+	return
+}
+
+/*
+loginRegistryMiddleware мидлварь для авторизации на уровне docker client.
+
+	https://distribution.github.io/distribution/spec/auth/token/
+*/
 func loginRegistryMiddleware(cred *config.Env) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		payload := strings.TrimPrefix(authHeader, "Bearer ")
 		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 			// Формируем challenge согласно спецификации
-			challenge := fmt.Sprintf(`Bearer realm="%s/v2/auth"`, cred.Server.Realm)
-			if service := c.Query("service"); service != "" {
-				challenge += fmt.Sprintf(`,service="%s"`, service)
-			}
-			if scope := c.Query("scope"); scope != "" {
-				challenge += fmt.Sprintf(`,scope="%s"`, scope)
-			}
-			c.Header("WWW-Authenticate", challenge)
-			c.AbortWithStatus(http.StatusUnauthorized)
-			return
+			urlChallenge(c, cred.Server.Realm)
 		}
 		if !system.ValidateJWT(payload, []byte(cred.Server.Jwt)) {
-			challenge := fmt.Sprintf(`Bearer realm="%s/v2/auth"`, cred.Server.Realm)
-			if service := c.Query("service"); service != "" {
-				challenge += fmt.Sprintf(`,service="%s"`, service)
-			}
-			if scope := c.Query("scope"); scope != "" {
-				challenge += fmt.Sprintf(`,scope="%s"`, scope)
-			}
-			c.Header("WWW-Authenticate", challenge)
-			c.AbortWithStatus(http.StatusUnauthorized)
-			return
+			// Формируем challenge согласно спецификации
+			urlChallenge(c, cred.Server.Realm)
 		}
 		c.Next()
 	}

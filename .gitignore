@@ -6,3 +6,4 @@ src/assets
 .obsidian
 .vagrant
 config.yaml
+cache

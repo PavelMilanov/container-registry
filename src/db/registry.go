@@ -12,7 +12,7 @@ type Registry struct {
 	gorm.Model
 	ID           int    `gorm:"primaryKey"`
 	Name         string `gorm:"unique"`
-	Size         int
+	Size         int64
 	SizeAlias    string
 	CreatedAt    string
 	Repositories []Repository `gorm:"constraint:OnDelete:CASCADE;"`

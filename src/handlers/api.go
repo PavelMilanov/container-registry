@@ -10,9 +10,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// getRegistry - получение информации о реестрах.
-// /api/registry -вывод всех репозиториев.
-// /api/registry/<name> - вывод репозиториев указанного реестра.
+/*
+getRegistry - получение информации о реестрах.
+
+	<name> - название реестра.
+
+	/api/registry -вывод всех реестров.
+	/api/registry/<name> - вывод всех образов репозитория.
+*/
 func (h *Handler) getRegistry(c *gin.Context) {
 	name := c.Param("name")
 	if name == "" {
@@ -28,17 +33,29 @@ func (h *Handler) getRegistry(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": registry.Repositories})
 }
 
-// addRegistry -добавление нового реестра.
+/*
+addRegistry -добавление указанного реестра.
+
+	<name> - название реестра.
+
+	/api/registry/<name> - добавление реестра.
+*/
 func (h *Handler) addRegistry(c *gin.Context) {
 	data := c.Param("name")
-	if err := services.AddRegistry(data, h.DB.Sql); err != nil {
+	if err := services.AddRegistry(data, h.DB.Sql, h.STORAGE); err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"err": err.Error()})
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{})
 }
 
-// deleteRegistry -удаление указанного реестра.
+/*
+deleteRegistry -удаление указанного реестра.
+
+	<name> - название реестра.
+
+	/api/registry/<name> - удаляется реестр.
+*/
 func (h *Handler) deleteRegistry(c *gin.Context) {
 	data := c.Param("name")
 	if err := services.DeleteRegistry(data, h.DB.Sql, h.STORAGE); err != nil {
@@ -48,9 +65,15 @@ func (h *Handler) deleteRegistry(c *gin.Context) {
 	c.JSON(http.StatusAccepted, gin.H{})
 }
 
-// deleteRepository -удаление указанного репозитория или образа.
-// /api/<registry>/<repository> - удаляется репозиторий.
-// /api/<registry>/<repository>?tag=<tag> - удаляется образ.
+/*
+deleteImage -удаление указанного образа.
+
+	<name> - название репозитория.
+	<image> - название образа.
+	<tag> - тег образа.
+
+	/api/registry/<name>/<image>?tag=<tag> - удаляется указанный образ.
+*/
 func (h *Handler) deleteImage(c *gin.Context) {
 	name := c.Param("name")
 	image := c.Param("image")
@@ -70,14 +93,29 @@ func (h *Handler) deleteImage(c *gin.Context) {
 	}
 }
 
-// getImage -получение образа.
-func (h *Handler) getImage(c *gin.Context) {
+/*
+getImages - получение всех тегов образа.
+
+	<name> - название репозитория.
+	<image> - название образа.
+
+	/api/registry/<name>/<image>
+*/
+func (h *Handler) getImages(c *gin.Context) {
 	ImageName := c.Param("image")
 	data := services.GetImages(ImageName, h.DB.Sql)
 	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
-// registration - регистрация.
+/*
+registration - регистрация.
+
+	<Username> - логин. (обязательное поле)
+	<Password> - пароль. (обязательное поле)
+	<ConfirmPassword> - подтверждение пароля. (обязательное поле)
+
+	/registration
+*/
 func (h *Handler) registration(c *gin.Context) {
 	type userRegisterData struct {
 		Username        string `json:"username" binding:"required"`
@@ -101,7 +139,14 @@ func (h *Handler) registration(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{})
 }
 
-// login - авторизация.
+/*
+login - авторизация.
+
+	<Username> - логин. (обязательное поле)
+	<Password> - пароль. (обязательное поле)
+
+	/login
+*/
 func (h *Handler) login(c *gin.Context) {
 	type userLoginData struct {
 		Username string `json:"username" binding:"required"`
@@ -113,7 +158,7 @@ func (h *Handler) login(c *gin.Context) {
 		return
 	}
 	user := db.User{Name: req.Username, Password: req.Password}
-	if err := user.Login(h.DB.Sql, c.Query("service"), h.ENV); err != nil {
+	if err := user.Login(h.DB.Sql, h.ENV); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

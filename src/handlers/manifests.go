@@ -8,17 +8,23 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/PavelMilanov/container-registry/db"
-	"github.com/PavelMilanov/container-registry/system"
+	"github.com/PavelMilanov/container-registry/config"
+	"github.com/PavelMilanov/container-registry/services"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
 
+/*
+uploadManifest реализация.
+
+	https://distribution.github.io/distribution/spec/api/#pulling-an-image-manifest
+*/
 func (h *Handler) uploadManifest(c *gin.Context) {
 	repository := c.Param("repository")
 	imageName := c.Param("name")      // название образа
 	reference := c.Param("reference") // Тег или SHA-256 хэш манифеста
 	body, err := io.ReadAll(c.Request.Body)
+	mediaType := c.GetHeader("Content-Type")
 	if err != nil {
 		logrus.Error(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read request body"})
@@ -32,74 +38,67 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 	// Проверяем, что клиент передал digest как reference, если это digest (а не тег)
 	if strings.HasPrefix(reference, "sha256:") && reference != calculatedDigest {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":             "Manifest digest mismatch",
-			"calculatedDigest":  calculatedDigest,
-			"providedReference": reference,
+			"errors": []gin.H{
+				{
+					"code":    "MANIFEST_UNVERIFIED",
+					"message": "digest mismatch",
+					"detail":  "The provided digest does not match the calculated digest.",
+				},
+			},
 		})
 		return
 	}
-	if err = h.STORAGE.SaveManifest(body, repository, imageName, reference, calculatedDigest); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+	link, err := h.STORAGE.SaveManifest(body, repository, imageName, reference, calculatedDigest)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
 	c.Header("Docker-Content-Digest", calculatedDigest)
-	c.JSON(http.StatusCreated, gin.H{"message": "Manifest uploaded", "digest": calculatedDigest})
-	go func() {
-		// Считаем размер
-		type layers struct {
-			Size int `json:"size"`
-		}
-		type manifest struct {
-			Layers []layers `json:"layers"`
-		}
-
-		data := manifest{}
-		json.Unmarshal(body, &data)
-		var size int
-		for _, layer := range data.Layers {
-			size += layer.Size
-		}
-		registry, _ := db.GetRegistry(h.DB.Sql, "name = ?", repository)
-		repo := db.Repository{
-			Name:       imageName,
-			RegistryID: registry.ID,
-		}
-		repo.Add(h.DB.Sql)
-		image := db.Image{
-			Name:         imageName,
-			Hash:         calculatedDigest,
-			Tag:          reference,
-			Size:         size,
-			SizeAlias:    system.ConvertSize(size),
-			RepositoryID: repo.ID,
-		}
-		image.Add(h.DB.Sql)
-		imgSize := image.GetSize(h.DB.Sql, "repository_id = ?", image.RepositoryID)
-		repo.Size = imgSize
-		repo.SizeAlias = system.ConvertSize(repo.Size)
-		repo.UpdateSize(h.DB.Sql)
-		repoSize := repo.GetSize(h.DB.Sql, "registry_id = ?", repo.RegistryID)
-		registry.Size = repoSize
-		registry.SizeAlias = system.ConvertSize(registry.Size)
-		registry.UpdateSize(h.DB.Sql)
-	}()
+	c.JSON(http.StatusCreated, gin.H{})
+	if err := services.SaveManifestToDB(mediaType, link, reference, h.DB.Sql); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
 }
 
+/*
+getManifest реализация.
+
+https://distribution.github.io/distribution/spec/api/#existing-manifests
+*/
 func (h *Handler) getManifest(c *gin.Context) {
 	repository := c.Param("repository")
 	imageName := c.Param("name")
 	reference := c.Param("reference")
-	manifest, err := h.STORAGE.GetManifest(repository, imageName, reference)
+	data, err := h.STORAGE.GetManifest(repository, imageName, reference)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err})
+		c.JSON(http.StatusNotFound, gin.H{
+			"errors": []gin.H{
+				{
+					"code":    "MANIFEST_UNKNOWN",
+					"message": "manifest unknown",
+					"detail":  "The requested manifest was not found.",
+				},
+			},
+		})
 		return
 	}
 	hasher := sha256.New()
-	hasher.Write(manifest)
+	hasher.Write(data)
 	calculatedDigest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
-	// Возвращаем манифест клиенту
-	c.Header("Content-Type", "application/vnd.docker.distribution.manifest.v2+json")
+	var manifest config.Manifest
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"errors": []gin.H{
+				{
+					"code":    "MANIFEST_UNKNOWN",
+					"message": "manifest unknown",
+					"detail":  "The requested manifest was not found.",
+				},
+			},
+		})
+	}
 	c.Header("Docker-Content-Digest", calculatedDigest)
-	c.Header("Content-Length", fmt.Sprintf("%d", len(manifest)))
-	c.Data(http.StatusOK, "application/vnd.docker.distribution.manifest.v2+json", manifest)
+	c.Header("Content-Length", fmt.Sprintf("%d", len(data)))
+	c.Data(http.StatusOK, manifest.MediaType, data)
 }

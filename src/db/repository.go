@@ -13,7 +13,7 @@ type Repository struct {
 	ID         int    `gorm:"primaryKey"`
 	Name       string `gorm:"unique"`
 	CreatedAt  string
-	Size       int
+	Size       int64
 	SizeAlias  string
 	Images     []Image `gorm:"constraint:OnDelete:CASCADE;"`
 	RegistryID int
@@ -53,8 +53,8 @@ func (r *Repository) UpdateSize(sql *gorm.DB) error {
 	return nil
 }
 
-func (r *Repository) GetSize(sql *gorm.DB, condition string, args ...interface{}) int {
-	var size int
+func (r *Repository) GetSize(sql *gorm.DB, condition string, args ...interface{}) int64 {
+	var size int64
 	script := fmt.Sprintf("select SUM(size) from repositories WHERE %s", condition)
 	sql.Raw(script, args...).Scan(&size)
 	return size
