@@ -11,7 +11,11 @@ type Platform struct {
 	OS           string `json:"os"`
 }
 
-// application/vnd.oci.image.manifest.v1+json
+/*
+ManifestOCI абстракция
+
+	application/vnd.oci.image.manifest.v1+json
+*/
 type ManifestOCI struct {
 	MediaType string   `json:"mediaType"`
 	Digest    string   `json:"Digest"`
@@ -19,7 +23,11 @@ type ManifestOCI struct {
 	Platform  Platform `json:"platform"`
 }
 
-// application/vnd.docker.distribution.manifest.v2+json
+/*
+Manifest абстракция
+
+	application/vnd.docker.distribution.manifest.v2+json
+*/
 type Manifest struct {
 	SchemaVersion int           `json:"schemaVersion"`
 	MediaType     string        `json:"mediaType"`
