@@ -24,7 +24,10 @@ func TestRegistyAPI(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	sqlite := db.NewDatabase("test.db")
+	sqlite, err := db.NewDatabase("test.db")
+	if err != nil {
+		t.Error(err)
+	}
 	h := handlers.NewHandler(s, &sqlite, env)
 	srv := h.InitRouters()
 	token := ""
