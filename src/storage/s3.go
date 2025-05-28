@@ -152,6 +152,11 @@ func (s *S3Storage) GetManifest(repository string, image string, reference strin
 	return manifest, nil
 }
 
+func (s *S3Storage) AddRegistry(registry string) error {
+
+	return nil
+}
+
 // DeleteRegistry
 func (s *S3Storage) DeleteRegistry(registry string) error {
 	path := filepath.Join(config.MANIFEST_PATH, registry)

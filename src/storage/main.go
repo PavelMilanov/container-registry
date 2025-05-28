@@ -19,6 +19,7 @@ type Storage interface {
 	GetBlob(digest string) (config.Blob, error)
 	SaveManifest(body []byte, repository, image, reference, calculatedDigest string) (string, error)
 	GetManifest(repository string, image string, reference string) ([]byte, error)
+	AddRegistry(registry string) error
 	DeleteRegistry(registry string) error
 	DeleteImage(repository string, imageName string, imageTag string, imageHash string) error
 	DeleteRepository(name string, image string) error

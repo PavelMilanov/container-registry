@@ -15,7 +15,10 @@ import (
 	"gorm.io/gorm"
 )
 
-func AddRegistry(name string, sql *gorm.DB) error {
+func AddRegistry(name string, sql *gorm.DB, storage storage.Storage) error {
+	if err := storage.AddRegistry(name); err != nil {
+		return err
+	}
 	registry := db.Registry{Name: name}
 	if err := registry.Add(sql); err != nil {
 		return err
@@ -23,11 +26,11 @@ func AddRegistry(name string, sql *gorm.DB) error {
 	return nil
 }
 
-func DeleteRegistry(data string, sql *gorm.DB, storage storage.Storage) error {
-	if err := storage.DeleteRegistry(data); err != nil {
+func DeleteRegistry(name string, sql *gorm.DB, storage storage.Storage) error {
+	if err := storage.DeleteRegistry(name); err != nil {
 		return err
 	}
-	registy := db.Registry{Name: data}
+	registy := db.Registry{Name: name}
 	if err := registy.Delete(sql); err != nil {
 		return err
 	}

@@ -15,9 +15,6 @@ type LocalStorage struct {
 }
 
 func newLocalStorage() (*LocalStorage, error) {
-	// if err := os.Mkdir(config.DATA_PATH, 0755); err != nil {
-	// 	return &LocalStorage{}, err
-	// }
 	if err := os.MkdirAll(config.TMP_PATH, 0755); err != nil {
 		return &LocalStorage{}, err
 	}
@@ -94,7 +91,7 @@ func (lc *LocalStorage) SaveManifest(body []byte, repository, image, reference, 
 	return manifestPath, nil
 }
 
-func (lc *LocalStorage) GetManifest(repository , image , reference string) ([]byte, error) {
+func (lc *LocalStorage) GetManifest(repository, image, reference string) ([]byte, error) {
 	var manifestPath string
 	tagPath := filepath.Join(config.MANIFEST_PATH, repository, image, "tags", reference)
 	// Определяем путь к файлу манифеста
@@ -116,6 +113,13 @@ func (lc *LocalStorage) GetManifest(repository , image , reference string) ([]by
 		return []byte{}, errors.New("Manifest not found")
 	}
 	return data, nil
+}
+
+func (lc *LocalStorage) AddRegistry(registry string) error {
+	if err := os.MkdirAll(filepath.Join(config.MANIFEST_PATH, registry), 0755); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (lc *LocalStorage) DeleteRegistry(registry string) error {

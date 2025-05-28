@@ -42,7 +42,7 @@ addRegistry -добавление указанного реестра.
 */
 func (h *Handler) addRegistry(c *gin.Context) {
 	data := c.Param("name")
-	if err := services.AddRegistry(data, h.DB.Sql); err != nil {
+	if err := services.AddRegistry(data, h.DB.Sql, h.STORAGE); err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"err": err.Error()})
 		return
 	}
