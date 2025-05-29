@@ -79,7 +79,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 	}
 
 	router.NoRoute(func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", gin.H{"URL": h.ENV.Server.Realm})
+		c.HTML(http.StatusOK, "index.html", gin.H{"URL": h.ENV.Server.Realm, "Title": h.ENV.Server.Service})
 	})
 	return router
 }

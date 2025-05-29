@@ -161,7 +161,7 @@ func SaveManifestToDB(mediaType, link, tag string, sql *gorm.DB) error {
 		for _, descriptor := range manifest.Layers {
 			sum += descriptor.Size
 		}
-		resizeRegistry(repository, imageName, manifestFile, "", sum)
+		resizeRegistry(repository, imageName, manifestFile, "docker", sum)
 	case config.MANIFEST_TYPE["oci"]:
 		platforms := []string{}
 		sizes := []int64{}
