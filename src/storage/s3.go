@@ -16,10 +16,18 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+/*
+S3Storage представляет хранилище на основе облачной системы S3.
+*/
 type S3Storage struct {
 	S3 *minio.Client
 }
 
+/*
+newS3Storage создает новый экземпляр S3Storage.
+
+	env - конфигурация окружения.
+*/
 func newS3Storage(env *config.Env) (*S3Storage, error) {
 	s3Client, err := minio.New(env.Storage.Credentials.Endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(env.Storage.Credentials.AccessKey, env.Storage.Credentials.SecretKey, ""),
@@ -37,7 +45,11 @@ func newS3Storage(env *config.Env) (*S3Storage, error) {
 	}, nil
 }
 
-// CheckBlob
+/*
+CheckBlob проверяет наличие Blob в хранилище.
+
+	uuid - идентификатор Blob.
+*/
 func (s *S3Storage) CheckBlob(uuid string) error {
 	path := filepath.Join(config.BLOBS_PATH, strings.Replace(uuid, "sha256:", "", 1))
 
@@ -48,7 +60,12 @@ func (s *S3Storage) CheckBlob(uuid string) error {
 	return nil
 }
 
-// SaveBlob
+/*
+SaveBlob сохраняет Blob в хранилище.
+
+	tmpPath - путь к временному файлу Blob.
+	digest - хэш Blob.
+*/
 func (s *S3Storage) SaveBlob(tmpPath string, digest string) error {
 	finalPath := filepath.Join(config.BLOBS_PATH, strings.Replace(digest, "sha256:", "", 1))
 
@@ -63,10 +80,11 @@ func (s *S3Storage) SaveBlob(tmpPath string, digest string) error {
 	return nil
 }
 
-// GetBlob
-// Return:
-//
-//	config.Blob
+/*
+GetBlob возвращает Blob из хранилища в двоичном виде.
+
+	digest - хэш Blob.
+*/
 func (s *S3Storage) GetBlob(digest string) (config.Blob, error) {
 	var data config.Blob
 	digest = strings.Replace(digest, "sha256:", "", 1)
@@ -95,7 +113,15 @@ func (s *S3Storage) GetBlob(digest string) (config.Blob, error) {
 	return data, nil
 }
 
-// SaveManifest
+/*
+SaveManifest сохраняет манифест в хранилище.
+
+	body - содержимое манифеста.
+	repository - имя репозитория.
+	image - имя образа.
+	reference - тег образ.
+	calculatedDigest - хэш манифеста.
+*/
 func (s *S3Storage) SaveManifest(body []byte, repository, image, reference, calculatedDigest string) (string, error) {
 	manifestPath := filepath.Join(config.MANIFEST_PATH, repository, image, calculatedDigest)
 	tagPath := filepath.Join(config.MANIFEST_PATH, repository, image, "tags", reference)
@@ -117,10 +143,13 @@ func (s *S3Storage) SaveManifest(body []byte, repository, image, reference, calc
 	return manifestPath, nil
 }
 
-// GetManifest
-// Return:
-//
-//	[]byte - docker manifest
+/*
+GetManifest	возращает манифест из хранилища в двоичном виде.
+
+	repository - имя репозитория.
+	image - имя образа.
+	reference - тег или digest.
+*/
 func (s *S3Storage) GetManifest(repository string, image string, reference string) ([]byte, error) {
 	var manifest []byte
 	manifestPath := ""
@@ -152,12 +181,21 @@ func (s *S3Storage) GetManifest(repository string, image string, reference strin
 	return manifest, nil
 }
 
+/*
+AddRegistry добавляет новый реестр в хранилище.
+
+	registry - имя реестра.
+*/
 func (s *S3Storage) AddRegistry(registry string) error {
 
 	return nil
 }
 
-// DeleteRegistry
+/*
+DeleteRegistry удаляет реестр из хранилища.
+
+	registry - имя реестра.
+*/
 func (s *S3Storage) DeleteRegistry(registry string) error {
 	path := filepath.Join(config.MANIFEST_PATH, registry)
 	objectsCh := make(chan minio.ObjectInfo)
@@ -178,7 +216,14 @@ func (s *S3Storage) DeleteRegistry(registry string) error {
 	return nil
 }
 
-// DeleteImage
+/*
+DeleteImage удаляет образ из хранилища.
+
+	repository - имя репозитория.
+	imageName - имя образа.
+	imageTag - тег образа.
+	imageHash - хеш образа.
+*/
 func (s *S3Storage) DeleteImage(repository string, imageName string, imageTag string, imageHash string) error {
 	path := filepath.Join(config.MANIFEST_PATH, repository, imageName, imageHash)
 	tagPath := filepath.Join(config.MANIFEST_PATH, repository, imageName, "tags", imageTag)
@@ -199,7 +244,12 @@ func (s *S3Storage) DeleteImage(repository string, imageName string, imageTag st
 	return nil
 }
 
-// DeleteRepository
+/*
+DeleteRepository удаляет репозиторий из хранилища.
+
+	name - имя репозитория.
+	image - имя образа.
+*/
 func (s *S3Storage) DeleteRepository(name string, image string) error {
 	path := filepath.Join(config.MANIFEST_PATH, name, image)
 	objectsCh := make(chan minio.ObjectInfo)
@@ -220,5 +270,10 @@ func (s *S3Storage) DeleteRepository(name string, image string) error {
 	return nil
 }
 
+/*
+GarbageCollection выполняет сборку мусора в хранилище.
+
+	Удаляет все образы и слои, которые не используются ни одним реестром.
+*/
 func (s *S3Storage) GarbageCollection() {
 }

@@ -11,9 +11,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+/*
+LocalStorage представляет хранилище на основе локальной файловой системы.
+*/
 type LocalStorage struct {
 }
 
+/*
+newLocalStorage инициализирует новый экземпляр LocalStorage.
+*/
 func newLocalStorage() (*LocalStorage, error) {
 	if err := os.MkdirAll(config.TMP_PATH, 0755); err != nil {
 		return &LocalStorage{}, err
@@ -27,7 +33,11 @@ func newLocalStorage() (*LocalStorage, error) {
 	return &LocalStorage{}, nil
 }
 
-// CheckBlob
+/*
+CheckBlob проверяет наличие Blob в хранилище.
+
+	uuid - идентификатор Blob.
+*/
 func (lc *LocalStorage) CheckBlob(uuid string) error {
 	path := filepath.Join(config.BLOBS_PATH, strings.Replace(uuid, "sha256:", "", 1))
 	if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -36,7 +46,12 @@ func (lc *LocalStorage) CheckBlob(uuid string) error {
 	return nil
 }
 
-// SaveBlob
+/*
+SaveBlob сохраняет Blob в хранилище.
+
+	tmpPath - путь к временному файлу Blob.
+	digest - хэш Blob.
+*/
 func (lc *LocalStorage) SaveBlob(tmpPath, digest string) error {
 	if err := os.Rename(tmpPath, filepath.Join(config.BLOBS_PATH, strings.Replace(digest, "sha256:", "", 1))); err != nil {
 		return err
@@ -45,6 +60,11 @@ func (lc *LocalStorage) SaveBlob(tmpPath, digest string) error {
 	return nil
 }
 
+/*
+GetBlob возвращает Blob из хранилища в двоичном виде.
+
+	digest - хэш Blob.
+*/
 func (lc *LocalStorage) GetBlob(digest string) (config.Blob, error) {
 	var data config.Blob
 	digest = strings.Replace(digest, "sha256:", "", 1)
@@ -66,6 +86,15 @@ func (lc *LocalStorage) GetBlob(digest string) (config.Blob, error) {
 	return data, nil
 }
 
+/*
+SaveManifest сохраняет манифест в хранилище.
+
+	body - содержимое манифеста.
+	repository - имя репозитория.
+	image - имя образа.
+	reference - тег образ.
+	calculatedDigest - хэш манифеста.
+*/
 func (lc *LocalStorage) SaveManifest(body []byte, repository, image, reference, calculatedDigest string) (string, error) {
 	manifestPath := filepath.Join(config.MANIFEST_PATH, repository, image, calculatedDigest)
 	tagPath := filepath.Join(config.MANIFEST_PATH, repository, image, "tags", reference)
@@ -91,6 +120,13 @@ func (lc *LocalStorage) SaveManifest(body []byte, repository, image, reference, 
 	return manifestPath, nil
 }
 
+/*
+GetManifest	возращает манифест из хранилища в двоичном виде.
+
+	repository - имя репозитория.
+	image - имя образа.
+	reference - тег или digest.
+*/
 func (lc *LocalStorage) GetManifest(repository, image, reference string) ([]byte, error) {
 	var manifestPath string
 	tagPath := filepath.Join(config.MANIFEST_PATH, repository, image, "tags", reference)
@@ -115,6 +151,11 @@ func (lc *LocalStorage) GetManifest(repository, image, reference string) ([]byte
 	return data, nil
 }
 
+/*
+AddRegistry добавляет новый реестр в хранилище.
+
+	registry - имя реестра.
+*/
 func (lc *LocalStorage) AddRegistry(registry string) error {
 	if err := os.MkdirAll(filepath.Join(config.MANIFEST_PATH, registry), 0755); err != nil {
 		return err
@@ -122,6 +163,11 @@ func (lc *LocalStorage) AddRegistry(registry string) error {
 	return nil
 }
 
+/*
+DeleteRegistry удаляет реестр из хранилища.
+
+	registry - имя реестра.
+*/
 func (lc *LocalStorage) DeleteRegistry(registry string) error {
 	if err := os.RemoveAll(filepath.Join(config.MANIFEST_PATH, registry)); err != nil {
 		return err
@@ -129,6 +175,14 @@ func (lc *LocalStorage) DeleteRegistry(registry string) error {
 	return nil
 }
 
+/*
+DeleteImage удаляет образ из хранилища.
+
+	repository - имя репозитория.
+	imageName - имя образа.
+	imageTag - тег образа.
+	imageHash - хеш образа.
+*/
 func (lc *LocalStorage) DeleteImage(repository, imageName, imageTag, imageHash string) error {
 	path := filepath.Join(config.MANIFEST_PATH, repository, imageName, imageHash)
 	tagPath := filepath.Join(config.MANIFEST_PATH, repository, imageName, "tags", imageTag)
@@ -141,6 +195,12 @@ func (lc *LocalStorage) DeleteImage(repository, imageName, imageTag, imageHash s
 	return nil
 }
 
+/*
+DeleteRepository удаляет репозиторий из хранилища.
+
+	name - имя репозитория.
+	image - имя образа.
+*/
 func (lc *LocalStorage) DeleteRepository(name, image string) error {
 	if err := os.RemoveAll(filepath.Join(config.MANIFEST_PATH, name, image)); err != nil {
 		return err
@@ -148,6 +208,11 @@ func (lc *LocalStorage) DeleteRepository(name, image string) error {
 	return nil
 }
 
+/*
+GarbageCollection выполняет сборку мусора в хранилище.
+
+	Удаляет все образы и слои, которые не используются ни одним реестром.
+*/
 func (lc *LocalStorage) GarbageCollection() {
 	// получаем список всех blob.
 	blobs := func() []string {
