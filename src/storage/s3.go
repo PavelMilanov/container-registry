@@ -34,11 +34,15 @@ func newS3Storage(env *config.Env) (*S3Storage, error) {
 		Secure: env.Storage.Credentials.SSL,
 	})
 	if err != nil {
-		return &S3Storage{}, nil
+		return &S3Storage{}, err
 	}
-	_, errBucketExists := s3Client.BucketExists(context.Background(), config.BACKET_NAME)
-	if errBucketExists != nil {
-		return &S3Storage{}, nil
+	bucketExists, err := s3Client.BucketExists(context.Background(), config.BACKET_NAME)
+	if err != nil {
+		return &S3Storage{}, err
+	}
+	if !bucketExists {
+		return &S3Storage{}, errors.New("Backet не создан")
+
 	}
 	return &S3Storage{
 		S3: s3Client,
@@ -54,9 +58,8 @@ func (s *S3Storage) CheckBlob(uuid string) error {
 	path := filepath.Join(config.BLOBS_PATH, strings.Replace(uuid, "sha256:", "", 1))
 
 	if _, err := s.S3.StatObject(context.Background(), config.BACKET_NAME, path, minio.GetObjectOptions{}); err != nil {
-		return errors.New("Blob not found")
+		return err
 	}
-
 	return nil
 }
 
