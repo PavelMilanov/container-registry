@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -23,13 +24,14 @@ type Image struct {
 func (i *Image) Add(sql *gorm.DB) {
 	now := time.Now()
 	i.CreatedAt = now.Format("2006-01-02 15:04:05")
-	if sql.Model(&i).Where("name = ? AND tag = ?", i.Name, i.Tag).Updates(&i).RowsAffected == 0 {
+	if sql.Model(&i).Where("name = ? AND tag = ? AND repository_id = ?", i.Name, i.Tag, i.RepositoryID).Updates(&i).RowsAffected == 0 {
 		sql.Create(&i)
+		logrus.Infof("Создан новый образ %+v", i)
 	}
 }
 
 func (i *Image) Delete(sql *gorm.DB) error {
-	sql.Where("name = ? AND tag = ?", i.Name, i.Tag).First(&i)
+	sql.Where("name = ? AND tag = ? AND repository_id = ?", i.Name, i.Tag, i.RepositoryID).First(&i)
 	result := sql.Delete(&i)
 	if result.Error != nil {
 		return result.Error
