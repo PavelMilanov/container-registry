@@ -69,7 +69,7 @@ SaveBlob сохраняет Blob в хранилище.
 	tmpPath - путь к временному файлу Blob.
 	digest - хэш Blob.
 */
-func (s *S3Storage) SaveBlob(tmpPath string, digest string) error {
+func (s *S3Storage) SaveBlob(tmpPath, digest string) error {
 	finalPath := filepath.Join(config.BLOBS_PATH, strings.Replace(digest, "sha256:", "", 1))
 
 	file, _ := os.Open(tmpPath)
@@ -153,7 +153,7 @@ GetManifest	возращает манифест из хранилища в дв�
 	image - имя образа.
 	reference - тег или digest.
 */
-func (s *S3Storage) GetManifest(repository string, image string, reference string) ([]byte, error) {
+func (s *S3Storage) GetManifest(repository, image, reference string) ([]byte, error) {
 	var manifest []byte
 	manifestPath := ""
 	tagPath := filepath.Join(config.MANIFEST_PATH, repository, image, "tags", reference)
@@ -227,7 +227,7 @@ DeleteImage удаляет образ из хранилища.
 	imageTag - тег образа.
 	imageHash - хеш образа.
 */
-func (s *S3Storage) DeleteImage(repository string, imageName string, imageTag string, imageHash string) error {
+func (s *S3Storage) DeleteImage(repository, imageName, imageTag, imageHash string) error {
 	path := filepath.Join(config.MANIFEST_PATH, repository, imageName, imageHash)
 	tagPath := filepath.Join(config.MANIFEST_PATH, repository, imageName, "tags", imageTag)
 	opts := minio.RemoveObjectOptions{
@@ -253,7 +253,7 @@ DeleteRepository удаляет репозиторий из хранилища.
 	name - имя репозитория.
 	image - имя образа.
 */
-func (s *S3Storage) DeleteRepository(name string, image string) error {
+func (s *S3Storage) DeleteRepository(name, image string) error {
 	path := filepath.Join(config.MANIFEST_PATH, name, image)
 	objectsCh := make(chan minio.ObjectInfo)
 	go func() {
