@@ -72,7 +72,7 @@ func TestRegistyAPI(t *testing.T) {
 		t.Run("with authorization", func(t *testing.T) {
 			t.Parallel()
 			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("POST", "/api/registry/test", nil)
+			req, _ := http.NewRequest("POST", "/api/test", nil)
 			jwt := fmt.Sprintf("Bearer %s", token)
 			req.Header.Set("Authorization", jwt)
 			srv.ServeHTTP(w, req)
@@ -90,7 +90,7 @@ func TestRegistyAPI(t *testing.T) {
 		t.Run("without authorization", func(t *testing.T) {
 			t.Parallel()
 			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("POST", "/api/registry/test", nil)
+			req, _ := http.NewRequest("POST", "/api/test", nil)
 			srv.ServeHTTP(w, req)
 
 			if w.Code != http.StatusUnauthorized {
@@ -102,7 +102,7 @@ func TestRegistyAPI(t *testing.T) {
 		t.Run("with authorization", func(t *testing.T) {
 			t.Parallel()
 			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", "/api/registry/test", nil)
+			req, _ := http.NewRequest("GET", "/api/test", nil)
 			jwt := fmt.Sprintf("Bearer %s", token)
 			req.Header.Set("Authorization", jwt)
 			srv.ServeHTTP(w, req)
@@ -116,7 +116,7 @@ func TestRegistyAPI(t *testing.T) {
 		t.Run("without authorization", func(t *testing.T) {
 			t.Parallel()
 			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", "/api/registry/test", nil)
+			req, _ := http.NewRequest("GET", "/api/test", nil)
 			srv.ServeHTTP(w, req)
 
 			if w.Code != http.StatusUnauthorized {
@@ -128,7 +128,7 @@ func TestRegistyAPI(t *testing.T) {
 		t.Run("with authorization", func(t *testing.T) {
 			t.Parallel()
 			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("DELETE", "/api/registry/test", nil)
+			req, _ := http.NewRequest("DELETE", "/api/test", nil)
 			jwt := fmt.Sprintf("Bearer %s", token)
 			req.Header.Set("Authorization", jwt)
 			srv.ServeHTTP(w, req)
@@ -146,7 +146,7 @@ func TestRegistyAPI(t *testing.T) {
 		t.Run("without authorization", func(t *testing.T) {
 			t.Parallel()
 			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("DELETE", "/api/registry/test", nil)
+			req, _ := http.NewRequest("DELETE", "/api/test", nil)
 			srv.ServeHTTP(w, req)
 
 			if w.Code != http.StatusUnauthorized {
@@ -154,5 +154,5 @@ func TestRegistyAPI(t *testing.T) {
 			}
 		})
 	})
-	os.Remove("test.db")
+	defer os.Remove("test.db")
 }
