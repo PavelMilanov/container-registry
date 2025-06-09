@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -279,4 +280,19 @@ GarbageCollection выполняет сборку мусора в хранили
 	Удаляет все образы и слои, которые не используются ни одним реестром.
 */
 func (s *S3Storage) GarbageCollection() {
+	blobs := func() []string {
+		var blobs []string
+		opts := minio.ListObjectsOptions{
+			Recursive: true,
+			Prefix:    config.BLOBS_PATH,
+		}
+		for object := range s.S3.ListObjects(context.Background(), config.BACKET_NAME, opts) {
+			if object.Err != nil {
+				fmt.Println(object.Err)
+			}
+			blobs = append(blobs, object.Key)
+		}
+		return blobs
+	}()
+	fmt.Println(blobs)
 }
