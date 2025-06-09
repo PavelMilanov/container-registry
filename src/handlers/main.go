@@ -68,18 +68,18 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	api := router.Group("/api/", baseApiMiddleware([]byte(h.ENV.Server.Jwt)))
 	{
-		api.GET("/registry", h.getRegistry)
-		api.GET("/registry/:name", h.getRegistry)
-		api.POST("/registry/:name", h.addRegistry)
-		api.DELETE("/registry/:name", h.deleteRegistry)
-		api.GET("/registry/:name/:image", h.getImages)
-		api.DELETE("/registry/:name/:image", h.deleteImage)
+		api.GET("/", h.getRegistry)
+		api.GET("/:name", h.getRegistry)
+		api.POST("/:name", h.addRegistry)
+		api.DELETE("/:name", h.deleteRegistry)
+		api.GET("/:name/:image", h.getImages)
+		api.DELETE("/:name/:image", h.deleteImage)
 		api.POST("/settings", h.settings)
 		api.GET("/settings", h.settings)
 	}
 
 	router.NoRoute(func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", gin.H{"URL": h.ENV.Server.Realm})
+		c.HTML(http.StatusOK, "index.html", gin.H{"URL": h.ENV.Server.Realm, "Title": h.ENV.Server.Service})
 	})
 	return router
 }

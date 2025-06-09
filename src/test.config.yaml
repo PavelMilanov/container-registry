@@ -5,4 +5,10 @@ server:
   jwt: "qwerty"
 
 storage:
-  type: local
+  # type: local
+  type: s3
+  credentials:
+    endpoint: "http://192.168.12.27:9000"
+    access_key: "b4YrdxfuTmwyZt87ucY0"
+    secret_key: "IYzm8VdUwwSYWAL5QnCPeSgqtoSAXzU73LTbovwn"
+    ssl: false

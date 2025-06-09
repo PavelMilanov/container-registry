@@ -10,17 +10,6 @@ import (
 	"github.com/PavelMilanov/container-registry/config"
 )
 
-func initConfig() *config.Env {
-	env, _ := config.NewEnv("../", "test.config")
-	return env
-}
-
-// func TestGarbageCollection(t *testing.T) {
-// 	env := initConfig()
-// 	s := NewStorage(env)
-// 	s.GarbageCollection()
-// }
-
 func TestInventoryBlobs(t *testing.T) {
 	path := "../var/manifests/"
 	func(path string) {

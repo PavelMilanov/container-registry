@@ -19,7 +19,7 @@ export default function Image() {
     };
     try {
       const response = await axios.get(
-        API_URL + `/api/registry/${params.name}/${params.image}`,
+        API_URL + `/api/${params.name}/${params.image}`,
         { headers: headers },
       );
       setTagList(response.data.data); // в ответе приходит массив "data"

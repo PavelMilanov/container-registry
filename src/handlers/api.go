@@ -15,8 +15,8 @@ getRegistry - получение информации о реестрах.
 
 	<name> - название реестра.
 
-	/api/registry -вывод всех реестров.
-	/api/registry/<name> - вывод всех образов репозитория.
+	/api/ -вывод всех реестров.
+	/api/<name> - вывод всех образов репозитория.
 */
 func (h *Handler) getRegistry(c *gin.Context) {
 	name := c.Param("name")
@@ -38,7 +38,7 @@ addRegistry -добавление указанного реестра.
 
 	<name> - название реестра.
 
-	/api/registry/<name> - добавление реестра.
+	/api/<name> - добавление реестра.
 */
 func (h *Handler) addRegistry(c *gin.Context) {
 	data := c.Param("name")
@@ -54,7 +54,7 @@ deleteRegistry -удаление указанного реестра.
 
 	<name> - название реестра.
 
-	/api/registry/<name> - удаляется реестр.
+	/api/<name> - удаляется реестр.
 */
 func (h *Handler) deleteRegistry(c *gin.Context) {
 	data := c.Param("name")
@@ -72,7 +72,7 @@ deleteImage -удаление указанного образа.
 	<image> - название образа.
 	<tag> - тег образа.
 
-	/api/registry/<name>/<image>?tag=<tag> - удаляется указанный образ.
+	/api/<name>/<image>?tag=<tag> - удаляется указанный образ.
 */
 func (h *Handler) deleteImage(c *gin.Context) {
 	name := c.Param("name")
@@ -99,7 +99,7 @@ getImages - получение всех тегов образа.
 	<name> - название репозитория.
 	<image> - название образа.
 
-	/api/registry/<name>/<image>
+	/api/<name>/<image>
 */
 func (h *Handler) getImages(c *gin.Context) {
 	ImageName := c.Param("image")
@@ -165,6 +165,13 @@ func (h *Handler) login(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"token": user.Token})
 }
 
+/*
+settings - настройки.
+
+	/api/settings - получение настроек.
+	/api/settings?tag=<int> - установка количества тегов.
+	/api/settings?garbage=true - очистка хранилища.
+*/
 func (h *Handler) settings(c *gin.Context) {
 	if c.Request.Method == "GET" {
 		count, _ := db.GetCountTag(h.DB.Sql)

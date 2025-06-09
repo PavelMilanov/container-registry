@@ -10,8 +10,8 @@ import (
 
 // Repository абстракция таблицы repositories.
 type Repository struct {
-	ID         int    `gorm:"primaryKey"`
-	Name       string `gorm:"unique"`
+	ID         int `gorm:"primaryKey"`
+	Name       string
 	CreatedAt  string
 	Size       int64
 	SizeAlias  string
@@ -22,14 +22,14 @@ type Repository struct {
 func (r *Repository) Add(sql *gorm.DB) {
 	now := time.Now()
 	r.CreatedAt = now.Format("2006-01-02 15:04:05")
-	if sql.Model(&r).Where("name = ?", r.Name).First(&r).RowsAffected == 0 {
+	if sql.Model(&r).Where("name = ? AND registry_id = ?", r.Name, r.RegistryID).First(&r).RowsAffected == 0 {
 		sql.Create(&r)
 		logrus.Infof("Создан новый репозиторий %+v", r)
 	}
 }
 
 func (r *Repository) Delete(sql *gorm.DB) error {
-	sql.Preload("Images").Where("name = ?", r.Name).First(&r)
+	sql.Preload("Images").Where("name = ? AND registry_id = ?", r.Name, r.RegistryID).First(&r)
 	result := sql.Delete(&r)
 	if result.Error != nil {
 		logrus.Error(result.Error)

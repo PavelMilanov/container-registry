@@ -22,7 +22,7 @@ export default function Registry() {
     };
     try {
       const response = await axios.post(
-        API_URL + `/api/registry/${registry()}`,
+        API_URL + `/api/${registry()}`,
         {},
         { headers: headers },
       );
@@ -47,7 +47,7 @@ export default function Registry() {
       Authorization: `Bearer ${token}`,
     };
     try {
-      const response = await axios.get(API_URL + "/api/registry", {
+      const response = await axios.get(API_URL + "/api/", {
         headers: headers,
       });
       setRegistryList(response.data.data); // в ответе приходит массив "data"

@@ -119,7 +119,10 @@ func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {
 // sql - экземпляр базы данных.
 func SaveManifestToDB(mediaType, link, tag string, sql *gorm.DB) error {
 	resizeRegistry := func(repository, imageName, manifestFile, platform string, sum int64) {
-		registry, _ := db.GetRegistry(sql, "name = ?", repository)
+		registry, err := db.GetRegistry(sql, "name = ?", repository)
+		if err != nil {
+			logrus.Error(err)
+		}
 		repo := db.Repository{
 			Name:       imageName,
 			RegistryID: registry.ID,
@@ -161,7 +164,7 @@ func SaveManifestToDB(mediaType, link, tag string, sql *gorm.DB) error {
 		for _, descriptor := range manifest.Layers {
 			sum += descriptor.Size
 		}
-		resizeRegistry(repository, imageName, manifestFile, "", sum)
+		resizeRegistry(repository, imageName, manifestFile, "docker", sum)
 	case config.MANIFEST_TYPE["oci"]:
 		platforms := []string{}
 		sizes := []int64{}

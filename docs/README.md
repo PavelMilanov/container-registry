@@ -57,29 +57,29 @@ volumes:
 - Пример конфигурации для локального хранилища:
 ```bash config.yaml
 server:
-  realm: "http://192.168.1.38:5050"
-  service: "192.168.1.38:5050"
-  issuer: "local-registry"
-  jwt: "qwerty"
+  realm: http://192.168.1.38:5050
+  service: 192.168.1.38:5050
+  issuer: local-registry
+  jwt: qwerty
 
 storage:
-  type: "local"
+  type: local
 
 ```
 - Пример конфигурации для S3 хранилища:
 ```bash config.yaml
 server:
-  realm: "http://192.168.1.38:5050"
-  service: "192.168.1.38:5050"
-  issuer: "local-registry"
-  jwt: "qwerty"
+  realm: http://192.168.1.38:5050
+  service: 192.168.1.38:5050
+  issuer: local-registry
+  jwt: qwerty
 
 storage:
   type: s3
   credentials:
-    endpoint: "https://storage.network.net"
-    access_key: "your_access_key"
-    secret_key: "your_secret_key"
+    endpoint: https://storage.network.net
+    access_key: your_access_key
+    secret_key: your_secret_key
     ssl: true
 ```
 - папку с файлом `config.yaml` необходимо смонтировать в контейнер по пути `/registry/conf.d`
