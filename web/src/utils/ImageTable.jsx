@@ -16,7 +16,7 @@ export default function ImageTable(props) {
     };
     try {
       const response = await axios.delete(
-        API_URL + `/api/registry/${params.name}/${image}`,
+        API_URL + `/api/${params.name}/${image}`,
         { headers: headers, params: { tag: tag } },
       );
       if (response.status == 202) {

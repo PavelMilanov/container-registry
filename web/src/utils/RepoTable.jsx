@@ -16,7 +16,7 @@ export default function RepoTable(props) {
     };
     try {
       const response = await axios.delete(
-        API_URL + `/api/registry/${params.name}/${item}`,
+        API_URL + `/api/${params.name}/${item}`,
         { headers: headers },
       );
       if (response.status == 202) {
@@ -53,7 +53,7 @@ export default function RepoTable(props) {
         </thead>
         <tbody>
           <For each={items()}>
-            {(item, index) => (
+            {(item, _) => (
               <tr class="bg-white hover:bg-gray-50 border-b border-gray-200">
                 <td class="px-6 py-4 text-sm font-medium hover:underline">
                   <A href={item.Name}>

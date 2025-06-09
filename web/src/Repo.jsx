@@ -18,12 +18,9 @@ export default function Repo() {
       Authorization: `Bearer ${token}`,
     };
     try {
-      const response = await axios.get(
-        API_URL + `/api/registry/${params.name}`,
-        {
-          headers: headers,
-        },
-      );
+      const response = await axios.get(API_URL + `/api/${params.name}`, {
+        headers: headers,
+      });
       setImageList(response.data.data); // в ответе приходит массив "data"
     } catch (error) {
       if (error.response?.status === 401) {

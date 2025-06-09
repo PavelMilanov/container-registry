@@ -14,7 +14,7 @@ export default function RegistryTable(props) {
       Authorization: `Bearer ${token}`,
     };
     try {
-      const response = await axios.delete(API_URL + `/api/registry/${item}`, {
+      const response = await axios.delete(API_URL + `/api/${item}`, {
         headers: headers,
       });
       if (response.status == 202) {
@@ -50,7 +50,7 @@ export default function RegistryTable(props) {
         </thead>
         <tbody>
           <For each={items()}>
-            {(item, index) => (
+            {(item, _) => (
               <tr class="bg-white hover:bg-gray-50 border-b border-gray-200">
                 <td class="px-6 py-4 text-sm font-medium hover:underline">
                   <A href={item.Name}>{item.Name}</A>
