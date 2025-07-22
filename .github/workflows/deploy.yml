@@ -30,7 +30,7 @@ jobs:
         run: cd src && go mod tidy
 
       - name: Run Tests
-        run: cd src && go test -v
+        run: cd src && go test -tags=dev -v
 
   build:
     runs-on: ubuntu-latest
