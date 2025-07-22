@@ -26,8 +26,7 @@ export default function RegistryTable(props) {
         localStorage.removeItem("token");
         navigate("/login", { replace: true });
       } else {
-        console.error(error);
-        showAlert(error.response.data.error, "error");
+        showAlert(error.response.data.err, "error");
       }
     }
   };

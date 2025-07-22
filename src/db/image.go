@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -31,10 +32,18 @@ func (i *Image) Add(sql *gorm.DB) {
 }
 
 func (i *Image) Delete(sql *gorm.DB) error {
-	sql.Where("name = ? AND tag = ? AND repository_id = ?", i.Name, i.Tag, i.RepositoryID).First(&i)
+	if err := sql.Where("name = ? AND tag = ?", i.Name, i.Tag).First(&i).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("Образ не найден")
+		}
+		return err
+	}
 	result := sql.Delete(&i)
 	if result.Error != nil {
 		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("не удалось удалить образ")
 	}
 	return nil
 }
