@@ -39,8 +39,9 @@ func DeleteRegistry(name string, sql *gorm.DB, storage storage.Storage) error {
 
 func DeleteImage(name, image, tag string, sql *gorm.DB, storage storage.Storage) error {
 	img := db.Image{Name: image, Tag: tag}
-	sql.Transaction(func(tx *gorm.DB) error {
+	err := sql.Transaction(func(tx *gorm.DB) error {
 		if err := img.Delete(tx); err != nil {
+			logrus.Info(err)
 			tx.Rollback()
 			return err
 		}
@@ -62,6 +63,9 @@ func DeleteImage(name, image, tag string, sql *gorm.DB, storage storage.Storage)
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
 	if err := storage.DeleteImage(name, img.Name, img.Tag, img.Hash); err != nil {
 		return err
 	}
@@ -70,7 +74,7 @@ func DeleteImage(name, image, tag string, sql *gorm.DB, storage storage.Storage)
 
 func DeleteRepository(name, image string, sql *gorm.DB, storage storage.Storage) error {
 	repo := db.Repository{Name: image}
-	sql.Transaction(func(tx *gorm.DB) error {
+	if err := sql.Transaction(func(tx *gorm.DB) error {
 		if err := repo.Delete(tx); err != nil {
 			tx.Rollback()
 			return err
@@ -84,8 +88,9 @@ func DeleteRepository(name, image string, sql *gorm.DB, storage storage.Storage)
 			return err
 		}
 		return nil
-	})
-
+	}); err != nil {
+		return err
+	}
 	if err := storage.DeleteRepository(name, repo.Name); err != nil {
 		return err
 	}
