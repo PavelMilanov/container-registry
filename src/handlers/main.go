@@ -6,12 +6,9 @@ package handlers
 import (
 	"net/http"
 
-	"time"
-
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/storage"
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -29,15 +26,8 @@ func NewHandler(storage storage.Storage, db *db.SQLite, env *config.Env) *Handle
 func (h *Handler) InitRouters() *gin.Engine {
 
 	router := gin.Default()
-	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{h.ENV.Server.Realm},
-		AllowMethods:     []string{"GET", "POST", "DELETE"},
-		AllowHeaders:     []string{"Origin", "Authorization", "Content-Type"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-		MaxAge:           24 * time.Hour,
-	}))
-	router.LoadHTMLGlob("./index.html")
+	setupCORS(router, h)
+
 	router.Static("/assets/", "./assets")
 
 	router.POST("/login", h.login)
@@ -77,9 +67,6 @@ func (h *Handler) InitRouters() *gin.Engine {
 		api.POST("/settings", h.settings)
 		api.GET("/settings", h.settings)
 	}
-
-	router.NoRoute(func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", gin.H{"URL": h.ENV.Server.Realm, "Title": h.ENV.Server.Service})
-	})
+	noRouter(router, h)
 	return router
 }
