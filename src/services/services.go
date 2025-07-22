@@ -37,11 +37,10 @@ func DeleteRegistry(name string, sql *gorm.DB, storage storage.Storage) error {
 	return nil
 }
 
-func DeleteImage(name, image, tag string, sql *gorm.DB, storage storage.Storage) error {
-	img := db.Image{Name: image, Tag: tag}
+func DeleteImage(name, image, hash string, sql *gorm.DB, storage storage.Storage) error {
+	img := db.Image{Name: image, Hash: hash}
 	err := sql.Transaction(func(tx *gorm.DB) error {
 		if err := img.Delete(tx); err != nil {
-			logrus.Info(err)
 			tx.Rollback()
 			return err
 		}
@@ -113,7 +112,7 @@ func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {
 	data := db.GetLastTagImages(sql, tagCount)
 	for _, item := range data {
 		repo, _ := db.GetRepository(sql, "ID = ?", item.RepositoryID)
-		DeleteImage(repo.Name, item.Name, item.Tag, sql, storage)
+		DeleteImage(repo.Name, item.Name, item.Hash, sql, storage)
 	}
 }
 
