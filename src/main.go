@@ -47,14 +47,21 @@ func main() {
 	}
 	defer db.CloseDatabase(sqlite.Sql)
 
-	c.AddFunc("0 1 * * 0", func() {
+	_, err = c.AddFunc("0 1 * * 0", func() {
 		logrus.Info("Запуск задания Garbage Collection")
 		go store.GarbageCollection()
 	}) // каждое воскресенье в 01:00
-	c.AddFunc("0 0 * * 0", func() {
+	if err != nil {
+		logrus.Error(err)
+	}
+	_, err = c.AddFunc("0 0 * * 0", func() {
 		logrus.Info("Запуск задания удаления старых образов")
 		go services.DeleteOlderImages(sqlite.Sql, store)
 	}) // каждое воскресенье в 00:00
+	if err != nil {
+		logrus.Error(err)
+	}
+	c.Start()
 
 	handler := handlers.NewHandler(store, &sqlite, env)
 	srv := new(Server)
@@ -64,7 +71,6 @@ func main() {
 		}
 	}()
 
-	c.Start()
 	defer c.Stop()
 
 	quit := make(chan os.Signal, 1)
