@@ -9,7 +9,7 @@ export default function ImageTable(props) {
   let items = () => props.items;
   const params = useParams();
 
-  const onDeleteImage = async (image, tag) => {
+  const onDeleteImage = async (image, hash) => {
     let token = localStorage.getItem("token");
     const headers = {
       Authorization: `Bearer ${token}`,
@@ -17,7 +17,7 @@ export default function ImageTable(props) {
     try {
       const response = await axios.delete(
         API_URL + `/api/${params.name}/${image}`,
-        { headers: headers, params: { tag: tag } },
+        { headers: headers, params: { hash: hash } },
       );
       if (response.status == 202) {
         showAlert("Образ удален!");
@@ -70,7 +70,6 @@ export default function ImageTable(props) {
                   <input
                     type="text"
                     id="disabled-input-2"
-                    aria-label="disabled input 2"
                     class="bg-gray-100 border border-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 cursor-not-allowed"
                     value={item.Hash.slice(0, 12) + "..."}
                     disabled
@@ -82,7 +81,7 @@ export default function ImageTable(props) {
                 <td class="px-2 py-2">
                   <Delete
                     message={"Образ Docker будет удален!"}
-                    onSubmit={() => onDeleteImage(item.Name, item.Tag)}
+                    onSubmit={() => onDeleteImage(item.Name, item.Hash)}
                   />
                 </td>
               </tr>

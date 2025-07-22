@@ -32,7 +32,7 @@ func (i *Image) Add(sql *gorm.DB) {
 }
 
 func (i *Image) Delete(sql *gorm.DB) error {
-	if err := sql.Where("name = ? AND tag = ?", i.Name, i.Tag).First(&i).Error; err != nil {
+	if err := sql.Where("name = ? AND hash = ?", i.Name, i.Hash).First(&i).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return errors.New("Образ не найден")
 		}

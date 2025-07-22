@@ -74,16 +74,16 @@ deleteImage -удаление указанного образа.
 
 	<name> - название репозитория.
 	<image> - название образа.
-	<tag> - тег образа.
+	<hash> - хеш образа.
 
-	/api/<name>/<image>?tag=<tag> - удаляется указанный образ.
+	/api/<name>/<image>?hash=<hash> - удаляется указанный образ.
 */
 func (h *Handler) deleteImage(c *gin.Context) {
 	name := c.Param("name")
 	image := c.Param("image")
-	tag := c.Query("tag")
-	if tag != "" { // удаляется только образ
-		if err := services.DeleteImage(name, image, tag, h.DB.Sql, h.STORAGE); err != nil {
+	hash := c.Query("hash")
+	if hash != "" { // удаляется только образ
+		if err := services.DeleteImage(name, image, hash, h.DB.Sql, h.STORAGE); err != nil {
 			logrus.Error(err)
 			c.JSON(http.StatusForbidden, gin.H{"err": "Ошибка при удалении образа"})
 			return
