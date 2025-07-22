@@ -62,6 +62,7 @@ func main() {
 		logrus.Error(err)
 	}
 	c.Start()
+	logrus.Infof("Запущено %d заданий планировщика", len(c.Entries()))
 
 	handler := handlers.NewHandler(store, &sqlite, env)
 	srv := new(Server)
