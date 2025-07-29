@@ -56,16 +56,21 @@ func GetImageTags(sql *gorm.DB, id int, name string) []Image {
 
 func GetLastTagImages(sql *gorm.DB, count int) []Image {
 	var images []Image
-	sql.Raw(`WITH ranked AS (
-  SELECT
-  *,
-    ROW_NUMBER() OVER (PARTITION BY name ORDER BY created_at DESC) AS rn
-  FROM images
-)
-SELECT *
-FROM ranked
-WHERE rn <= ?`, count).Scan(&images)
-	return images
+	var repositories []Repository
+	result := sql.Find(&repositories)
+	if result.Error != nil {
+		logrus.Error(result.Error)
+	}
+	var outData []Image
+	for _, repository := range repositories {
+		result := sql.Where("repository_id = ?", repository.ID).Order("created_at ASC").Offset(count).Find(&images)
+		if result.Error != nil {
+			logrus.Error(result.Error)
+		}
+		outData = append(outData, images...)
+	}
+
+	return outData
 }
 
 func GetImage(sql *gorm.DB, condition string, args ...interface{}) (*Image, error) {
