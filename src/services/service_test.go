@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/PavelMilanov/container-registry/config"
+	"github.com/PavelMilanov/container-registry/db"
+	"github.com/PavelMilanov/container-registry/storage"
 )
 
 func TestSaveManifestToDB(t *testing.T) {
@@ -44,4 +46,20 @@ func TestSaveManifestToDB(t *testing.T) {
 		fmt.Println(platforms)
 		fmt.Println(sizes)
 	}(link)
+}
+
+func TestDeleteOlderImages(t *testing.T) {
+	env, err := config.NewEnv("../conf.d", "config")
+	if err != nil {
+		t.Error(err)
+	}
+	s, err := storage.NewStorage(env)
+	if err != nil {
+		t.Error(err)
+	}
+	sqlite, err := db.NewDatabase("../var/registry.db")
+	if err != nil {
+		t.Error(err)
+	}
+	DeleteOlderImages(sqlite.Sql, s)
 }

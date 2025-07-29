@@ -114,6 +114,7 @@ func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {
 		repo, _ := db.GetRepository(sql, "ID = ?", item.RepositoryID)
 		DeleteImage(repo.Name, item.Name, item.Hash, sql, storage)
 	}
+	logrus.Infof("Удалено %d старых образов", len(data))
 }
 
 // SaveManifestToDB сохраняет манифест в базу данных и обновляет зависимости.
