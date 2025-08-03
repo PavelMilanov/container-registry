@@ -2,13 +2,13 @@ FROM golang:1.24-alpine AS app
 
 RUN apk --update --no-cache add gcc musl-dev
 
-WORKDIR /
+WORKDIR /build
 
-COPY src/go.mod src/go.sum ./
+COPY src/go.mod .
 
-RUN go mod download && go mod verify
+RUN go mod download
 
-COPY src/ ./
+COPY src/ .
 
 ARG VERSION
 
