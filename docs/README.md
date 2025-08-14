@@ -65,6 +65,9 @@ server:
 storage:
   type: local
 
+user:
+  login: test
+  password: test
 ```
 - Пример конфигурации для S3 хранилища:
 ```bash config.yaml
@@ -81,6 +84,10 @@ storage:
     access_key: your_access_key
     secret_key: your_secret_key
     ssl: true
+
+user:
+  login: test
+  password: test
 ```
 - папку с файлом `config.yaml` необходимо смонтировать в контейнер по пути `/registry/conf.d`
 

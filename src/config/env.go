@@ -12,6 +12,7 @@ Env описывает конфигурацию приложения.
 type Env struct {
 	Server  server
 	Storage storage
+	User    user
 }
 
 /*
@@ -40,6 +41,11 @@ type credentials struct {
 	AccessKey string `mapstructure:"access_key"`
 	SecretKey string `mapstructure:"secret_key"`
 	SSL       bool   `mapstructure:"ssl"`
+}
+
+type user struct {
+	Login    string `mapstructure:"login"`
+	Password string `mapstructure:"password"`
 }
 
 /*
@@ -71,6 +77,9 @@ func NewEnv(path, file string) (*Env, error) {
 		if env.Storage.Credentials.Endpoint == "" || env.Storage.Credentials.AccessKey == "" || env.Storage.Credentials.SecretKey == "" {
 			return &env, errors.New("не указан конфиг для подключения к S3 storage")
 		}
+	}
+	if env.User.Login == "" || env.User.Password == "" {
+		return &env, errors.New("не указаны логин или пароль для суперпользователя")
 	}
 	return &env, nil
 }
