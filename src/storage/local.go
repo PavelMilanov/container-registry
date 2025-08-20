@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/PavelMilanov/container-registry/config"
+	"github.com/PavelMilanov/container-registry/system"
 	"github.com/sirupsen/logrus"
 )
 
@@ -230,10 +231,21 @@ func (lc *LocalStorage) GarbageCollection() {
 			buffer = append(buffer, v)
 		}
 	}
+	statBefore, err := system.DiskUsage()
+	if err != nil {
+		logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
+		return
+	}
 	for _, i := range buffer {
 		if err := os.Remove(filepath.Join(config.BLOBS_PATH, i)); err != nil {
 			logrus.Error(err)
 		}
 	}
-	logrus.Infof("Инвентаризация blob произведена. Удалено файлов %d", len(buffer))
+	statAfter, err := system.DiskUsage()
+	if err != nil {
+		logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
+		return
+	}
+	clearSpace := statBefore.Free - statAfter.Free
+	logrus.Infof("Инвентаризация blob произведена. Удалено файлов %d\nОчищено пространства %s", len(buffer), clearSpace)
 }

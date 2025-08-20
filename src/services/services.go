@@ -110,11 +110,22 @@ func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {
 		return
 	}
 	data := db.GetLastTagImages(sql, tagCount)
+	statBefore, err := system.DiskUsage()
+	if err != nil {
+		logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
+		return
+	}
 	for _, item := range data {
 		repo, _ := db.GetRepository(sql, "ID = ?", item.RepositoryID)
 		DeleteImage(repo.Name, item.Name, item.Hash, sql, storage)
 	}
-	logrus.Infof("Удалено %d старых образов", len(data))
+	statAfter, err := system.DiskUsage()
+	if err != nil {
+		logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
+		return
+	}
+	clearSpace := statBefore.Free - statAfter.Free
+	logrus.Infof("Удалено %d старых образов\nОчищено пространства %s", len(data), system.HumanizeSize(clearSpace))
 }
 
 // SaveManifestToDB сохраняет манифест в базу данных и обновляет зависимости.
