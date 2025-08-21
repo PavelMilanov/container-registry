@@ -24,6 +24,7 @@ type Storage interface {
 	DeleteImage(repository, imageName, imageTag, imageHash string) error
 	DeleteRepository(name, image string) error
 	GarbageCollection()
+	DiskUsage() (Disk, error)
 }
 
 /*

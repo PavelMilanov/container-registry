@@ -42,13 +42,13 @@ func (r *Registry) Delete(sql *gorm.DB) error {
 	return nil
 }
 
-func GetRegistires(sql *gorm.DB) []Registry {
+func GetRegistires(sql *gorm.DB) ([]Registry, error) {
 	var r []Registry
 	result := sql.Find(&r)
 	if result.Error != nil {
-		logrus.Error(result.Error)
+		return nil, result.Error
 	}
-	return r
+	return r, nil
 }
 
 func (r *Registry) GetRepositories(sql *gorm.DB, name string) error {

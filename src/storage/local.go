@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"syscall"
 
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/system"
@@ -16,6 +17,14 @@ import (
 LocalStorage представляет хранилище на основе локальной файловой системы.
 */
 type LocalStorage struct {
+}
+
+/*
+Disk представляет информацию о дисковом пространстве на локальной файловой системе.
+*/
+type Disk struct {
+	Total uint64
+	Free  uint64
 }
 
 /*
@@ -231,7 +240,7 @@ func (lc *LocalStorage) GarbageCollection() {
 			buffer = append(buffer, v)
 		}
 	}
-	statBefore, err := system.DiskUsage()
+	statBefore, err := lc.DiskUsage()
 	if err != nil {
 		logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
 		return
@@ -241,11 +250,27 @@ func (lc *LocalStorage) GarbageCollection() {
 			logrus.Error(err)
 		}
 	}
-	statAfter, err := system.DiskUsage()
+	statAfter, err := lc.DiskUsage()
 	if err != nil {
 		logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
 		return
 	}
 	clearSpace := statBefore.Free - statAfter.Free
-	logrus.Infof("Инвентаризация blob произведена. Удалено файлов %d\nОчищено пространства %s", len(buffer), clearSpace)
+	logrus.Infof("Инвентаризация blob произведена. Удалено файлов %d\nОчищено пространства %s", len(buffer), system.HumanizeSize(clearSpace))
+}
+
+func (*LocalStorage) DiskUsage() (Disk, error) {
+	fs := syscall.Statfs_t{}
+	err := syscall.Statfs("/", &fs)
+	if err != nil {
+		return Disk{}, err
+	}
+
+	blockSize := uint64(fs.Bsize) // Размер блока в байтах
+	totalBlocks := fs.Blocks      // Всего блоков
+	freeBlocks := fs.Bavail       // Доступных блоков для обычного пользователя
+
+	totalBytes := blockSize * totalBlocks
+	freeBytes := blockSize * freeBlocks
+	return Disk{Total: totalBytes, Free: freeBytes}, nil
 }

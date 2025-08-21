@@ -1,10 +1,12 @@
 // Package services реализует логику обработки запросов к REST API приложения.
+// Выступает промежуточным слоем работы docker api, файловой системой и базой данных.
 package services
 
 import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/PavelMilanov/container-registry/config"
@@ -17,13 +19,24 @@ import (
 
 func AddRegistry(name string, sql *gorm.DB, storage storage.Storage) error {
 	if err := storage.AddRegistry(name); err != nil {
+		logrus.Error(err)
 		return err
 	}
 	registry := db.Registry{Name: name}
 	if err := registry.Add(sql); err != nil {
+		logrus.Error(err)
 		return err
 	}
 	return nil
+}
+
+func GetRegistries(sql *gorm.DB) ([]db.Registry, error) {
+	data, err := db.GetRegistires(sql)
+	if err != nil {
+		logrus.Error(err)
+		return nil, err
+	}
+	return data, nil
 }
 
 func DeleteRegistry(name string, sql *gorm.DB, storage storage.Storage) error {
@@ -96,10 +109,23 @@ func DeleteRepository(name, image string, sql *gorm.DB, storage storage.Storage)
 	return nil
 }
 
-func GetImages(image string, sql *gorm.DB) []db.Image {
-	repo, _ := db.GetRepository(sql, "name = ?", image)
+func GetRepositories(sql *gorm.DB, name string) ([]db.Repository, error) {
+	var registry db.Registry
+	if err := registry.GetRepositories(sql, name); err != nil {
+		logrus.Error(err)
+		return registry.Repositories, err
+	}
+	return registry.Repositories, nil
+}
+
+func GetImages(image string, sql *gorm.DB) ([]db.Image, error) {
+	repo, err := db.GetRepository(sql, "name = ?", image)
+	if err != nil {
+		logrus.Error(err)
+		return nil, err
+	}
 	data := db.GetImageTags(sql, repo.ID, image)
-	return data
+	return data, nil
 }
 
 // DeleteOlderImages удаляет старые образы из базы данных и хранилища.
@@ -110,7 +136,7 @@ func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {
 		return
 	}
 	data := db.GetLastTagImages(sql, tagCount)
-	statBefore, err := system.DiskUsage()
+	statBefore, err := storage.DiskUsage()
 	if err != nil {
 		logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
 		return
@@ -119,7 +145,7 @@ func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {
 		repo, _ := db.GetRepository(sql, "ID = ?", item.RepositoryID)
 		DeleteImage(repo.Name, item.Name, item.Hash, sql, storage)
 	}
-	statAfter, err := system.DiskUsage()
+	statAfter, err := storage.DiskUsage()
 	if err != nil {
 		logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
 		return
@@ -205,6 +231,66 @@ func SaveManifestToDB(mediaType, link, tag string, sql *gorm.DB) error {
 			}
 		}
 		resizeRegistry(repository, imageName, manifestFile, strings.Join(platforms, ","), sizes[0])
+	}
+	return nil
+}
+
+/*
+Registration- реализация регистрации пользователя.
+
+	При успешной регистрации ничего не возвращает.
+*/
+func Registration(sql *gorm.DB, username, password string) error {
+	user := db.User{Name: username, Password: password}
+	if err := user.Add(sql); err != nil {
+		logrus.Error(err)
+		return err
+	}
+	return nil
+}
+
+/*
+Login - реализация авторизации пользователя.
+
+	При успешной авторизации возвращает токен пользователя.
+*/
+func Login(sql *gorm.DB, cred *config.Env, username, password string) (string, error) {
+	user := db.User{Name: username, Password: password}
+	if err := user.Login(sql, cred); err != nil {
+		logrus.Error(err)
+		return user.Token, err
+	}
+	return user.Token, nil
+}
+
+func GetSettings(sql *gorm.DB, storage storage.Storage) (Settings, error) {
+	count, err := db.GetCountTag(sql)
+	if err != nil {
+		logrus.Error(err)
+		return Settings{}, err
+	}
+	diskStat, err := storage.DiskUsage()
+	if err != nil {
+		logrus.Error(err)
+		return Settings{}, err
+	}
+	return Settings{
+		Count:   count,
+		Total:   system.HumanizeSize(diskStat.Total),
+		Free:    system.HumanizeSize(diskStat.Free),
+		Version: config.VERSION,
+	}, nil
+}
+
+func SetCountTag(sql *gorm.DB, count string) error {
+	newCount, err := strconv.Atoi(count)
+	if err != nil {
+		logrus.Error(err)
+		return err
+	}
+	if err := db.SetCountTag(sql, newCount); err != nil {
+		logrus.Error(err)
+		return err
 	}
 	return nil
 }

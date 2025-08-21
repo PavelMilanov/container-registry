@@ -296,3 +296,18 @@ func (s *S3Storage) GarbageCollection() {
 	}()
 	fmt.Println(blobs)
 }
+
+func (s *S3Storage) DiskUsage() (Disk, error) {
+	var disk Disk
+	// opts := minio.ListObjectsOptions{
+	// 	Recursive: true,
+	// 	Prefix:    config.BLOBS_PATH,
+	// }
+	// for object := range s.S3.ListObjects(context.Background(), config.BACKET_NAME, opts) {
+	// 	if object.Err != nil {
+	// 		return disk, object.Err
+	// 	}
+	// 	disk.Used += object.Size
+	// }
+	return disk, nil
+}
