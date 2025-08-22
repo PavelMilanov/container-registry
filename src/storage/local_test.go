@@ -17,5 +17,5 @@ func TestDiskUsage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("Total: %s, Free: %s", system.HumanizeSize(stat.Total), system.HumanizeSize(stat.Free))
+	t.Logf("Total: %s, Free: %s, Usage: %d%%", system.HumanizeSize(stat.Total), system.HumanizeSize(stat.Used), int(stat.UsedToPercent))
 }

@@ -24,8 +24,8 @@ Disk представляет информацию о дисковом прос�
 */
 type Disk struct {
 	Total         uint64
-	Free          uint64
-	FreeToPercent float64
+	Used          uint64
+	UsedToPercent float64
 }
 
 /*
@@ -256,7 +256,7 @@ func (lc *LocalStorage) GarbageCollection() {
 		logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
 		return
 	}
-	clearSpace := statBefore.Free - statAfter.Free
+	clearSpace := statBefore.Used - statAfter.Used
 	logrus.Infof("Инвентаризация blob произведена. Удалено файлов %d\nОчищено пространства %s", len(buffer), system.HumanizeSize(clearSpace))
 }
 
@@ -269,10 +269,11 @@ func (*LocalStorage) DiskUsage() (Disk, error) {
 
 	blockSize := uint64(fs.Bsize) // Размер блока в байтах
 	totalBlocks := fs.Blocks      // Всего блоков
-	freeBlocks := fs.Bavail       // Доступных блоков для обычного пользователя
+	freeBlocks := fs.Bavail
+	usedBlocks := totalBlocks - freeBlocks
 
 	totalBytes := blockSize * totalBlocks
-	freeBytes := blockSize * freeBlocks
-	freeToPercent := 1 - (float64(freeBytes)/float64(totalBytes))*100
-	return Disk{Total: totalBytes, Free: freeBytes, FreeToPercent: freeToPercent}, nil
+	usedBytes := blockSize * usedBlocks
+	usedToPercent := float64(usedBytes) / float64(totalBytes) * 100
+	return Disk{Total: totalBytes, Used: usedBytes, UsedToPercent: usedToPercent}, nil
 }

@@ -150,7 +150,7 @@ func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {
 		logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
 		return
 	}
-	clearSpace := statBefore.Free - statAfter.Free
+	clearSpace := statBefore.Used - statAfter.Used
 	logrus.Infof("Удалено %d старых образов\nОчищено пространства %s", len(data), system.HumanizeSize(clearSpace))
 }
 
@@ -277,8 +277,8 @@ func GetSettings(sql *gorm.DB, storage storage.Storage) (Settings, error) {
 	return Settings{
 		Count:         count,
 		Total:         system.HumanizeSize(diskStat.Total),
-		Free:          system.HumanizeSize(diskStat.Free),
-		FreeToPercent: int(diskStat.FreeToPercent),
+		Used:          system.HumanizeSize(diskStat.Used),
+		UsedToPercent: int(diskStat.UsedToPercent),
 		Version:       config.VERSION,
 	}, nil
 }

@@ -6,7 +6,7 @@ Settings абстрактная структура для хранения на�
 type Settings struct {
 	Count         int
 	Total         string
-	Free          string
-	FreeToPercent int
+	Used          string
+	UsedToPercent int
 	Version       string
 }

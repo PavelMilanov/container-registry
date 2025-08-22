@@ -184,11 +184,11 @@ func (h *Handler) settings(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{
-			"version": data.Version,
-			"count":   data.Count,
-			"total":   data.Total,
-			"free":    data.Free})
-
+			"version":       data.Version,
+			"count":         data.Count,
+			"total":         data.Total,
+			"used":          data.Used,
+			"usedToPercent": data.UsedToPercent})
 	} else if c.Request.Method == "POST" {
 		q := c.Query("garbage")
 		t := c.Query("tag")
