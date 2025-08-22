@@ -23,8 +23,9 @@ type LocalStorage struct {
 Disk представляет информацию о дисковом пространстве на локальной файловой системе.
 */
 type Disk struct {
-	Total uint64
-	Free  uint64
+	Total         uint64
+	Free          uint64
+	FreeToPercent float64
 }
 
 /*
@@ -272,5 +273,6 @@ func (*LocalStorage) DiskUsage() (Disk, error) {
 
 	totalBytes := blockSize * totalBlocks
 	freeBytes := blockSize * freeBlocks
-	return Disk{Total: totalBytes, Free: freeBytes}, nil
+	freeToPercent := 1 - (float64(freeBytes)/float64(totalBytes))*100
+	return Disk{Total: totalBytes, Free: freeBytes, FreeToPercent: freeToPercent}, nil
 }

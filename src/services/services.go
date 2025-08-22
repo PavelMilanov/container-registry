@@ -275,10 +275,11 @@ func GetSettings(sql *gorm.DB, storage storage.Storage) (Settings, error) {
 		return Settings{}, err
 	}
 	return Settings{
-		Count:   count,
-		Total:   system.HumanizeSize(diskStat.Total),
-		Free:    system.HumanizeSize(diskStat.Free),
-		Version: config.VERSION,
+		Count:         count,
+		Total:         system.HumanizeSize(diskStat.Total),
+		Free:          system.HumanizeSize(diskStat.Free),
+		FreeToPercent: int(diskStat.FreeToPercent),
+		Version:       config.VERSION,
 	}, nil
 }
 
