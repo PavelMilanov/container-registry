@@ -76,7 +76,6 @@ export default function Settings() {
       setDiskInfoTotal(response.data.total);
       setDiskInfoUsed(response.data.used);
       setDiskInfoUsedToPercent(response.data.usedToPercent);
-      console.log(response.data);
     } catch (error) {
       console.log(error.response.data);
       if (error.response.status === 401) {
