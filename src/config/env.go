@@ -43,6 +43,9 @@ type credentials struct {
 	SSL       bool   `mapstructure:"ssl"`
 }
 
+/*
+user описывает параметры для суперпользователя.
+*/
 type user struct {
 	Login    string `mapstructure:"login"`
 	Password string `mapstructure:"password"`
