@@ -8,3 +8,4 @@ src/assets
 config.yaml
 cache
 buildkitd.toml
+go.sum

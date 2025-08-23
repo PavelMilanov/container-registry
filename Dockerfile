@@ -1,14 +1,14 @@
-FROM golang:1.24-alpine AS app
+FROM golang:1.25-alpine AS app
 
 RUN apk --update --no-cache add gcc musl-dev
 
-WORKDIR /
+WORKDIR /build
 
-COPY src/go.mod src/go.sum ./
+COPY src/go.mod .
 
-RUN go mod download && go mod verify
+RUN go mod download
 
-COPY src/ ./
+COPY src/ .
 
 ARG VERSION
 
@@ -18,7 +18,7 @@ ENV CGO_ENABLED=1
 RUN go install -tags=prod -trimpath -ldflags="-s -w -X 'github.com/PavelMilanov/container-registry/config.VERSION=${VERSION}'"
 
 
-FROM node:22-alpine AS web
+FROM node:24-alpine AS web
 
 WORKDIR /app
 

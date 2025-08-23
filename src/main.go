@@ -21,7 +21,6 @@ import (
 )
 
 func main() {
-	logrus.SetLevel(logrus.TraceLevel)
 	logrus.SetReportCaller(true)
 	logrus.SetFormatter(&logrus.TextFormatter{
 		FullTimestamp:   true,
@@ -41,7 +40,7 @@ func main() {
 	)
 
 	sqliteFIle := fmt.Sprintf("%s/registry.db", config.DATA_PATH)
-	sqlite, err := db.NewDatabase(sqliteFIle)
+	sqlite, err := db.NewDatabase(sqliteFIle, env)
 	if err != nil {
 		logrus.Fatal(err)
 	}

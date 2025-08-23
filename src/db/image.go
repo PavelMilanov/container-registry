@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -27,7 +26,6 @@ func (i *Image) Add(sql *gorm.DB) {
 	i.CreatedAt = now.Format("2006-01-02 15:04:05")
 	if sql.Model(&i).Where("name = ? AND tag = ? AND repository_id = ?", i.Name, i.Tag, i.RepositoryID).Updates(&i).RowsAffected == 0 {
 		sql.Create(&i)
-		logrus.Infof("Создан новый образ %+v", i)
 	}
 }
 
@@ -54,23 +52,23 @@ func GetImageTags(sql *gorm.DB, id int, name string) []Image {
 	return i
 }
 
-func GetLastTagImages(sql *gorm.DB, count int) []Image {
+func GetLastTagImages(sql *gorm.DB, count int) ([]Image, error) {
 	var images []Image
 	var repositories []Repository
 	result := sql.Find(&repositories)
 	if result.Error != nil {
-		logrus.Error(result.Error)
+		return nil, result.Error
 	}
 	var outData []Image
 	for _, repository := range repositories {
 		result := sql.Where("repository_id = ?", repository.ID).Order("created_at ASC").Offset(count).Find(&images)
 		if result.Error != nil {
-			logrus.Error(result.Error)
+			return nil, result.Error
 		}
 		outData = append(outData, images...)
 	}
 
-	return outData
+	return outData, nil
 }
 
 func GetImage(sql *gorm.DB, condition string, args ...interface{}) (*Image, error) {

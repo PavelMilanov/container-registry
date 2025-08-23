@@ -5,3 +5,4 @@ vagrant
 builder.sh
 buildkitd.toml
 .github/*
+go.sum

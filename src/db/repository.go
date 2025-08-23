@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -24,7 +23,6 @@ func (r *Repository) Add(sql *gorm.DB) {
 	r.CreatedAt = now.Format("2006-01-02 15:04:05")
 	if sql.Model(&r).Where("name = ? AND registry_id = ?", r.Name, r.RegistryID).First(&r).RowsAffected == 0 {
 		sql.Create(&r)
-		logrus.Infof("Создан новый репозиторий %+v", r)
 	}
 }
 
@@ -32,10 +30,8 @@ func (r *Repository) Delete(sql *gorm.DB) error {
 	sql.Preload("Images").Where("name = ? AND registry_id = ?", r.Name, r.RegistryID).First(&r)
 	result := sql.Delete(&r)
 	if result.Error != nil {
-		logrus.Error(result.Error)
 		return result.Error
 	}
-	logrus.Infof("Удален репозиторий %+v", r)
 	go func() {
 		for _, image := range r.Images {
 			sql.Delete(&image)
@@ -47,7 +43,6 @@ func (r *Repository) Delete(sql *gorm.DB) error {
 func (r *Repository) UpdateSize(sql *gorm.DB) error {
 	result := sql.Raw("UPDATE repositories SET size = ?, size_alias = ? WHERE id = ?", r.Size, r.SizeAlias, r.ID).Scan(&r)
 	if result.Error != nil {
-		logrus.Error(result.Error)
 		return result.Error
 	}
 	return nil
@@ -63,7 +58,6 @@ func (r *Repository) GetSize(sql *gorm.DB, condition string, args ...interface{}
 func GetRepository(sql *gorm.DB, condition string, args ...interface{}) (*Repository, error) {
 	var r Repository
 	if err := sql.Where(condition, args...).First(&r).Error; err != nil {
-		logrus.Error(err)
 		return nil, err
 	}
 	return &r, nil

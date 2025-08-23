@@ -57,7 +57,7 @@ func TestDeleteOlderImages(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	sqlite, err := db.NewDatabase("../var/registry.db")
+	sqlite, err := db.NewDatabase("../var/registry.db", env)
 	if err != nil {
 		t.Error(err)
 	}

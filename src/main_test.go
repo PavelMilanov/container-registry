@@ -24,7 +24,7 @@ func TestRegistyAPI(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	sqlite, err := db.NewDatabase("test.db")
+	sqlite, err := db.NewDatabase("test.db", env)
 	if err != nil {
 		t.Error(err)
 	}

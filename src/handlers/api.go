@@ -2,13 +2,9 @@ package handlers
 
 import (
 	"net/http"
-	"strconv"
 
-	"github.com/PavelMilanov/container-registry/config"
-	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/services"
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 )
 
 /*
@@ -22,17 +18,20 @@ getRegistry - получение информации о реестрах.
 func (h *Handler) getRegistry(c *gin.Context) {
 	name := c.Param("name")
 	if name == "" {
-		data := db.GetRegistires(h.DB.Sql)
+		data, err := services.GetRegistries(h.DB.Sql)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+			return
+		}
 		c.JSON(http.StatusOK, gin.H{"data": data})
 		return
 	}
-	var registry db.Registry
-	if err := registry.GetRepositories(h.DB.Sql, name); err != nil {
-		logrus.Error(err)
+	data, err := services.GetRepositories(h.DB.Sql, name)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"data": registry.Repositories})
+	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
 /*
@@ -45,7 +44,6 @@ addRegistry -добавление указанного реестра.
 func (h *Handler) addRegistry(c *gin.Context) {
 	data := c.Param("name")
 	if err := services.AddRegistry(data, h.DB.Sql, h.STORAGE); err != nil {
-		logrus.Error(err)
 		c.JSON(http.StatusForbidden, gin.H{"err": err.Error()})
 		return
 	}
@@ -62,7 +60,6 @@ deleteRegistry -удаление указанного реестра.
 func (h *Handler) deleteRegistry(c *gin.Context) {
 	data := c.Param("name")
 	if err := services.DeleteRegistry(data, h.DB.Sql, h.STORAGE); err != nil {
-		logrus.Error(err)
 		c.JSON(http.StatusForbidden, gin.H{"err": "Ошибка при удалении реестра"})
 		return
 	}
@@ -84,14 +81,12 @@ func (h *Handler) deleteImage(c *gin.Context) {
 	hash := c.Query("hash")
 	if hash != "" { // удаляется только образ
 		if err := services.DeleteImage(name, image, hash, h.DB.Sql, h.STORAGE); err != nil {
-			logrus.Error(err)
 			c.JSON(http.StatusForbidden, gin.H{"err": "Ошибка при удалении образа"})
 			return
 		}
 		c.JSON(http.StatusAccepted, gin.H{})
 	} else { // удаляется весь репозиторий
 		if err := services.DeleteRepository(name, image, h.DB.Sql, h.STORAGE); err != nil {
-			logrus.Error(err)
 			c.JSON(http.StatusForbidden, gin.H{"err": "Ошибка при удалении репозитория"})
 			return
 		}
@@ -109,7 +104,11 @@ getImages - получение всех тегов образа.
 */
 func (h *Handler) getImages(c *gin.Context) {
 	ImageName := c.Param("image")
-	data := services.GetImages(ImageName, h.DB.Sql)
+	data, err := services.GetImages(ImageName, h.DB.Sql)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"err": err})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
@@ -137,9 +136,7 @@ func (h *Handler) registration(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "пароли не совпадают"})
 		return
 	}
-	user := db.User{Name: req.Username, Password: req.Password}
-	if err := user.Add(h.DB.Sql); err != nil {
-		logrus.Error(err)
+	if err := services.Registration(h.DB.Sql, req.Username, req.Password); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -164,13 +161,12 @@ func (h *Handler) login(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "не указан логин или пароль"})
 		return
 	}
-	user := db.User{Name: req.Username, Password: req.Password}
-	if err := user.Login(h.DB.Sql, h.ENV); err != nil {
-		logrus.Error(err)
+	token, err := services.Login(h.DB.Sql, h.ENV, req.Username, req.Password)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"token": user.Token})
+	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
 /*
@@ -182,8 +178,17 @@ settings - настройки.
 */
 func (h *Handler) settings(c *gin.Context) {
 	if c.Request.Method == "GET" {
-		count, _ := db.GetCountTag(h.DB.Sql)
-		c.JSON(http.StatusOK, gin.H{"version": config.VERSION, "count": count})
+		data, err := services.GetSettings(h.DB.Sql, h.STORAGE)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"version":       data.Version,
+			"count":         data.Count,
+			"total":         data.Total,
+			"used":          data.Used,
+			"usedToPercent": data.UsedToPercent})
 	} else if c.Request.Method == "POST" {
 		q := c.Query("garbage")
 		t := c.Query("tag")
@@ -193,9 +198,7 @@ func (h *Handler) settings(c *gin.Context) {
 			return
 		}
 		if t != "" {
-			count, _ := strconv.Atoi(t)
-			if err := db.SetCountTag(h.DB.Sql, count); err != nil {
-				logrus.Error(err)
+			if err := services.SetCountTag(h.DB.Sql, t); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 				return
 			}
