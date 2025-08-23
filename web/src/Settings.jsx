@@ -96,15 +96,15 @@ export default function Settings() {
         <div class="w-2/4 pr-4">
           <h2 class="text-lg font-bold">Общие настройки</h2>
           <div class="card">
-            <p class="inline-block mr-2">Запустить сборщик мусора:</p>
+            <p class="inline-block mr-2">Сборщик мусора:</p>
             <button
               class="relative text-white bg-main border hover:text-main hover:bg-white hover:border focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 ml-2"
               onClick={garbageCollection}
             >
-              Очистить
+              Запустить
             </button>
             <div class="flex items-center space-x-4">
-              <div class="relative w-1/5 m-2 mt-4">
+              <div class="relative w-1/4 m-2 mt-4">
                 <input
                   type="text"
                   id="floating_outlined"

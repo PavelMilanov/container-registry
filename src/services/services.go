@@ -27,6 +27,7 @@ func AddRegistry(name string, sql *gorm.DB, storage storage.Storage) error {
 		logrus.Error(err)
 		return err
 	}
+	logrus.Infof("Создан новый реестр %+v", registry)
 	return nil
 }
 
@@ -41,12 +42,15 @@ func GetRegistries(sql *gorm.DB) ([]db.Registry, error) {
 
 func DeleteRegistry(name string, sql *gorm.DB, storage storage.Storage) error {
 	if err := storage.DeleteRegistry(name); err != nil {
+		logrus.Error(err)
 		return err
 	}
 	registy := db.Registry{Name: name}
 	if err := registy.Delete(sql); err != nil {
+		logrus.Error(err)
 		return err
 	}
+	logrus.Infof("Удален реестр %+v", registy)
 	return nil
 }
 
@@ -55,6 +59,7 @@ func DeleteImage(name, image, hash string, sql *gorm.DB, storage storage.Storage
 	err := sql.Transaction(func(tx *gorm.DB) error {
 		if err := img.Delete(tx); err != nil {
 			tx.Rollback()
+			logrus.Error(err)
 			return err
 		}
 		imgSize := img.GetSize(tx, "repository_id = ?", img.RepositoryID)
@@ -63,6 +68,7 @@ func DeleteImage(name, image, hash string, sql *gorm.DB, storage storage.Storage
 		repo.SizeAlias = system.ConvertSize(repo.Size)
 		if err := repo.UpdateSize(tx); err != nil {
 			tx.Rollback()
+			logrus.Error(err)
 			return err
 		}
 		repoSize := repo.GetSize(tx, "registry_id = ?", repo.RegistryID)
@@ -71,14 +77,17 @@ func DeleteImage(name, image, hash string, sql *gorm.DB, storage storage.Storage
 		registry.SizeAlias = system.ConvertSize(registry.Size)
 		if err := registry.UpdateSize(tx); err != nil {
 			tx.Rollback()
+			logrus.Error(err)
 			return err
 		}
 		return nil
 	})
 	if err != nil {
+		logrus.Error(err)
 		return err
 	}
 	if err := storage.DeleteImage(name, img.Name, img.Tag, img.Hash); err != nil {
+		logrus.Error(err)
 		return err
 	}
 	return nil
@@ -89,6 +98,7 @@ func DeleteRepository(name, image string, sql *gorm.DB, storage storage.Storage)
 	if err := sql.Transaction(func(tx *gorm.DB) error {
 		if err := repo.Delete(tx); err != nil {
 			tx.Rollback()
+			logrus.Error(err)
 			return err
 		}
 		repoSize := repo.GetSize(tx, "registry_id = ?", repo.RegistryID)
@@ -97,15 +107,19 @@ func DeleteRepository(name, image string, sql *gorm.DB, storage storage.Storage)
 		registry.SizeAlias = system.ConvertSize(registry.Size)
 		if err := registry.UpdateSize(tx); err != nil {
 			tx.Rollback()
+			logrus.Error(err)
 			return err
 		}
 		return nil
 	}); err != nil {
+		logrus.Error(err)
 		return err
 	}
 	if err := storage.DeleteRepository(name, repo.Name); err != nil {
+		logrus.Error(err)
 		return err
 	}
+	logrus.Infof("Удален репозиторий %+v", repo)
 	return nil
 }
 
@@ -135,7 +149,11 @@ func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {
 		logrus.Printf("Не найден тег: %v", err)
 		return
 	}
-	data := db.GetLastTagImages(sql, tagCount)
+	data, err := db.GetLastTagImages(sql, tagCount)
+	if err != nil {
+		logrus.Error(err)
+		return
+	}
 	statBefore, err := storage.DiskUsage()
 	if err != nil {
 		logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
@@ -170,6 +188,7 @@ func SaveManifestToDB(mediaType, link, tag string, sql *gorm.DB) error {
 			RegistryID: registry.ID,
 		}
 		repo.Add(sql)
+		logrus.Infof("Создан новый репозиторий %+v", repo)
 		image := db.Image{
 			Name:         imageName,
 			Hash:         manifestFile,
@@ -180,6 +199,7 @@ func SaveManifestToDB(mediaType, link, tag string, sql *gorm.DB) error {
 			RepositoryID: repo.ID,
 		}
 		image.Add(sql)
+		logrus.Infof("Создан новый образ %+v", image)
 		imgSize := image.GetSize(sql, "repository_id = ?", image.RepositoryID)
 		repo.Size = imgSize
 		repo.SizeAlias = system.ConvertSize(repo.Size)
@@ -195,9 +215,11 @@ func SaveManifestToDB(mediaType, link, tag string, sql *gorm.DB) error {
 	var manifest config.Manifest
 	body, err := os.ReadFile(link)
 	if err != nil {
+		logrus.Error(err)
 		return err
 	}
 	if err := json.Unmarshal(body, &manifest); err != nil {
+		logrus.Error(err)
 		return err
 	}
 	switch mediaType {
@@ -217,10 +239,12 @@ func SaveManifestToDB(mediaType, link, tag string, sql *gorm.DB) error {
 				platforms = append(platforms, item.Platform.OS+"/"+item.Platform.Architecture)
 				body, err := os.ReadFile(path + item.Digest)
 				if err != nil {
+					logrus.Error(err)
 					return err
 				}
 				var m2 config.Manifest
 				if err := json.Unmarshal(body, &m2); err != nil {
+					logrus.Error(err)
 					return err
 				}
 				var sum int64
