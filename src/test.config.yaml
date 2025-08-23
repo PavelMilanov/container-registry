@@ -12,3 +12,7 @@ storage:
   #   access_key: "b4YrdxfuTmwyZt87ucY0"
   #   secret_key: "IYzm8VdUwwSYWAL5QnCPeSgqtoSAXzU73LTbovwn"
   #   ssl: false
+
+user:
+  login: superuser
+  password: superuser
