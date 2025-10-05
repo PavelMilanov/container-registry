@@ -94,14 +94,18 @@ func DeleteImage(name, image, hash string, sql *gorm.DB, storage storage.Storage
 }
 
 func DeleteRepository(name, image string, sql *gorm.DB, storage storage.Storage) error {
-	repo := db.Repository{Name: image}
+	repo, err := db.GetRepository(sql, "name = ?", image)
+	if err != nil {
+		logrus.Error(err)
+		return err
+	}
 	if err := sql.Transaction(func(tx *gorm.DB) error {
+		repoSize := repo.GetSize(tx, "registry_id = ?", repo.RegistryID)
 		if err := repo.Delete(tx); err != nil {
 			tx.Rollback()
 			logrus.Error(err)
 			return err
 		}
-		repoSize := repo.GetSize(tx, "registry_id = ?", repo.RegistryID)
 		registry, _ := db.GetRegistry(tx, "ID = ?", repo.RegistryID)
 		registry.Size = repoSize
 		registry.SizeAlias = system.ConvertSize(registry.Size)
