@@ -16,7 +16,7 @@ export default function RepoTable(props) {
     };
     try {
       const response = await axios.delete(
-        API_URL + `/api/${params.name}/${item}`,
+        API_URL + `/api/${params.name}/${item.Name}`,
         { headers: headers },
       );
       if (response.status == 202) {
@@ -64,7 +64,7 @@ export default function RepoTable(props) {
                 <td class="px-6 py-4">
                   <Delete
                     message={"Образы Docker репозитория будут удалены!"}
-                    onSubmit={() => onDeleteRepository(item.Name)}
+                    onSubmit={() => onDeleteRepository(item)}
                   />
                 </td>
               </tr>
