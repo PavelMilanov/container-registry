@@ -1,6 +1,6 @@
 import { lazy } from "solid-js";
-import { Router, Route } from "@solidjs/router";
-import Alert  from "./utils/Alert";
+import { Router, Route, Navigate } from "@solidjs/router";
+import Alert from "./utils/Alert";
 
 import Registry from "./Registry";
 import GithubLink from "./utils/GithubLink";
@@ -9,7 +9,6 @@ const Repo = lazy(() => import("./Repo"));
 const Image = lazy(() => import("./Image"));
 const Login = lazy(() => import("./Login"));
 const Logout = lazy(() => import("./modal/Logout"));
-const NotFound = lazy(() => import("./NotFound"));
 const Settings = lazy(() => import("./Settings"));
 
 export default function App() {
@@ -25,7 +24,10 @@ export default function App() {
           <Route path="/:name/:image" component={Image} />
         </Route>
         <Route path="/settings" component={Settings} />
-        <Route path="*" component={NotFound} />
+        <Route
+          path="*"
+          component={() => <Navigate href="/registry" replace />}
+        />
       </Router>
       <GithubLink />
       <Alert />
