@@ -191,7 +191,9 @@ AddRegistry добавляет новый реестр в хранилище.
 	registry - имя реестра.
 */
 func (s *S3Storage) AddRegistry(registry string) error {
-
+	if err := os.MkdirAll(filepath.Join(config.MANIFEST_PATH, registry), 0755); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -216,6 +218,9 @@ func (s *S3Storage) DeleteRegistry(registry string) error {
 	err := s.S3.RemoveObjects(context.Background(), config.BACKET_NAME, objectsCh, minio.RemoveObjectsOptions{})
 	for e := range err {
 		return e.Err
+	}
+	if err := os.RemoveAll(filepath.Join(config.MANIFEST_PATH, registry)); err != nil {
+		return err
 	}
 	return nil
 }
