@@ -9,3 +9,5 @@ config.yaml
 cache
 buildkitd.toml
 go.sum
+vagrant/data
+vagrant/meta
