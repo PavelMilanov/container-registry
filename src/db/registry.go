@@ -23,6 +23,7 @@ func (r *Registry) Add(sql *gorm.DB) error {
 	if sql.Model(&r).Where("name = ?", r.Name).Updates(&r).RowsAffected == 0 {
 		result := sql.Create(&r)
 		if result.Error != nil {
+			logrus.Error(result.Error)
 			return result.Error
 		}
 	}

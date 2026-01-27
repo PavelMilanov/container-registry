@@ -18,16 +18,13 @@ export default function App() {
         <Route path="/login" component={Login} />
         <Route path="/logout" component={Logout} />
         <Route path="/register" component={Registration} />
-        <Route path="/registry">
+        <Route path="/web">
           <Route path="/" component={Registry} />
           <Route path="/:name" component={Repo} />
           <Route path="/:name/:image" component={Image} />
         </Route>
         <Route path="/settings" component={Settings} />
-        <Route
-          path="*"
-          component={() => <Navigate href="/registry" replace />}
-        />
+        <Route path="*" component={() => <Navigate href="/web" replace />} />
       </Router>
       <GithubLink />
       <Alert />

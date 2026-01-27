@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -38,6 +39,7 @@ func (i *Image) Delete(sql *gorm.DB) error {
 	}
 	result := sql.Delete(&i)
 	if result.Error != nil {
+		logrus.Error(result.Error)
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
@@ -57,12 +59,14 @@ func GetLastTagImages(sql *gorm.DB, count int) ([]Image, error) {
 	var repositories []Repository
 	result := sql.Find(&repositories)
 	if result.Error != nil {
+		logrus.Error(result.Error)
 		return nil, result.Error
 	}
 	var outData []Image
 	for _, repository := range repositories {
 		result := sql.Where("repository_id = ?", repository.ID).Order("created_at ASC").Offset(count).Find(&images)
 		if result.Error != nil {
+			logrus.Error(result.Error)
 			return nil, result.Error
 		}
 		outData = append(outData, images...)
@@ -74,6 +78,7 @@ func GetLastTagImages(sql *gorm.DB, count int) ([]Image, error) {
 func GetImage(sql *gorm.DB, condition string, args ...interface{}) (*Image, error) {
 	var i Image
 	if err := sql.Where(condition, args...).First(&i).Error; err != nil {
+		logrus.Error(err)
 		return nil, err
 	}
 	return &i, nil
@@ -82,6 +87,7 @@ func GetImage(sql *gorm.DB, condition string, args ...interface{}) (*Image, erro
 func GetImages(sql *gorm.DB, condition string, args ...interface{}) ([]Image, error) {
 	var images []Image
 	if err := sql.Where(condition, args...).Find(&images).Error; err != nil {
+		logrus.Error(err)
 		return nil, err
 	}
 	return images, nil

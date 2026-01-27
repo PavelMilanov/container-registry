@@ -146,7 +146,7 @@ func GetImages(image string, sql *gorm.DB) ([]db.Image, error) {
 func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {
 	tagCount, err := db.GetCountTag(sql)
 	if err != nil {
-		logrus.Printf("Не найден тег: %v", err)
+		logrus.Errorf("Не найден тег: %v", err)
 		return
 	}
 	data, err := db.GetLastTagImages(sql, tagCount)
@@ -156,7 +156,7 @@ func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {
 	}
 	statBefore, err := storage.DiskUsage()
 	if err != nil {
-		logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
+		logrus.Errorf("Ошибка получения информации о дисковом пространстве: %v", err)
 		return
 	}
 	for _, item := range data {
@@ -165,7 +165,7 @@ func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {
 	}
 	statAfter, err := storage.DiskUsage()
 	if err != nil {
-		logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
+		logrus.Errorf("Ошибка получения информации о дисковом пространстве: %v", err)
 		return
 	}
 	clearSpace := statBefore.Used - statAfter.Used
