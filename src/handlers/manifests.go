@@ -48,14 +48,14 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 		})
 		return
 	}
-	link, err := h.STORAGE.SaveManifest(body, repository, imageName, reference, calculatedDigest)
+	link, err := services.SaveManifest(h.STORAGE, body, repository, imageName, reference, calculatedDigest)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
 	c.Header("Docker-Content-Digest", calculatedDigest)
 	c.JSON(http.StatusCreated, gin.H{})
-	if err := services.SaveManifestToDB(mediaType, link, reference, h.DB.Sql); err != nil {
+	if err := services.SaveManifestToDB(h.DB.Sql, h.STORAGE, mediaType, link, reference); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}

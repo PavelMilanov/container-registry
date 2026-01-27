@@ -19,7 +19,7 @@ type SQLite struct {
 }
 
 func NewDatabase(sql string, env *config.Env) (SQLite, error) {
-	conn, err := gorm.Open(sqlite.Open(sql), &gorm.Config{
+	conn, err := gorm.Open(sqlite.Open(sql+"?_foreign_keys=on"), &gorm.Config{
 		PrepareStmt: true,
 		Logger:      logger.Default.LogMode(logger.Silent)})
 	if err != nil {

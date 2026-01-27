@@ -25,6 +25,7 @@ type Storage interface {
 	DeleteRepository(name, image string) error
 	GarbageCollection()
 	DiskUsage() (Disk, error)
+	ReadFile(link string) ([]byte, error)
 }
 
 /*

@@ -277,3 +277,7 @@ func (*LocalStorage) DiskUsage() (Disk, error) {
 	usedToPercent := float64(usedBytes) / float64(totalBytes) * 100
 	return Disk{Total: totalBytes, Used: usedBytes, UsedToPercent: usedToPercent}, nil
 }
+
+func (*LocalStorage) ReadFile(path string) ([]byte, error) {
+	return os.ReadFile(path)
+}

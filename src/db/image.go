@@ -18,7 +18,7 @@ type Image struct {
 	Size         int64
 	SizeAlias    string
 	CreatedAt    string
-	RepositoryID int `gorm:"constraint:OnDelete:CASCADE;"`
+	RepositoryID int
 }
 
 func (i *Image) Add(sql *gorm.DB) {

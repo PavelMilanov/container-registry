@@ -4,7 +4,6 @@ package services
 
 import (
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -59,7 +58,6 @@ func DeleteImage(name, image, hash string, sql *gorm.DB, storage storage.Storage
 	err := sql.Transaction(func(tx *gorm.DB) error {
 		if err := img.Delete(tx); err != nil {
 			tx.Rollback()
-			logrus.Error(err)
 			return err
 		}
 		imgSize := img.GetSize(tx, "repository_id = ?", img.RepositoryID)
@@ -68,7 +66,6 @@ func DeleteImage(name, image, hash string, sql *gorm.DB, storage storage.Storage
 		repo.SizeAlias = system.ConvertSize(repo.Size)
 		if err := repo.UpdateSize(tx); err != nil {
 			tx.Rollback()
-			logrus.Error(err)
 			return err
 		}
 		repoSize := repo.GetSize(tx, "registry_id = ?", repo.RegistryID)
@@ -77,7 +74,6 @@ func DeleteImage(name, image, hash string, sql *gorm.DB, storage storage.Storage
 		registry.SizeAlias = system.ConvertSize(registry.Size)
 		if err := registry.UpdateSize(tx); err != nil {
 			tx.Rollback()
-			logrus.Error(err)
 			return err
 		}
 		return nil
@@ -181,7 +177,8 @@ func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {
 // link - ссылка на манифест.
 // tag - тег образа.
 // sql - экземпляр базы данных.
-func SaveManifestToDB(mediaType, link, tag string, sql *gorm.DB) error {
+// storage - экземпляр хранилища.
+func SaveManifestToDB(sql *gorm.DB, storage storage.Storage, mediaType, link, tag string) error {
 	resizeRegistry := func(repository, imageName, manifestFile, platform string, sum int64) {
 		registry, err := db.GetRegistry(sql, "name = ?", repository)
 		if err != nil {
@@ -217,11 +214,12 @@ func SaveManifestToDB(mediaType, link, tag string, sql *gorm.DB) error {
 	repository := strings.Split(path, "/")[2]
 	imageName := strings.Split(path, "/")[3]
 	var manifest config.Manifest
-	body, err := os.ReadFile(link)
+	body, err := storage.ReadFile(link)
 	if err != nil {
 		logrus.Error(err)
 		return err
 	}
+
 	if err := json.Unmarshal(body, &manifest); err != nil {
 		logrus.Error(err)
 		return err
@@ -241,7 +239,7 @@ func SaveManifestToDB(mediaType, link, tag string, sql *gorm.DB) error {
 			// может быть несколько, если была мультиплатформенная сборка
 			if item.Platform.Architecture != "unknown" {
 				platforms = append(platforms, item.Platform.OS+"/"+item.Platform.Architecture)
-				body, err := os.ReadFile(path + item.Digest)
+				body, err := storage.ReadFile(path + item.Digest)
 				if err != nil {
 					logrus.Error(err)
 					return err
@@ -322,4 +320,13 @@ func SetCountTag(sql *gorm.DB, count string) error {
 		return err
 	}
 	return nil
+}
+
+func SaveManifest(storage storage.Storage, body []byte, repository, image, reference, calculatedDigest string) (string, error) {
+	link, err := storage.SaveManifest(body, repository, image, reference, calculatedDigest)
+	if err != nil {
+		logrus.Error(err)
+		return "", err
+	}
+	return link, nil
 }

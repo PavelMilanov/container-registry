@@ -316,3 +316,12 @@ func (s *S3Storage) DiskUsage() (Disk, error) {
 	// }
 	return disk, nil
 }
+
+func (s *S3Storage) ReadFile(path string) ([]byte, error) {
+	reader, err := s.S3.GetObject(context.Background(), config.BACKET_NAME, path, minio.GetObjectOptions{})
+	if err != nil {
+		return []byte{}, err
+	}
+	defer reader.Close()
+	return io.ReadAll(reader)
+}
