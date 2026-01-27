@@ -22,10 +22,10 @@ import (
 
 func main() {
 	logrus.SetReportCaller(true)
-	logrus.SetFormatter(&logrus.TextFormatter{
-		FullTimestamp:   true,
-		TimestampFormat: "2006/01/02 15:04:00",
-	})
+	// logrus.SetFormatter(&logrus.TextFormatter{
+	// 	FullTimestamp:   true,
+	// 	TimestampFormat: "2006/01/02 15:04:00",
+	// })
 	env, err := config.NewEnv(config.CONFIG_PATH, "config")
 	if err != nil {
 		logrus.Fatal(err)

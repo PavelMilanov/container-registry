@@ -3,7 +3,10 @@
 package services
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
+	"io"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -178,7 +181,7 @@ func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {
 // tag - тег образа.
 // sql - экземпляр базы данных.
 // storage - экземпляр хранилища.
-func SaveManifestToDB(sql *gorm.DB, storage storage.Storage, mediaType, link, tag string) error {
+func saveManifestToDB(sql *gorm.DB, storage storage.Storage, mediaType, link, tag string) error {
 	resizeRegistry := func(repository, imageName, manifestFile, platform string, sum int64) {
 		registry, err := db.GetRegistry(sql, "name = ?", repository)
 		if err != nil {
@@ -189,7 +192,7 @@ func SaveManifestToDB(sql *gorm.DB, storage storage.Storage, mediaType, link, ta
 			RegistryID: registry.ID,
 		}
 		repo.Add(sql)
-		logrus.Infof("Создан новый репозиторий %+v", repo)
+		logrus.Infof("Создан новый репозиторий %s", repo.Name)
 		image := db.Image{
 			Name:         imageName,
 			Hash:         manifestFile,
@@ -200,7 +203,7 @@ func SaveManifestToDB(sql *gorm.DB, storage storage.Storage, mediaType, link, ta
 			RepositoryID: repo.ID,
 		}
 		image.Add(sql)
-		logrus.Infof("Создан новый образ %+v", image)
+		logrus.Infof("Создан новый образ %s", image.Name)
 		imgSize := image.GetSize(sql, "repository_id = ?", image.RepositoryID)
 		repo.Size = imgSize
 		repo.SizeAlias = system.ConvertSize(repo.Size)
@@ -322,11 +325,65 @@ func SetCountTag(sql *gorm.DB, count string) error {
 	return nil
 }
 
-func SaveManifest(storage storage.Storage, body []byte, repository, image, reference, calculatedDigest string) (string, error) {
-	link, err := storage.SaveManifest(body, repository, image, reference, calculatedDigest)
+/*
+SaveManifest - логика сохранения манифеста в базу данных и хранилище.
+*/
+func SaveManifest(sql *gorm.DB, storage storage.Storage, meta config.Meta, body []byte) error {
+	reader := bufio.NewReader(bytes.NewBuffer(body))
+	manifestPath := filepath.Join(config.MANIFEST_PATH, meta.Repository, meta.Image, meta.Digest)
+	var manifest config.Manifest
+
+	data, err := io.ReadAll(reader)
 	if err != nil {
 		logrus.Error(err)
-		return "", err
+		return err
 	}
-	return link, nil
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		logrus.Error(err)
+		return err
+	}
+	switch manifest.MediaType {
+	case config.MANIFEST_TYPE["docker"]:
+		var sum int64
+		for _, descriptor := range manifest.Layers {
+			blob, _ := storage.GetBlob(descriptor.Digest)
+			sum += blob.Size + descriptor.Size
+		}
+		meta.Size = sum
+	case config.MANIFEST_TYPE["oci"]:
+		platforms := []string{}
+		for _, item := range manifest.Manifests {
+			// ищем манифесты с описанием слоев образов
+			// может быть несколько, если была мультиплатформенная сборка
+			if item.Platform.Architecture != "unknown" {
+				platforms = append(platforms, item.Platform.OS+"/"+item.Platform.Architecture)
+				body, err := storage.ReadFile(manifestPath + item.Digest)
+				if err != nil {
+					logrus.Error(err)
+					return err
+				}
+				var m2 config.Manifest
+				if err := json.Unmarshal(body, &m2); err != nil {
+					logrus.Error(err)
+					return err
+				}
+				var sum int64
+				for _, descriptor := range m2.Layers {
+					blob, _ := storage.GetBlob(descriptor.Digest)
+					sum += blob.Size + descriptor.Size
+				}
+				meta.Size = sum
+			}
+		}
+	}
+	// if err := saveManifestToDB(sql, storage, meta.MediaType, manifestPath, meta.Tag); err != nil {
+	// 	logrus.Error(err)
+	// 	return err
+	// }
+	logrus.Infof("Загружен манифест %v", meta)
+	if err := storage.SaveManifest(meta, body, manifestPath); err != nil {
+		logrus.Error(err)
+		return err
+	}
+	return nil
 }

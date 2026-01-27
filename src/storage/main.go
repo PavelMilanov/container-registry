@@ -17,7 +17,7 @@ type Storage interface {
 	CheckBlob(uuid string) error
 	SaveBlob(tmpPath, digest string) error
 	GetBlob(digest string) (config.Blob, error)
-	SaveManifest(body []byte, repository, image, reference, calculatedDigest string) (string, error)
+	SaveManifest(meta config.Meta, body []byte, link string) error
 	GetManifest(repository, image, reference string) ([]byte, error)
 	AddRegistry(registry string) error
 	DeleteRegistry(registry string) error

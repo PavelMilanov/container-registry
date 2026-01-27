@@ -36,7 +36,24 @@ type Manifest struct {
 	Manifests     []ManifestOCI `json:"manifests"`
 }
 
+/*
+Blob абстракция
+
+	application/vnd.docker.image.rootfs.diff.tar.gzip
+*/
 type Blob struct {
 	Size   int64
 	Digest string
+}
+
+/*
+Meta абстракция для метаданных манифеста
+*/
+type Meta struct {
+	Repository string
+	Image      string
+	Tag        string
+	MediaType  string
+	Digest     string
+	Size       int64
 }

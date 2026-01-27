@@ -121,22 +121,17 @@ func (s *S3Storage) GetBlob(digest string) (config.Blob, error) {
 SaveManifest сохраняет манифест в хранилище.
 
 	body - содержимое манифеста.
-	repository - имя репозитория.
-	image - имя образа.
-	reference - тег образ.
-	calculatedDigest - хэш манифеста.
 */
-func (s *S3Storage) SaveManifest(body []byte, repository, image, reference, calculatedDigest string) (string, error) {
-	manifestPath := filepath.Join(config.MANIFEST_PATH, repository, image, calculatedDigest)
-	tagPath := filepath.Join(config.MANIFEST_PATH, repository, image, "tags", reference)
+func (s *S3Storage) SaveManifest(meta config.Meta, body []byte, manifestPath string) error {
+	tagPath := filepath.Join(config.MANIFEST_PATH, meta.Repository, meta.Image, "tags", meta.Tag)
 	reader := bytes.NewReader(body)
 	size := reader.Size()
 	_, err := s.S3.PutObject(context.Background(), config.BACKET_NAME, manifestPath, reader, size, minio.PutObjectOptions{ContentType: "application/octet-stream"})
 	if err != nil {
 		logrus.Error(err)
 	}
-	if !strings.HasPrefix(reference, "sha256:") {
-		reader := bytes.NewReader([]byte(calculatedDigest))
+	if !strings.HasPrefix(meta.Tag, "sha256:") {
+		reader := bytes.NewReader([]byte(meta.Digest))
 		size := reader.Size()
 		_, err = s.S3.PutObject(context.Background(), config.BACKET_NAME, tagPath, reader, size, minio.PutObjectOptions{ContentType: "application/octet-stream"})
 		if err != nil {
@@ -144,7 +139,7 @@ func (s *S3Storage) SaveManifest(body []byte, repository, image, reference, calc
 		}
 	}
 
-	return manifestPath, nil
+	return nil
 }
 
 /*
