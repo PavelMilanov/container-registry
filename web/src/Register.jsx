@@ -10,7 +10,7 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = createSignal("");
 
   function toLogin() {
-    navigate("/login");
+    navigate("/login", { replace: true });
   }
 
   async function register() {
