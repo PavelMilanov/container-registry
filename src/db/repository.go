@@ -19,12 +19,24 @@ type Repository struct {
 	RegistryID int
 }
 
-func (r *Repository) Add(sql *gorm.DB) {
+func (r *Repository) Add(sql *gorm.DB) error {
 	now := time.Now()
 	r.CreatedAt = now.Format("2006-01-02 15:04:05")
 	if sql.Model(&r).Where("name = ? AND registry_id = ?", r.Name, r.RegistryID).First(&r).RowsAffected == 0 {
 		sql.Create(&r)
 	}
+	result := sql.Where("name = ? AND registry_id = ?", r.Name, r.RegistryID).First(&r)
+	if result.Error != nil {
+		logrus.Error(result.Error)
+		return fmt.Errorf("ошибка получения репозитория")
+	}
+	if result.RowsAffected == 0 {
+		if err := sql.Create(&r).Error; err != nil {
+			logrus.Error(err)
+			return fmt.Errorf("ошибка создания репозитория")
+		}
+	}
+	return nil
 }
 
 func (r *Repository) Delete(sql *gorm.DB) error {

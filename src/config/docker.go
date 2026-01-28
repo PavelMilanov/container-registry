@@ -55,5 +55,6 @@ type Meta struct {
 	Tag        string
 	MediaType  string
 	Digest     string
+	Platform   string
 	Size       int64
 }

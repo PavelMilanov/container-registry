@@ -22,12 +22,24 @@ type Image struct {
 	RepositoryID int
 }
 
-func (i *Image) Add(sql *gorm.DB) {
+func (i *Image) Add(sql *gorm.DB) error {
 	now := time.Now()
 	i.CreatedAt = now.Format("2006-01-02 15:04:05")
-	if sql.Model(&i).Where("name = ? AND tag = ? AND repository_id = ?", i.Name, i.Tag, i.RepositoryID).Updates(&i).RowsAffected == 0 {
-		sql.Create(&i)
+
+	result := sql.Model(&i).Where("name = ? AND tag = ? AND repository_id = ?",
+		i.Name, i.Tag, i.RepositoryID).Updates(&i)
+	if result.Error != nil {
+		logrus.Error(result.Error)
+		return fmt.Errorf("ошибка обновления записи")
 	}
+	if result.RowsAffected == 0 {
+		// Создаем новую запись
+		if err := sql.Create(&i).Error; err != nil {
+			logrus.Error(err)
+			return errors.New("ошибка создания записи")
+		}
+	}
+	return nil
 }
 
 func (i *Image) Delete(sql *gorm.DB) error {
