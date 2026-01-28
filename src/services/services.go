@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"path/filepath"
 	"strconv"
@@ -21,16 +22,18 @@ import (
 )
 
 func AddRegistry(name string, sql *gorm.DB, storage storage.Storage) error {
-	if err := storage.AddRegistry(name); err != nil {
-		logrus.Error(err)
-		return err
-	}
 	registry := db.Registry{Name: name}
 	if err := registry.Add(sql); err != nil {
 		logrus.Error(err)
-		return err
+		return errors.New("Ошибка при создании реестра")
 	}
-	logrus.Infof("Создан новый реестр %+v", registry)
+	if err := storage.AddRegistry(name); err != nil {
+		logrus.Error(err)
+		return errors.New("Ошибка при создании реестра")
+	}
+	logrus.WithFields(logrus.Fields{
+		"name": registry.Name,
+	}).Info("Создан новый реестр")
 	return nil
 }
 
