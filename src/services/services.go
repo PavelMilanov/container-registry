@@ -270,13 +270,8 @@ func SaveManifest(sql *gorm.DB, storage storage.Storage, meta config.Meta, body 
 			// может быть несколько, если была мультиплатформенная сборка
 			if item.Platform.Architecture != "unknown" {
 				platforms = append(platforms, item.Platform.OS+"/"+item.Platform.Architecture)
-				body, err := storage.ReadFile(manifestPath + item.Digest)
-				if err != nil {
-					logrus.Error(err)
-					return err
-				}
 				var m2 config.Manifest
-				if err := json.Unmarshal(body, &m2); err != nil {
+				if err := json.Unmarshal(data, &m2); err != nil {
 					logrus.Error(err)
 					return err
 				}
@@ -302,7 +297,10 @@ func SaveManifest(sql *gorm.DB, storage storage.Storage, meta config.Meta, body 
 		logrus.Error(err)
 		return err
 	}
-	logrus.Infof("Создан новый репозиторий %s", repo.Name)
+	logrus.WithFields(logrus.Fields{
+		"name": repo.Name,
+	}).Info("Создан новый репозиторий")
+
 	image := db.Image{
 		Name:         meta.Image,
 		Hash:         meta.Digest,
@@ -316,12 +314,17 @@ func SaveManifest(sql *gorm.DB, storage storage.Storage, meta config.Meta, body 
 		logrus.Error(err)
 		return err
 	}
-	logrus.Infof("Создан новый образ %s", image.Name)
+	logrus.WithFields(logrus.Fields{
+		"image": image.Name,
+		"tag":   image.Tag,
+	}).Info("Создан новый образ")
 	if err := storage.SaveManifest(meta, body, manifestPath); err != nil {
 		logrus.Error(err)
 		return err
 	}
-	logrus.Infof("Загружен манифест %v", meta)
+	logrus.WithFields(logrus.Fields{
+		"manifest": meta.Digest,
+	}).Info("Загружен манифест")
 
 	imgSize := image.GetSize(sql, "repository_id = ?", image.RepositoryID)
 	repo.Size = imgSize

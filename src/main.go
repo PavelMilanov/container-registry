@@ -21,11 +21,7 @@ import (
 )
 
 func main() {
-	logrus.SetReportCaller(true)
-	// logrus.SetFormatter(&logrus.TextFormatter{
-	// 	FullTimestamp:   true,
-	// 	TimestampFormat: "2006/01/02 15:04:00",
-	// })
+	setLogger()
 	env, err := config.NewEnv(config.CONFIG_PATH, "config")
 	if err != nil {
 		logrus.Fatal(err)
@@ -47,21 +43,21 @@ func main() {
 	defer db.CloseDatabase(sqlite.Sql)
 
 	_, err = c.AddFunc("0 1 * * 0", func() {
-		logrus.Info("Запуск задания Garbage Collection")
+		logrus.Debug("Запуск задания Garbage Collection")
 		go store.GarbageCollection()
 	}) // каждое воскресенье в 01:00
 	if err != nil {
 		logrus.Error(err)
 	}
 	_, err = c.AddFunc("0 0 * * 0", func() {
-		logrus.Info("Запуск задания удаления старых образов")
+		logrus.Debug("Запуск задания удаления старых образов")
 		go services.DeleteOlderImages(sqlite.Sql, store)
 	}) // каждое воскресенье в 00:00
 	if err != nil {
 		logrus.Error(err)
 	}
 	c.Start()
-	logrus.Infof("Запущено %d заданий планировщика", len(c.Entries()))
+	logrus.Debugf("Запущено %d заданий планировщика", len(c.Entries()))
 
 	handler := handlers.NewHandler(store, &sqlite, env)
 	srv := new(Server)
