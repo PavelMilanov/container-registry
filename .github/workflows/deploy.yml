@@ -62,4 +62,4 @@ jobs:
           password: ${{secrets.DOCKER_REGISRTY_PWD}}
 
       - name: Push to Docker Hub
-        run: make push version=$(cat version.txt)
+        run: make push version=$(cat version)
