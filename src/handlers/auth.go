@@ -8,7 +8,6 @@ import (
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/system"
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 )
 
 /*
@@ -35,7 +34,6 @@ func (h *Handler) authHandler(c *gin.Context) {
 	// Генерируем JWT-токен (срок действия 24 часа)
 	tokenString, err := system.GenerateJWT(username, h.ENV)
 	if err != nil {
-		logrus.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}

@@ -18,7 +18,7 @@ ENV CGO_ENABLED=1
 RUN go install -tags=prod -trimpath -ldflags="-s -w -X 'github.com/PavelMilanov/container-registry/config.VERSION=${VERSION}'"
 
 
-FROM node:24-alpine AS web
+FROM node:25-alpine AS web
 
 WORKDIR /app
 
@@ -31,7 +31,7 @@ COPY web/ .
 RUN npm run build
 
 
-FROM alpine:3.21
+FROM alpine:3.23
 
 ENV TZ=Europe/Moscow
 ENV GIN_MODE=release

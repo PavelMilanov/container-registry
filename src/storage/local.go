@@ -64,7 +64,7 @@ SaveBlob сохраняет Blob в хранилище.
 	digest - хэш Blob.
 */
 func (lc *LocalStorage) SaveBlob(tmpPath, digest string) error {
-	if err := os.Rename(tmpPath, filepath.Join(config.BLOBS_PATH, strings.Replace(digest, "sha256:", "", 1))); err != nil {
+	if err := os.Rename(tmpPath, filepath.Join(config.BLOBS_PATH, strings.Split(digest, ":")[1])); err != nil {
 		return err
 	}
 	os.Remove(tmpPath)
@@ -78,7 +78,7 @@ GetBlob возвращает Blob из хранилища в двоичном в
 */
 func (lc *LocalStorage) GetBlob(digest string) (config.Blob, error) {
 	var data config.Blob
-	digest = strings.Replace(digest, "sha256:", "", 1)
+	digest = strings.Split(digest, ":")[1]
 	blobPath := filepath.Join(config.BLOBS_PATH, digest)
 	file, err := os.Open(blobPath)
 	if err != nil {
@@ -106,29 +106,28 @@ SaveManifest сохраняет манифест в хранилище.
 	reference - тег образ.
 	calculatedDigest - хэш манифеста.
 */
-func (lc *LocalStorage) SaveManifest(body []byte, repository, image, reference, calculatedDigest string) (string, error) {
-	manifestPath := filepath.Join(config.MANIFEST_PATH, repository, image, calculatedDigest)
-	tagPath := filepath.Join(config.MANIFEST_PATH, repository, image, "tags", reference)
-	err := os.MkdirAll(filepath.Dir(manifestPath), 0755)
-	if err != nil {
-		return "", errors.New("Failed to create manifest directory")
+func (lc *LocalStorage) SaveManifest(meta config.Meta, body []byte, manifestPath string) error {
+	tagPath := filepath.Join(config.MANIFEST_PATH, meta.Repository, meta.Image, "tags", meta.Tag)
+	if err := os.MkdirAll(filepath.Dir(manifestPath), 0755); err != nil {
+		logrus.Error(err)
+		return errors.New("Не удалось создать директорию для манифеста")
 	}
-	err = os.WriteFile(manifestPath, body, 0644)
-	if err != nil {
-		return "", errors.New("Failed to save manifest")
+	if err := os.WriteFile(manifestPath, body, 0644); err != nil {
+		logrus.Error(err)
+		return errors.New("Не удалось сохранить файл манифеста")
 	}
 	// Если это тег (а не digest), создаём символическую ссылку
-	if !strings.HasPrefix(reference, "sha256:") {
-		err = os.MkdirAll(filepath.Dir(tagPath), 0755)
-		if err != nil {
-			return "", errors.New("Failed to create tag directory")
+	if !strings.HasPrefix(meta.Tag, "sha256:") {
+		if err := os.MkdirAll(filepath.Dir(tagPath), 0755); err != nil {
+			logrus.Error(err)
+			return errors.New("Не удалось создать директорию для тега")
 		}
-		err = os.WriteFile(tagPath, []byte(calculatedDigest), 0644)
-		if err != nil {
-			return "", errors.New("Failed to save tag reference")
+		if err := os.WriteFile(tagPath, []byte(meta.Digest), 0644); err != nil {
+			logrus.Error(err)
+			return errors.New("Не удалось сохранить файл тега")
 		}
 	}
-	return manifestPath, nil
+	return nil
 }
 
 /*
@@ -276,4 +275,8 @@ func (*LocalStorage) DiskUsage() (Disk, error) {
 	usedBytes := blockSize * usedBlocks
 	usedToPercent := float64(usedBytes) / float64(totalBytes) * 100
 	return Disk{Total: totalBytes, Used: usedBytes, UsedToPercent: usedToPercent}, nil
+}
+
+func (*LocalStorage) ReadFile(path string) ([]byte, error) {
+	return os.ReadFile(path)
 }

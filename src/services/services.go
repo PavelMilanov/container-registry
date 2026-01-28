@@ -3,8 +3,10 @@
 package services
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
-	"os"
+	"io"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -12,6 +14,7 @@ import (
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/storage"
+
 	"github.com/PavelMilanov/container-registry/system"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -59,7 +62,6 @@ func DeleteImage(name, image, hash string, sql *gorm.DB, storage storage.Storage
 	err := sql.Transaction(func(tx *gorm.DB) error {
 		if err := img.Delete(tx); err != nil {
 			tx.Rollback()
-			logrus.Error(err)
 			return err
 		}
 		imgSize := img.GetSize(tx, "repository_id = ?", img.RepositoryID)
@@ -68,7 +70,6 @@ func DeleteImage(name, image, hash string, sql *gorm.DB, storage storage.Storage
 		repo.SizeAlias = system.ConvertSize(repo.Size)
 		if err := repo.UpdateSize(tx); err != nil {
 			tx.Rollback()
-			logrus.Error(err)
 			return err
 		}
 		repoSize := repo.GetSize(tx, "registry_id = ?", repo.RegistryID)
@@ -77,7 +78,6 @@ func DeleteImage(name, image, hash string, sql *gorm.DB, storage storage.Storage
 		registry.SizeAlias = system.ConvertSize(registry.Size)
 		if err := registry.UpdateSize(tx); err != nil {
 			tx.Rollback()
-			logrus.Error(err)
 			return err
 		}
 		return nil
@@ -150,7 +150,7 @@ func GetImages(image string, sql *gorm.DB) ([]db.Image, error) {
 func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {
 	tagCount, err := db.GetCountTag(sql)
 	if err != nil {
-		logrus.Printf("Не найден тег: %v", err)
+		logrus.Errorf("Не найден тег: %v", err)
 		return
 	}
 	data, err := db.GetLastTagImages(sql, tagCount)
@@ -160,7 +160,7 @@ func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {
 	}
 	statBefore, err := storage.DiskUsage()
 	if err != nil {
-		logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
+		logrus.Errorf("Ошибка получения информации о дисковом пространстве: %v", err)
 		return
 	}
 	for _, item := range data {
@@ -169,98 +169,11 @@ func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {
 	}
 	statAfter, err := storage.DiskUsage()
 	if err != nil {
-		logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
+		logrus.Errorf("Ошибка получения информации о дисковом пространстве: %v", err)
 		return
 	}
 	clearSpace := statBefore.Used - statAfter.Used
 	logrus.Infof("Удалено %d старых образов\nОчищено пространства %s", len(data), system.HumanizeSize(clearSpace))
-}
-
-// SaveManifestToDB сохраняет манифест в базу данных и обновляет зависимости.
-// mediaType - тип медиа-файла (например, "application/vnd.docker.distribution.manifest.v2+json").
-// link - ссылка на манифест.
-// tag - тег образа.
-// sql - экземпляр базы данных.
-func SaveManifestToDB(mediaType, link, tag string, sql *gorm.DB) error {
-	resizeRegistry := func(repository, imageName, manifestFile, platform string, sum int64) {
-		registry, err := db.GetRegistry(sql, "name = ?", repository)
-		if err != nil {
-			logrus.Error(err)
-		}
-		repo := db.Repository{
-			Name:       imageName,
-			RegistryID: registry.ID,
-		}
-		repo.Add(sql)
-		logrus.Infof("Создан новый репозиторий %+v", repo)
-		image := db.Image{
-			Name:         imageName,
-			Hash:         manifestFile,
-			Tag:          tag,
-			Platform:     platform,
-			Size:         sum,
-			SizeAlias:    system.ConvertSize(sum),
-			RepositoryID: repo.ID,
-		}
-		image.Add(sql)
-		logrus.Infof("Создан новый образ %+v", image)
-		imgSize := image.GetSize(sql, "repository_id = ?", image.RepositoryID)
-		repo.Size = imgSize
-		repo.SizeAlias = system.ConvertSize(repo.Size)
-		repo.UpdateSize(sql)
-		repoSize := repo.GetSize(sql, "registry_id = ?", repo.RegistryID)
-		registry.Size = repoSize
-		registry.SizeAlias = system.ConvertSize(registry.Size)
-		registry.UpdateSize(sql)
-	}
-	path, manifestFile := filepath.Split(link) // var/manifests/dev/alpine/ sha256:33fe5b4ced5027766381b0c5578efa7217c5cc4498b10d1ab7275182197933c8
-	repository := strings.Split(path, "/")[2]
-	imageName := strings.Split(path, "/")[3]
-	var manifest config.Manifest
-	body, err := os.ReadFile(link)
-	if err != nil {
-		logrus.Error(err)
-		return err
-	}
-	if err := json.Unmarshal(body, &manifest); err != nil {
-		logrus.Error(err)
-		return err
-	}
-	switch mediaType {
-	case config.MANIFEST_TYPE["docker"]:
-		var sum int64
-		for _, descriptor := range manifest.Layers {
-			sum += descriptor.Size
-		}
-		resizeRegistry(repository, imageName, manifestFile, "docker", sum)
-	case config.MANIFEST_TYPE["oci"]:
-		platforms := []string{}
-		sizes := []int64{}
-		for _, item := range manifest.Manifests {
-			// ищем манифесты с описанием слоев образов
-			// может быть несколько, если была мультиплатформенная сборка
-			if item.Platform.Architecture != "unknown" {
-				platforms = append(platforms, item.Platform.OS+"/"+item.Platform.Architecture)
-				body, err := os.ReadFile(path + item.Digest)
-				if err != nil {
-					logrus.Error(err)
-					return err
-				}
-				var m2 config.Manifest
-				if err := json.Unmarshal(body, &m2); err != nil {
-					logrus.Error(err)
-					return err
-				}
-				var sum int64
-				for _, descriptor := range m2.Layers {
-					sum += descriptor.Size
-				}
-				sizes = append(sizes, sum)
-			}
-		}
-		resizeRegistry(repository, imageName, manifestFile, strings.Join(platforms, ","), sizes[0])
-	}
-	return nil
 }
 
 /*
@@ -321,5 +234,105 @@ func SetCountTag(sql *gorm.DB, count string) error {
 		logrus.Error(err)
 		return err
 	}
+	return nil
+}
+
+/*
+SaveManifest - логика сохранения манифеста в базу данных и хранилище.
+*/
+func SaveManifest(sql *gorm.DB, storage storage.Storage, meta config.Meta, body []byte) error {
+	reader := bufio.NewReader(bytes.NewBuffer(body))
+	manifestPath := filepath.Join(config.MANIFEST_PATH, meta.Repository, meta.Image, meta.Digest)
+	var manifest config.Manifest
+
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		logrus.Error(err)
+		return err
+	}
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		logrus.Error(err)
+		return err
+	}
+	switch manifest.MediaType {
+	case config.MANIFEST_TYPE["docker"]:
+		var sum int64
+		for _, descriptor := range manifest.Layers {
+			blob, _ := storage.GetBlob(descriptor.Digest)
+			sum += blob.Size + descriptor.Size
+		}
+		meta.Size = sum
+		meta.Platform = "docker"
+	case config.MANIFEST_TYPE["oci"]:
+		platforms := []string{}
+		for _, item := range manifest.Manifests {
+			// ищем манифесты с описанием слоев образов
+			// может быть несколько, если была мультиплатформенная сборка
+			if item.Platform.Architecture != "unknown" {
+				platforms = append(platforms, item.Platform.OS+"/"+item.Platform.Architecture)
+				var m2 config.Manifest
+				if err := json.Unmarshal(data, &m2); err != nil {
+					logrus.Error(err)
+					return err
+				}
+				var sum int64
+				for _, descriptor := range m2.Layers {
+					blob, _ := storage.GetBlob(descriptor.Digest)
+					sum += blob.Size + descriptor.Size
+				}
+				meta.Size = sum
+				meta.Platform = strings.Join(platforms, ",")
+			}
+		}
+	}
+	registry, err := db.GetRegistry(sql, "name = ?", meta.Repository)
+	if err != nil {
+		logrus.Error(err)
+	}
+	repo := db.Repository{
+		Name:       meta.Image,
+		RegistryID: registry.ID,
+	}
+	if err := repo.Add(sql); err != nil {
+		logrus.Error(err)
+		return err
+	}
+	logrus.WithFields(logrus.Fields{
+		"name": repo.Name,
+	}).Info("Создан новый репозиторий")
+
+	image := db.Image{
+		Name:         meta.Image,
+		Hash:         meta.Digest,
+		Tag:          meta.Tag,
+		Platform:     meta.Platform,
+		Size:         meta.Size,
+		SizeAlias:    system.ConvertSize(meta.Size),
+		RepositoryID: repo.ID,
+	}
+	if err := image.Add(sql); err != nil {
+		logrus.Error(err)
+		return err
+	}
+	logrus.WithFields(logrus.Fields{
+		"image": image.Name,
+		"tag":   image.Tag,
+	}).Info("Создан новый образ")
+	if err := storage.SaveManifest(meta, body, manifestPath); err != nil {
+		logrus.Error(err)
+		return err
+	}
+	logrus.WithFields(logrus.Fields{
+		"manifest": meta.Digest,
+	}).Info("Загружен манифест")
+
+	imgSize := image.GetSize(sql, "repository_id = ?", image.RepositoryID)
+	repo.Size = imgSize
+	repo.SizeAlias = system.ConvertSize(repo.Size)
+	repo.UpdateSize(sql)
+	repoSize := repo.GetSize(sql, "registry_id = ?", repo.RegistryID)
+	registry.Size = repoSize
+	registry.SizeAlias = system.ConvertSize(registry.Size)
+	registry.UpdateSize(sql)
 	return nil
 }
