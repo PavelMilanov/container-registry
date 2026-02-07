@@ -304,23 +304,33 @@ func SaveManifest(sql *gorm.DB, storage storage.Storage, meta config.Meta, body 
 		"name": repo.Name,
 	}).Info("Создан новый репозиторий")
 
-	image := db.Image{
-		Name:         meta.Image,
-		Hash:         meta.Digest,
-		Tag:          meta.Tag,
-		Platform:     meta.Platform,
-		Size:         meta.Size,
-		SizeAlias:    system.ConvertSize(meta.Size),
-		RepositoryID: repo.ID,
+	if meta.Platform != "" {
+		image := db.Image{
+			Name:         meta.Image,
+			Hash:         meta.Digest,
+			Tag:          meta.Tag,
+			Platform:     meta.Platform,
+			Size:         meta.Size,
+			SizeAlias:    system.ConvertSize(meta.Size),
+			RepositoryID: repo.ID,
+		}
+		if err := image.Add(sql); err != nil {
+			logrus.Error(err)
+			return err
+		}
+		logrus.WithFields(logrus.Fields{
+			"image": image.Name,
+			"tag":   image.Tag,
+		}).Info("Создан новый образ")
+		imgSize := image.GetSize(sql, "repository_id = ?", image.RepositoryID)
+		repo.Size = imgSize
+		repo.SizeAlias = system.ConvertSize(repo.Size)
+		repo.UpdateSize(sql)
+		repoSize := repo.GetSize(sql, "registry_id = ?", repo.RegistryID)
+		registry.Size = repoSize
+		registry.SizeAlias = system.ConvertSize(registry.Size)
+		registry.UpdateSize(sql)
 	}
-	if err := image.Add(sql); err != nil {
-		logrus.Error(err)
-		return err
-	}
-	logrus.WithFields(logrus.Fields{
-		"image": image.Name,
-		"tag":   image.Tag,
-	}).Info("Создан новый образ")
 	if err := storage.SaveManifest(meta, body, manifestPath); err != nil {
 		logrus.Error(err)
 		return err
@@ -328,14 +338,5 @@ func SaveManifest(sql *gorm.DB, storage storage.Storage, meta config.Meta, body 
 	logrus.WithFields(logrus.Fields{
 		"manifest": meta.Digest,
 	}).Info("Загружен манифест")
-
-	imgSize := image.GetSize(sql, "repository_id = ?", image.RepositoryID)
-	repo.Size = imgSize
-	repo.SizeAlias = system.ConvertSize(repo.Size)
-	repo.UpdateSize(sql)
-	repoSize := repo.GetSize(sql, "registry_id = ?", repo.RegistryID)
-	registry.Size = repoSize
-	registry.SizeAlias = system.ConvertSize(registry.Size)
-	registry.UpdateSize(sql)
 	return nil
 }
