@@ -42,6 +42,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 	{
 		// Пинг для проверки
 		v2.GET("/", func(c *gin.Context) {
+			c.Header("Docker-Distribution-Api-Version", "registry/2.0")
 			c.JSON(http.StatusOK, gin.H{"message": "Docker Registry API"})
 		})
 		// manifests

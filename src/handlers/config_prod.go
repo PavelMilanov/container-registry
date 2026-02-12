@@ -4,6 +4,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -24,6 +25,10 @@ func setupCORS(router *gin.Engine, h *Handler) {
 func noRouter(router *gin.Engine, h *Handler) {
 	router.LoadHTMLGlob("./index.html")
 	router.NoRoute(func(c *gin.Context) {
+		if strings.HasPrefix(c.Request.URL.Path, "/v2/") {
+			c.Status(http.StatusNotFound)
+			return
+		}
 		c.HTML(http.StatusOK, "index.html", gin.H{"URL": h.ENV.Server.Realm, "Title": h.ENV.Server.Service})
 	})
 }
