@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/PavelMilanov/container-registry/config"
@@ -11,41 +12,50 @@ import (
 	"github.com/PavelMilanov/container-registry/storage"
 )
 
-func TestSaveManifestToDB(t *testing.T) {
-	link := "../var/manifests/local/registry/sha256:91ee867b7ee1c48b01a932d593450babd01eb3fd43594d2aa6855c07c0a5b3fc"
-	func(link string) {
-		var manifest config.Manifest
-		body, err := os.ReadFile(link)
-		if err != nil {
-			t.Log(err)
-		}
-		if err := json.Unmarshal(body, &manifest); err != nil {
-			t.Log(err)
-		}
-		platforms := []string{}
-		sizes := []int64{}
-		for _, item := range manifest.Manifests {
-			if item.Platform.Architecture != "unknown" {
-				platforms = append(platforms, item.Platform.OS+"/"+item.Platform.Architecture)
-				path := "../var/manifests/local/registry/"
-				body, err := os.ReadFile(path + item.Digest)
-				if err != nil {
-					t.Log(err)
+func TestSaveManifest(t *testing.T) {
+	manifestDescriptor := struct {
+		Schema int    `json:"schemaVersion"`
+		Type   string `json:"mediaType"`
+		Config struct {
+			Digest string `json:"digest"`
+		} `json:"config"`
+		Manifests []struct {
+			Digest   string `json:"digest"`
+			Platform struct {
+				Architecture string `json:"architecture"`
+				OS           string `json:"os"`
+			} `json:"platform"`
+		} `json:"manifests"`
+		Layers []struct {
+			Size int64 `json:"size"`
+		} `json:"layers"`
+	}{}
+	path := "../var/manifests/test"
+	dirs, err := os.ReadDir(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, dir := range dirs {
+		if dir.IsDir() {
+			files, err := os.ReadDir(filepath.Join(path, dir.Name()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, file := range files {
+				if !file.IsDir() {
+					fmt.Println("Name:", file.Name())
+					data, err := os.ReadFile(filepath.Join(path, dir.Name(), file.Name()))
+					if err != nil {
+						t.Fatal(err)
+					}
+					if err := json.Unmarshal(data, &manifestDescriptor); err != nil {
+						t.Error(err)
+					}
+					fmt.Println("Data:", manifestDescriptor)
 				}
-				var m2 config.Manifest
-				if err := json.Unmarshal(body, &m2); err != nil {
-					t.Log(err)
-				}
-				var sum int64
-				for _, descriptor := range m2.Layers {
-					sum += descriptor.Size
-				}
-				sizes = append(sizes, sum)
 			}
 		}
-		fmt.Println(platforms)
-		fmt.Println(sizes)
-	}(link)
+	}
 }
 
 func TestDeleteOlderImages(t *testing.T) {

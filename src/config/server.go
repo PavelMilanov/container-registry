@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/PavelMilanov/container-registry/config"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,7 +23,7 @@ func (s *Server) Run(handler http.Handler) error {
 		ReadTimeout:  300 * time.Second,
 		WriteTimeout: 300 * time.Second,
 	}
-	logrus.Infof("Сервер запущен: %+v | Версия сборки: %s | Версия go: %s", s.httpServer.Addr, config.VERSION, runtime.Version())
+	logrus.Infof("Сервер запущен: %+v | Версия сборки: %s | Версия go: %s", s.httpServer.Addr, VERSION, runtime.Version())
 	return s.httpServer.ListenAndServe()
 }
 

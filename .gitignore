@@ -1,4 +1,4 @@
-container-registry
+cr
 conf.d
 var
 .DS_Store

@@ -10,7 +10,6 @@ import (
 	"io"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
@@ -35,6 +34,14 @@ func AddRegistry(name string, sql *gorm.DB, storage storage.Storage) error {
 		"name": registry.Name,
 	}).Info("Создан новый реестр")
 	return nil
+}
+
+func GetCloudList(storage storage.Storage) ([]string, error) {
+	data, err := storage.GetCloudList()
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
 }
 
 func GetRegistries(sql *gorm.DB) ([]db.Registry, error) {
@@ -161,7 +168,7 @@ func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {
 		logrus.Error(err)
 		return
 	}
-	statBefore, err := storage.DiskUsage()
+	// statBefore, err := storage.DiskUsage()
 	if err != nil {
 		logrus.Errorf("Ошибка получения информации о дисковом пространстве: %v", err)
 		return
@@ -170,13 +177,13 @@ func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {
 		repo, _ := db.GetRepository(sql, "ID = ?", item.RepositoryID)
 		DeleteImage(repo.Name, item.Name, item.Hash, sql, storage)
 	}
-	statAfter, err := storage.DiskUsage()
+	// statAfter, err := storage.DiskUsage()
 	if err != nil {
 		logrus.Errorf("Ошибка получения информации о дисковом пространстве: %v", err)
 		return
 	}
-	clearSpace := statBefore.Used - statAfter.Used
-	logrus.Infof("Удалено %d старых образов\nОчищено пространства %s", len(data), system.HumanizeSize(clearSpace))
+	// clearSpace := statBefore.Used - statAfter.Used
+	// logrus.Infof("Удалено %d старых образов\nОчищено пространства %s", len(data), system.HumanizeSize(clearSpace))
 }
 
 /*
@@ -207,26 +214,6 @@ func Login(sql *gorm.DB, cred *config.Env, username, password string) (string, e
 	return user.Token, nil
 }
 
-func GetSettings(sql *gorm.DB, storage storage.Storage) (Settings, error) {
-	count, err := db.GetCountTag(sql)
-	if err != nil {
-		logrus.Error(err)
-		return Settings{}, err
-	}
-	diskStat, err := storage.DiskUsage()
-	if err != nil {
-		logrus.Error(err)
-		return Settings{}, err
-	}
-	return Settings{
-		Count:         count,
-		Total:         system.HumanizeSize(diskStat.Total),
-		Used:          system.HumanizeSize(diskStat.Used),
-		UsedToPercent: int(diskStat.UsedToPercent),
-		Version:       config.VERSION,
-	}, nil
-}
-
 func SetCountTag(sql *gorm.DB, count string) error {
 	newCount, err := strconv.Atoi(count)
 	if err != nil {
@@ -244,99 +231,41 @@ func SetCountTag(sql *gorm.DB, count string) error {
 SaveManifest - логика сохранения манифеста в базу данных и хранилище.
 */
 func SaveManifest(sql *gorm.DB, storage storage.Storage, meta config.Meta, body []byte) error {
-	reader := bufio.NewReader(bytes.NewBuffer(body))
 	manifestPath := filepath.Join(config.MANIFEST_PATH, meta.Repository, meta.Image, meta.Digest)
-	var manifest config.Manifest
-
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		logrus.Error(err)
-		return err
-	}
-	if err := json.Unmarshal(data, &manifest); err != nil {
-		logrus.Error(err)
-		return err
-	}
-	switch manifest.MediaType {
-	case config.MANIFEST_TYPE["docker"]:
-		var sum int64
-		for _, descriptor := range manifest.Layers {
-			blob, _ := storage.GetBlob(descriptor.Digest)
-			sum += blob.Size + descriptor.Size
-		}
-		meta.Size = sum
-		meta.Platform = "docker"
-	case config.MANIFEST_TYPE["oci"]:
-		platforms := []string{}
-		for _, item := range manifest.Manifests {
-			// ищем манифесты с описанием слоев образов
-			// может быть несколько, если была мультиплатформенная сборка
-			if item.Platform.Architecture != "unknown" {
-				platforms = append(platforms, item.Platform.OS+"/"+item.Platform.Architecture)
-				var m2 config.Manifest
-				if err := json.Unmarshal(data, &m2); err != nil {
-					logrus.Error(err)
-					return err
-				}
-				var sum int64
-				for _, descriptor := range m2.Layers {
-					blob, _ := storage.GetBlob(descriptor.Digest)
-					sum += blob.Size + descriptor.Size
-				}
-				meta.Size = sum
-				meta.Platform = strings.Join(platforms, ",")
-			}
-		}
-	}
-	registry, err := db.GetRegistry(sql, "name = ?", meta.Repository)
-	if err != nil {
-		logrus.Error(err)
-	}
-	repo := db.Repository{
-		Name:       meta.Image,
-		RegistryID: registry.ID,
-	}
-	if err := repo.Add(sql); err != nil {
-		logrus.Error(err)
-		return err
-	}
-	logrus.WithFields(logrus.Fields{
-		"name": repo.Name,
-	}).Info("Создан новый репозиторий")
-
-	if meta.Platform != "" {
-		image := db.Image{
-			Name:         meta.Image,
-			Hash:         meta.Digest,
-			Tag:          meta.Tag,
-			Platform:     meta.Platform,
-			Size:         meta.Size,
-			SizeAlias:    system.ConvertSize(meta.Size),
-			RepositoryID: repo.ID,
-		}
-		if err := image.Add(sql); err != nil {
-			logrus.Error(err)
-			return err
-		}
-		logrus.WithFields(logrus.Fields{
-			"image": image.Name,
-			"tag":   image.Tag,
-		}).Info("Создан новый образ")
-		imgSize := image.GetSize(sql, "repository_id = ?", image.RepositoryID)
-		repo.Size = imgSize
-		repo.SizeAlias = system.ConvertSize(repo.Size)
-		repo.UpdateSize(sql)
-		repoSize := repo.GetSize(sql, "registry_id = ?", repo.RegistryID)
-		registry.Size = repoSize
-		registry.SizeAlias = system.ConvertSize(registry.Size)
-		registry.UpdateSize(sql)
-	}
 	if err := storage.SaveManifest(meta, body, manifestPath); err != nil {
 		logrus.Error(err)
 		return err
 	}
 	logrus.WithFields(logrus.Fields{
-		"manifest": meta.Digest,
+		"digest": meta.Digest,
 	}).Info("Загружен манифест")
+
+	reader := bufio.NewReader(bytes.NewBuffer(body))
+	manifestDescriptor := struct {
+		Schema int    `json:"schemaVersion"`
+		Type   string `json:"mediaType"`
+		Config struct {
+			Digest string `json:"digest"`
+		} `json:"config"`
+		Manifests []struct {
+			Digest   string `json:"digest"`
+			Platform struct {
+				Architecture string `json:"architecture"`
+				OS           string `json:"os"`
+			} `json:"platform"`
+		} `json:"manifests"`
+		Layers []struct {
+			Size int64 `json:"size"`
+		} `json:"layers"`
+	}{}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		logrus.Error(err)
+		return err
+	}
+	if err := json.Unmarshal(data, &manifestDescriptor); err != nil {
+		logrus.Error(err)
+		return err
+	}
 	return nil
 }

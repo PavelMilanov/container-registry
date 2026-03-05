@@ -6,10 +6,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"syscall"
 
 	"github.com/PavelMilanov/container-registry/config"
-	"github.com/PavelMilanov/container-registry/system"
 	"github.com/sirupsen/logrus"
 )
 
@@ -17,15 +15,6 @@ import (
 LocalStorage представляет хранилище на основе локальной файловой системы.
 */
 type LocalStorage struct {
-}
-
-/*
-Disk представляет информацию о дисковом пространстве на локальной файловой системе.
-*/
-type Disk struct {
-	Total         uint64
-	Used          uint64
-	UsedToPercent float64
 }
 
 /*
@@ -109,21 +98,17 @@ SaveManifest сохраняет манифест в хранилище.
 func (lc *LocalStorage) SaveManifest(meta config.Meta, body []byte, manifestPath string) error {
 	tagPath := filepath.Join(config.MANIFEST_PATH, meta.Repository, meta.Image, "tags", meta.Tag)
 	if err := os.MkdirAll(filepath.Dir(manifestPath), 0755); err != nil {
-		logrus.Error(err)
 		return errors.New("Не удалось создать директорию для манифеста")
 	}
 	if err := os.WriteFile(manifestPath, body, 0644); err != nil {
-		logrus.Error(err)
 		return errors.New("Не удалось сохранить файл манифеста")
 	}
 	// Если это тег (а не digest), создаём символическую ссылку
 	if !strings.HasPrefix(meta.Tag, "sha256:") {
 		if err := os.MkdirAll(filepath.Dir(tagPath), 0755); err != nil {
-			logrus.Error(err)
 			return errors.New("Не удалось создать директорию для тега")
 		}
 		if err := os.WriteFile(tagPath, []byte(meta.Digest), 0644); err != nil {
-			logrus.Error(err)
 			return errors.New("Не удалось сохранить файл тега")
 		}
 	}
@@ -240,43 +225,44 @@ func (lc *LocalStorage) GarbageCollection() {
 			buffer = append(buffer, v)
 		}
 	}
-	statBefore, err := lc.DiskUsage()
-	if err != nil {
-		logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
-		return
-	}
+	// statBefore, err := lc.DiskUsage()
+	// if err != nil {
+	// 	logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
+	// 	return
+	// }
 	for _, i := range buffer {
 		if err := os.Remove(filepath.Join(config.BLOBS_PATH, i)); err != nil {
 			logrus.Error(err)
 		}
 	}
-	statAfter, err := lc.DiskUsage()
-	if err != nil {
-		logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
-		return
-	}
-	clearSpace := statBefore.Used - statAfter.Used
-	logrus.Infof("Инвентаризация blob произведена. Удалено файлов %d\nОчищено пространства %s", len(buffer), system.HumanizeSize(clearSpace))
-}
-
-func (*LocalStorage) DiskUsage() (Disk, error) {
-	fs := syscall.Statfs_t{}
-	err := syscall.Statfs("/", &fs)
-	if err != nil {
-		return Disk{}, err
-	}
-
-	blockSize := uint64(fs.Bsize) // Размер блока в байтах
-	totalBlocks := fs.Blocks      // Всего блоков
-	freeBlocks := fs.Bavail
-	usedBlocks := totalBlocks - freeBlocks
-
-	totalBytes := blockSize * totalBlocks
-	usedBytes := blockSize * usedBlocks
-	usedToPercent := float64(usedBytes) / float64(totalBytes) * 100
-	return Disk{Total: totalBytes, Used: usedBytes, UsedToPercent: usedToPercent}, nil
+	// statAfter, err := lc.DiskUsage()
+	// if err != nil {
+	// 	logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
+	// 	return
+	// }
+	// clearSpace := statBefore.Used - statAfter.Used
+	// logrus.Infof("Инвентаризация blob произведена. Удалено файлов %d\nОчищено пространства %s", len(buffer), system.HumanizeSize(clearSpace))
 }
 
 func (*LocalStorage) ReadFile(path string) ([]byte, error) {
 	return os.ReadFile(path)
+}
+
+func (*LocalStorage) GetManifestList(repository, image string) ([]string, error) {
+	return nil, nil
+}
+
+/* Возвращает список пространств */
+func (*LocalStorage) GetCloudList() ([]string, error) {
+	dirs, err := os.ReadDir(config.MANIFEST_PATH)
+	if err != nil {
+		return nil, err
+	}
+	var cloud []string
+	for _, dir := range dirs {
+		if dir.IsDir() {
+			cloud = append(cloud, dir.Name())
+		}
+	}
+	return cloud, nil
 }

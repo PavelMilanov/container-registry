@@ -19,12 +19,13 @@ type Storage interface {
 	GetBlob(digest string) (config.Blob, error)
 	SaveManifest(meta config.Meta, body []byte, link string) error
 	GetManifest(repository, image, reference string) ([]byte, error)
+	GetManifestList(repository, image string) ([]string, error)
+	GetCloudList() ([]string, error)
 	AddRegistry(registry string) error
 	DeleteRegistry(registry string) error
 	DeleteImage(repository, imageName, imageTag, imageHash string) error
 	DeleteRepository(name, image string) error
 	GarbageCollection()
-	DiskUsage() (Disk, error)
 	ReadFile(link string) ([]byte, error)
 }
 

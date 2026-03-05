@@ -50,6 +50,15 @@ func (h *Handler) addRegistry(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{})
 }
 
+func (h *Handler) getCloudList(c *gin.Context) {
+	list, err := services.GetCloudList(h.STORAGE)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": list})
+}
+
 /*
 deleteRegistry -удаление указанного реестра.
 
@@ -167,43 +176,4 @@ func (h *Handler) login(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"token": token})
-}
-
-/*
-settings - настройки.
-
-	/api/settings - получение настроек.
-	/api/settings?tag=<int> - установка количества тегов.
-	/api/settings?garbage=true - очистка хранилища.
-*/
-func (h *Handler) settings(c *gin.Context) {
-	if c.Request.Method == "GET" {
-		data, err := services.GetSettings(h.DB.Sql, h.STORAGE)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{
-			"version":       data.Version,
-			"count":         data.Count,
-			"total":         data.Total,
-			"used":          data.Used,
-			"usedToPercent": data.UsedToPercent})
-	} else if c.Request.Method == "POST" {
-		q := c.Query("garbage")
-		t := c.Query("tag")
-		if q == "true" {
-			h.STORAGE.GarbageCollection()
-			c.JSON(http.StatusAccepted, gin.H{"data": "Очистка завершена"})
-			return
-		}
-		if t != "" {
-			if err := services.SetCountTag(h.DB.Sql, t); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-				return
-			}
-			c.JSON(http.StatusAccepted, gin.H{"data": "Настройки сохранены"})
-			return
-		}
-	}
 }

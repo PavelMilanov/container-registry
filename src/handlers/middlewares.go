@@ -69,7 +69,6 @@ func urlChallenge(c *gin.Context, realm string) {
 	}
 	c.Header("WWW-Authenticate", challenge)
 	c.AbortWithStatus(http.StatusUnauthorized)
-	return
 }
 
 /*

@@ -297,21 +297,6 @@ func (s *S3Storage) GarbageCollection() {
 	fmt.Println(blobs)
 }
 
-func (s *S3Storage) DiskUsage() (Disk, error) {
-	var disk Disk
-	// opts := minio.ListObjectsOptions{
-	// 	Recursive: true,
-	// 	Prefix:    config.BLOBS_PATH,
-	// }
-	// for object := range s.S3.ListObjects(context.Background(), config.BACKET_NAME, opts) {
-	// 	if object.Err != nil {
-	// 		return disk, object.Err
-	// 	}
-	// 	disk.Used += object.Size
-	// }
-	return disk, nil
-}
-
 func (s *S3Storage) ReadFile(path string) ([]byte, error) {
 	reader, err := s.S3.GetObject(context.Background(), config.BACKET_NAME, path, minio.GetObjectOptions{})
 	if err != nil {
@@ -319,4 +304,12 @@ func (s *S3Storage) ReadFile(path string) ([]byte, error) {
 	}
 	defer reader.Close()
 	return io.ReadAll(reader)
+}
+
+func (*S3Storage) GetManifestList(repository, image string) ([]string, error) {
+	return nil, nil
+}
+
+func (*S3Storage) GetCloudList() ([]string, error) {
+	return nil, nil
 }
