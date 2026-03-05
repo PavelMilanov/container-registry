@@ -5,6 +5,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/PavelMilanov/container-registry/config"
@@ -75,12 +76,12 @@ func (h *Handler) InitRouters() *gin.Engine {
 		api.GET("/:name/:image", h.getImages)
 		api.DELETE("/:name/:image", h.deleteImage)
 	}
-	// router.NoRoute(func(c *gin.Context) {
-	// 	if strings.HasPrefix(c.Request.URL.Path, "/v2/") {
-	// 		c.Status(http.StatusNotFound)
-	// 		return
-	// 	}
-	// 	c.String(http.StatusOK, "is OK.")
-	// })
+	router.NoRoute(func(c *gin.Context) {
+		if strings.HasPrefix(c.Request.URL.Path, "/v2/") {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		c.String(http.StatusOK, "is OK.")
+	})
 	return router
 }
