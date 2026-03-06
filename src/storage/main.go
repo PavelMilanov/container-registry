@@ -21,8 +21,8 @@ type Storage interface {
 	GetManifest(repository, image, reference string) ([]byte, error)
 	GetManifestList(repository, image string) ([]string, error)
 	GetCloudList() ([]string, error)
-	AddRegistry(registry string) error
-	DeleteRegistry(registry string) error
+	AddCloud(name string) error
+	DeleteCloud(name string) error
 	DeleteImage(repository, imageName, imageTag, imageHash string) error
 	DeleteRepository(name, image string) error
 	GarbageCollection()

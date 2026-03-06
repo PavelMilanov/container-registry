@@ -20,19 +20,16 @@ import (
 	"gorm.io/gorm"
 )
 
-func AddRegistry(name string, sql *gorm.DB, storage storage.Storage) error {
-	registry := db.Registry{Name: name}
-	if err := registry.Add(sql); err != nil {
-		logrus.Error(err)
-		return errors.New("Ошибка при создании реестра")
-	}
-	if err := storage.AddRegistry(name); err != nil {
-		logrus.Error(err)
+func AddCloud(name string, storage storage.Storage) error {
+	if err := storage.AddCloud(name); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"name": name,
+		}).Error(err)
 		return errors.New("Ошибка при создании реестра")
 	}
 	logrus.WithFields(logrus.Fields{
-		"name": registry.Name,
-	}).Info("Создан новый реестр")
+		"name": name,
+	}).Info("Создано пространство")
 	return nil
 }
 
@@ -53,17 +50,16 @@ func GetRegistries(sql *gorm.DB) ([]db.Registry, error) {
 	return data, nil
 }
 
-func DeleteRegistry(name string, sql *gorm.DB, storage storage.Storage) error {
-	if err := storage.DeleteRegistry(name); err != nil {
-		logrus.Error(err)
+func DeleteCloud(name string, storage storage.Storage) error {
+	if err := storage.DeleteCloud(name); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"name": name,
+		}).Error(err)
 		return err
 	}
-	registy := db.Registry{Name: name}
-	if err := registy.Delete(sql); err != nil {
-		logrus.Error(err)
-		return err
-	}
-	logrus.Infof("Удален реестр %+v", registy)
+	logrus.WithFields(logrus.Fields{
+		"name": name,
+	}).Info("Удалено пространство")
 	return nil
 }
 

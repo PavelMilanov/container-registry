@@ -35,41 +35,62 @@ func (h *Handler) getRegistry(c *gin.Context) {
 }
 
 /*
-addRegistry -добавление указанного реестра.
+addCloud -добавление указанного пространства.
 
-	<name> - название реестра.
+	{
+	 "cloud": "name"
+	}
 
-	/api/<name> - добавление реестра.
+	   /api/cloud - добавление облака.
 */
-func (h *Handler) addRegistry(c *gin.Context) {
-	data := c.Param("name")
-	if err := services.AddRegistry(data, h.DB.Sql, h.STORAGE); err != nil {
+func (h *Handler) addCloud(c *gin.Context) {
+	var req struct {
+		Cloud string `json:"cloud"`
+	}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "неверный формат"})
+		return
+	}
+	if err := services.AddCloud(req.Cloud, h.STORAGE); err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"err": err.Error()})
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{})
 }
 
+/*
+getCloudList -получение списка пространств.
+
+	/api/cloud/list - список пространств.
+*/
 func (h *Handler) getCloudList(c *gin.Context) {
 	list, err := services.GetCloudList(h.STORAGE)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"data": list})
+	c.JSON(http.StatusOK, gin.H{"clouds": list})
 }
 
 /*
-deleteRegistry -удаление указанного реестра.
+deleteCloud -удаление указанного пространства.
 
-	<name> - название реестра.
+	{
+	 "cloud": "name"
+	}
 
-	/api/<name> - удаляется реестр.
+	   /api/cloud - удаление пространства.
 */
-func (h *Handler) deleteRegistry(c *gin.Context) {
-	data := c.Param("name")
-	if err := services.DeleteRegistry(data, h.DB.Sql, h.STORAGE); err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"err": "Ошибка при удалении реестра"})
+func (h *Handler) deleteCloud(c *gin.Context) {
+	var req struct {
+		Cloud string `json:"cloud"`
+	}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "неверный формат"})
+		return
+	}
+	if err := services.DeleteCloud(req.Cloud, h.STORAGE); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"err": err.Error()})
 		return
 	}
 	c.JSON(http.StatusAccepted, gin.H{})

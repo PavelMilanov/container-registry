@@ -151,8 +151,8 @@ AddRegistry добавляет новый реестр в хранилище.
 
 	registry - имя реестра.
 */
-func (lc *LocalStorage) AddRegistry(registry string) error {
-	if err := os.MkdirAll(filepath.Join(config.MANIFEST_PATH, registry), 0755); err != nil {
+func (lc *LocalStorage) AddCloud(name string) error {
+	if err := os.MkdirAll(filepath.Join(config.MANIFEST_PATH, name), 0755); err != nil {
 		return err
 	}
 	return nil
@@ -163,8 +163,8 @@ DeleteRegistry удаляет реестр из хранилища.
 
 	registry - имя реестра.
 */
-func (lc *LocalStorage) DeleteRegistry(registry string) error {
-	if err := os.RemoveAll(filepath.Join(config.MANIFEST_PATH, registry)); err != nil {
+func (lc *LocalStorage) DeleteCloud(name string) error {
+	if err := os.RemoveAll(filepath.Join(config.MANIFEST_PATH, name)); err != nil {
 		return err
 	}
 	return nil

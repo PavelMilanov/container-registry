@@ -70,9 +70,9 @@ func (h *Handler) InitRouters() *gin.Engine {
 	{
 		api.GET("/", h.getRegistry)
 		api.GET("/:name", h.getRegistry)
-		api.GET("cloud/list", h.getCloudList)
-		api.POST("/:name", h.addRegistry)
-		api.DELETE("/:name", h.deleteRegistry)
+		api.GET("/cloud/list", h.getCloudList)
+		api.POST("/cloud", h.addCloud)
+		api.DELETE("/cloud", h.deleteCloud)
 		api.GET("/:name/:image", h.getImages)
 		api.DELETE("/:name/:image", h.deleteImage)
 	}

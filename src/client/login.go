@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func Login(login, password string) (string, error) {
+func (c *Client) Login(login, password string) (string, error) {
 	data := map[string]string{
 		"username": login,
 		"password": password,
@@ -18,7 +18,7 @@ func Login(login, password string) (string, error) {
 	jsonData, _ := json.Marshal(data)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://localhost:5050/login", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.ServerURL+"/login", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", err
 	}

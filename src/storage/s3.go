@@ -185,8 +185,8 @@ AddRegistry добавляет новый реестр в хранилище.
 
 	registry - имя реестра.
 */
-func (s *S3Storage) AddRegistry(registry string) error {
-	if err := os.MkdirAll(filepath.Join(config.MANIFEST_PATH, registry), 0755); err != nil {
+func (s *S3Storage) AddCloud(name string) error {
+	if err := os.MkdirAll(filepath.Join(config.MANIFEST_PATH, name), 0755); err != nil {
 		return err
 	}
 	return nil
@@ -197,8 +197,8 @@ DeleteRegistry удаляет реестр из хранилища.
 
 	registry - имя реестра.
 */
-func (s *S3Storage) DeleteRegistry(registry string) error {
-	path := filepath.Join(config.MANIFEST_PATH, registry)
+func (s *S3Storage) DeleteCloud(name string) error {
+	path := filepath.Join(config.MANIFEST_PATH, name)
 	objectsCh := make(chan minio.ObjectInfo)
 	go func() {
 		defer close(objectsCh)
@@ -214,7 +214,7 @@ func (s *S3Storage) DeleteRegistry(registry string) error {
 	for e := range err {
 		return e.Err
 	}
-	if err := os.RemoveAll(filepath.Join(config.MANIFEST_PATH, registry)); err != nil {
+	if err := os.RemoveAll(filepath.Join(config.MANIFEST_PATH, name)); err != nil {
 		return err
 	}
 	return nil
