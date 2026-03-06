@@ -55,7 +55,7 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 		MediaType:  mediaType,
 		Digest:     calculatedDigest,
 	}
-	if err := services.SaveManifest(h.DB.Sql, h.STORAGE, meta, body); err != nil {
+	if err := services.SaveManifest(h.STORAGE, meta, body); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}

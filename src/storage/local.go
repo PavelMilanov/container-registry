@@ -98,18 +98,18 @@ SaveManifest сохраняет манифест в хранилище.
 func (lc *LocalStorage) SaveManifest(meta config.Meta, body []byte, manifestPath string) error {
 	tagPath := filepath.Join(config.MANIFEST_PATH, meta.Repository, meta.Image, "tags", meta.Tag)
 	if err := os.MkdirAll(filepath.Dir(manifestPath), 0755); err != nil {
-		return errors.New("Не удалось создать директорию для манифеста")
+		return err
 	}
 	if err := os.WriteFile(manifestPath, body, 0644); err != nil {
-		return errors.New("Не удалось сохранить файл манифеста")
+		return err
 	}
 	// Если это тег (а не digest), создаём символическую ссылку
 	if !strings.HasPrefix(meta.Tag, "sha256:") {
 		if err := os.MkdirAll(filepath.Dir(tagPath), 0755); err != nil {
-			return errors.New("Не удалось создать директорию для тега")
+			return err
 		}
 		if err := os.WriteFile(tagPath, []byte(meta.Digest), 0644); err != nil {
-			return errors.New("Не удалось сохранить файл тега")
+			return err
 		}
 	}
 	return nil
@@ -254,15 +254,27 @@ func (*LocalStorage) GetManifestList(repository, image string) ([]string, error)
 
 /* Возвращает список пространств */
 func (*LocalStorage) GetCloudList() ([]string, error) {
+	var cloud []string
 	dirs, err := os.ReadDir(config.MANIFEST_PATH)
 	if err != nil {
-		return nil, err
+		return cloud, err
 	}
-	var cloud []string
 	for _, dir := range dirs {
 		if dir.IsDir() {
 			cloud = append(cloud, dir.Name())
 		}
 	}
 	return cloud, nil
+}
+
+func (*LocalStorage) GetRepositoriesList(cloud string) ([]string, error) {
+	var data []string
+	repos, err := os.ReadDir(filepath.Join(config.MANIFEST_PATH, cloud))
+	if err != nil {
+		return data, errors.New(cloud + " не найден")
+	}
+	for _, repo := range repos {
+		data = append(data, repo.Name())
+	}
+	return data, nil
 }

@@ -27,17 +27,16 @@ func NewHandler(storage storage.Storage, db *db.SQLite, env *config.Env) *Handle
 }
 
 func (h *Handler) InitRouters() *gin.Engine {
-
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{h.ENV.Server.Realm, "http://localhost:3000"},
+		AllowOrigins:     []string{"http://localhost:5050"},
 		AllowMethods:     []string{"GET", "POST", "DELETE"},
 		AllowHeaders:     []string{"Origin", "Authorization", "Content-Type"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		MaxAge:           24 * time.Hour,
 	}))
-	router.Static("/assets/", "./assets")
+	// router.Static("/assets/", "./assets")
 
 	router.POST("/login", h.login)
 	router.GET("/check", func(c *gin.Context) {
@@ -71,6 +70,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 		api.GET("/", h.getRegistry)
 		api.GET("/:name", h.getRegistry)
 		api.GET("/cloud/list", h.getCloudList)
+		api.GET("/cloud/:cloud/repositories", h.getRepoList)
 		api.POST("/cloud", h.addCloud)
 		api.DELETE("/cloud", h.deleteCloud)
 		api.GET("/:name/:image", h.getImages)

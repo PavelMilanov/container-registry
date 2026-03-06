@@ -13,7 +13,6 @@ import (
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/handlers"
-	"github.com/PavelMilanov/container-registry/services"
 	"github.com/PavelMilanov/container-registry/storage"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
@@ -63,10 +62,10 @@ to quickly create a Cobra application.`,
 		if err != nil {
 			logrus.Error(err)
 		}
-		_, err = c.AddFunc("0 0 * * 0", func() {
-			logrus.Debug("Запуск задания удаления старых образов")
-			go services.DeleteOlderImages(sqlite.Sql, store)
-		}) // каждое воскресенье в 00:00
+		// _, err = c.AddFunc("0 0 * * 0", func() {
+		// 	logrus.Debug("Запуск задания удаления старых образов")
+		// 	go services.DeleteOlderImages(sqlite.Sql, store)
+		// }) // каждое воскресенье в 00:00
 		if err != nil {
 			logrus.Error(err)
 		}

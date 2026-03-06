@@ -3,11 +3,7 @@
 package services
 
 import (
-	"bufio"
-	"bytes"
-	"encoding/json"
 	"errors"
-	"io"
 	"path/filepath"
 	"strconv"
 
@@ -36,16 +32,21 @@ func AddCloud(name string, storage storage.Storage) error {
 func GetCloudList(storage storage.Storage) ([]string, error) {
 	data, err := storage.GetCloudList()
 	if err != nil {
-		return nil, err
+		logrus.WithFields(logrus.Fields{
+			"name": "clouds",
+		}).Error(err)
+		return data, err
 	}
 	return data, nil
 }
 
-func GetRegistries(sql *gorm.DB) ([]db.Registry, error) {
-	data, err := db.GetRegistires(sql)
+func GetRepositoriesList(cloud string, storage storage.Storage) ([]string, error) {
+	data, err := storage.GetRepositoriesList(cloud)
 	if err != nil {
-		logrus.Error(err)
-		return nil, err
+		logrus.WithFields(logrus.Fields{
+			"name": "repositories",
+		}).Error(err)
+		return data, err
 	}
 	return data, nil
 }
@@ -153,34 +154,34 @@ func GetImages(image string, sql *gorm.DB) ([]db.Image, error) {
 }
 
 // DeleteOlderImages удаляет старые образы из базы данных и хранилища.
-func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {
-	tagCount, err := db.GetCountTag(sql)
-	if err != nil {
-		logrus.Errorf("Не найден тег: %v", err)
-		return
-	}
-	data, err := db.GetLastTagImages(sql, tagCount)
-	if err != nil {
-		logrus.Error(err)
-		return
-	}
-	// statBefore, err := storage.DiskUsage()
-	if err != nil {
-		logrus.Errorf("Ошибка получения информации о дисковом пространстве: %v", err)
-		return
-	}
-	for _, item := range data {
-		repo, _ := db.GetRepository(sql, "ID = ?", item.RepositoryID)
-		DeleteImage(repo.Name, item.Name, item.Hash, sql, storage)
-	}
-	// statAfter, err := storage.DiskUsage()
-	if err != nil {
-		logrus.Errorf("Ошибка получения информации о дисковом пространстве: %v", err)
-		return
-	}
-	// clearSpace := statBefore.Used - statAfter.Used
-	// logrus.Infof("Удалено %d старых образов\nОчищено пространства %s", len(data), system.HumanizeSize(clearSpace))
-}
+// func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {
+// 	tagCount, err := db.GetCountTag(sql)
+// 	if err != nil {
+// 		logrus.Errorf("Не найден тег: %v", err)
+// 		return
+// 	}
+// 	data, err := db.GetLastTagImages(sql, tagCount)
+// 	if err != nil {
+// 		logrus.Error(err)
+// 		return
+// 	}
+// 	// statBefore, err := storage.DiskUsage()
+// 	if err != nil {
+// 		logrus.Errorf("Ошибка получения информации о дисковом пространстве: %v", err)
+// 		return
+// 	}
+// 	for _, item := range data {
+// 		repo, _ := db.GetRepository(sql, "ID = ?", item.RepositoryID)
+// 		DeleteImage(repo.Name, item.Name, item.Hash, sql, storage)
+// 	}
+// 	// statAfter, err := storage.DiskUsage()
+// 	if err != nil {
+// 		logrus.Errorf("Ошибка получения информации о дисковом пространстве: %v", err)
+// 		return
+// 	}
+// 	// clearSpace := statBefore.Used - statAfter.Used
+// 	// logrus.Infof("Удалено %d старых образов\nОчищено пространства %s", len(data), system.HumanizeSize(clearSpace))
+// }
 
 /*
 Registration- реализация регистрации пользователя.
@@ -204,9 +205,14 @@ Login - реализация авторизации пользователя.
 func Login(sql *gorm.DB, cred *config.Env, username, password string) (string, error) {
 	user := db.User{Name: username, Password: password}
 	if err := user.Login(sql, cred); err != nil {
-		logrus.Error(err)
+		logrus.WithFields(logrus.Fields{
+			"username": username,
+		}).Error(err)
 		return user.Token, err
 	}
+	logrus.WithFields(logrus.Fields{
+		"username": username,
+	}).Info("Успешная авторизация")
 	return user.Token, nil
 }
 
@@ -224,44 +230,45 @@ func SetCountTag(sql *gorm.DB, count string) error {
 }
 
 /*
-SaveManifest - логика сохранения манифеста в базу данных и хранилище.
+SaveManifest - логика сохранения манифеста в хранилище.
 */
-func SaveManifest(sql *gorm.DB, storage storage.Storage, meta config.Meta, body []byte) error {
+func SaveManifest(storage storage.Storage, meta config.Meta, body []byte) error {
 	manifestPath := filepath.Join(config.MANIFEST_PATH, meta.Repository, meta.Image, meta.Digest)
 	if err := storage.SaveManifest(meta, body, manifestPath); err != nil {
-		logrus.Error(err)
+		logrus.WithFields(logrus.Fields{
+			"digest": meta.Digest,
+		}).Error(err)
 		return err
 	}
 	logrus.WithFields(logrus.Fields{
 		"digest": meta.Digest,
 	}).Info("Загружен манифест")
-
-	reader := bufio.NewReader(bytes.NewBuffer(body))
-	manifestDescriptor := struct {
-		Schema int    `json:"schemaVersion"`
-		Type   string `json:"mediaType"`
-		Config struct {
-			Digest string `json:"digest"`
-		} `json:"config"`
-		Manifests []struct {
-			Digest   string `json:"digest"`
-			Platform struct {
-				Architecture string `json:"architecture"`
-				OS           string `json:"os"`
-			} `json:"platform"`
-		} `json:"manifests"`
-		Layers []struct {
-			Size int64 `json:"size"`
-		} `json:"layers"`
-	}{}
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		logrus.Error(err)
-		return err
-	}
-	if err := json.Unmarshal(data, &manifestDescriptor); err != nil {
-		logrus.Error(err)
-		return err
-	}
+	// reader := bufio.NewReader(bytes.NewBuffer(body))
+	// manifestDescriptor := struct {
+	// 	Schema int    `json:"schemaVersion"`
+	// 	Type   string `json:"mediaType"`
+	// 	Config struct {
+	// 		Digest string `json:"digest"`
+	// 	} `json:"config"`
+	// 	Manifests []struct {
+	// 		Digest   string `json:"digest"`
+	// 		Platform struct {
+	// 			Architecture string `json:"architecture"`
+	// 			OS           string `json:"os"`
+	// 		} `json:"platform"`
+	// 	} `json:"manifests"`
+	// 	Layers []struct {
+	// 		Size int64 `json:"size"`
+	// 	} `json:"layers"`
+	// }{}
+	// data, err := io.ReadAll(reader)
+	// if err != nil {
+	// 	logrus.Error(err)
+	// 	return err
+	// }
+	// if err := json.Unmarshal(data, &manifestDescriptor); err != nil {
+	// 	logrus.Error(err)
+	// 	return err
+	// }
 	return nil
 }

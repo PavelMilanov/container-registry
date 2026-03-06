@@ -16,22 +16,22 @@ getRegistry - получение информации о реестрах.
 	/api/<name> - вывод всех образов репозитория.
 */
 func (h *Handler) getRegistry(c *gin.Context) {
-	name := c.Param("name")
-	if name == "" {
-		data, err := services.GetRegistries(h.DB.Sql)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"data": data})
-		return
-	}
-	data, err := services.GetRepositories(h.DB.Sql, name)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"data": data})
+	// name := c.Param("name")
+	// if name == "" {
+	// 	data, err := services.GetRegistries(h.DB.Sql)
+	// 	if err != nil {
+	// 		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+	// 		return
+	// 	}
+	// 	c.JSON(http.StatusOK, gin.H{"data": data})
+	// 	return
+	// }
+	// data, err := services.GetRepositories(h.DB.Sql, name)
+	// if err != nil {
+	// 	c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+	// 	return
+	// }
+	// c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
 /*
@@ -94,6 +94,16 @@ func (h *Handler) deleteCloud(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusAccepted, gin.H{})
+}
+
+func (h *Handler) getRepoList(c *gin.Context) {
+	cloud := c.Param("cloud")
+	list, err := services.GetRepositoriesList(cloud, h.STORAGE)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"repositories": list})
 }
 
 /*

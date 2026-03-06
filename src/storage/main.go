@@ -20,9 +20,10 @@ type Storage interface {
 	SaveManifest(meta config.Meta, body []byte, link string) error
 	GetManifest(repository, image, reference string) ([]byte, error)
 	GetManifestList(repository, image string) ([]string, error)
-	GetCloudList() ([]string, error)
 	AddCloud(name string) error
 	DeleteCloud(name string) error
+	GetCloudList() ([]string, error)
+	GetRepositoriesList(cloud string) ([]string, error)
 	DeleteImage(repository, imageName, imageTag, imageHash string) error
 	DeleteRepository(name, image string) error
 	GarbageCollection()

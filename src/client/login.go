@@ -10,6 +10,19 @@ import (
 	"time"
 )
 
+/*
+Login делает запрос к API для аутентификации и возвращает токен.
+
+Params:
+
+	login - логин пользователя.
+	password - пароль пользователя.
+
+Returns:
+
+	string - токен.
+	error - ошибка, если запрос не удался.
+*/
 func (c *Client) Login(login, password string) (string, error) {
 	data := map[string]string{
 		"username": login,

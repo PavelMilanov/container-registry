@@ -313,3 +313,7 @@ func (*S3Storage) GetManifestList(repository, image string) ([]string, error) {
 func (*S3Storage) GetCloudList() ([]string, error) {
 	return nil, nil
 }
+
+func (s *S3Storage) GetRepositoriesList(cloud string) ([]string, error) {
+	return nil, nil
+}
