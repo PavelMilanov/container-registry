@@ -5,10 +5,13 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/storage"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -24,11 +27,16 @@ func NewHandler(storage storage.Storage, db *db.SQLite, env *config.Env) *Handle
 }
 
 func (h *Handler) InitRouters() *gin.Engine {
-
 	router := gin.Default()
-	setupCORS(router, h)
-
-	router.Static("/assets/", "./assets")
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:5050"},
+		AllowMethods:     []string{"GET", "POST", "DELETE"},
+		AllowHeaders:     []string{"Origin", "Authorization", "Content-Type"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           24 * time.Hour,
+	}))
+	// router.Static("/assets/", "./assets")
 
 	router.POST("/login", h.login)
 	router.GET("/check", func(c *gin.Context) {
@@ -61,13 +69,19 @@ func (h *Handler) InitRouters() *gin.Engine {
 	{
 		api.GET("/", h.getRegistry)
 		api.GET("/:name", h.getRegistry)
-		api.POST("/:name", h.addRegistry)
-		api.DELETE("/:name", h.deleteRegistry)
+		api.GET("/cloud/list", h.getCloudList)
+		api.GET("/cloud/:cloud/repositories", h.getRepoList)
+		api.POST("/cloud", h.addCloud)
+		api.DELETE("/cloud", h.deleteCloud)
 		api.GET("/:name/:image", h.getImages)
 		api.DELETE("/:name/:image", h.deleteImage)
-		api.POST("/settings", h.settings)
-		api.GET("/settings", h.settings)
 	}
-	noRouter(router, h)
+	router.NoRoute(func(c *gin.Context) {
+		if strings.HasPrefix(c.Request.URL.Path, "/v2/") {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		c.String(http.StatusOK, "is OK.")
+	})
 	return router
 }

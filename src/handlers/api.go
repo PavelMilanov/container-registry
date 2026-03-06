@@ -16,34 +16,42 @@ getRegistry - получение информации о реестрах.
 	/api/<name> - вывод всех образов репозитория.
 */
 func (h *Handler) getRegistry(c *gin.Context) {
-	name := c.Param("name")
-	if name == "" {
-		data, err := services.GetRegistries(h.DB.Sql)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"data": data})
-		return
-	}
-	data, err := services.GetRepositories(h.DB.Sql, name)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"data": data})
+	// name := c.Param("name")
+	// if name == "" {
+	// 	data, err := services.GetRegistries(h.DB.Sql)
+	// 	if err != nil {
+	// 		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+	// 		return
+	// 	}
+	// 	c.JSON(http.StatusOK, gin.H{"data": data})
+	// 	return
+	// }
+	// data, err := services.GetRepositories(h.DB.Sql, name)
+	// if err != nil {
+	// 	c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+	// 	return
+	// }
+	// c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
 /*
-addRegistry -добавление указанного реестра.
+addCloud -добавление указанного пространства.
 
-	<name> - название реестра.
+	{
+	 "cloud": "name"
+	}
 
-	/api/<name> - добавление реестра.
+	   /api/cloud - добавление облака.
 */
-func (h *Handler) addRegistry(c *gin.Context) {
-	data := c.Param("name")
-	if err := services.AddRegistry(data, h.DB.Sql, h.STORAGE); err != nil {
+func (h *Handler) addCloud(c *gin.Context) {
+	var req struct {
+		Cloud string `json:"cloud"`
+	}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "неверный формат"})
+		return
+	}
+	if err := services.AddCloud(req.Cloud, h.STORAGE); err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"err": err.Error()})
 		return
 	}
@@ -51,19 +59,51 @@ func (h *Handler) addRegistry(c *gin.Context) {
 }
 
 /*
-deleteRegistry -удаление указанного реестра.
+getCloudList -получение списка пространств.
 
-	<name> - название реестра.
-
-	/api/<name> - удаляется реестр.
+	/api/cloud/list - список пространств.
 */
-func (h *Handler) deleteRegistry(c *gin.Context) {
-	data := c.Param("name")
-	if err := services.DeleteRegistry(data, h.DB.Sql, h.STORAGE); err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"err": "Ошибка при удалении реестра"})
+func (h *Handler) getCloudList(c *gin.Context) {
+	list, err := services.GetCloudList(h.STORAGE)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"clouds": list})
+}
+
+/*
+deleteCloud -удаление указанного пространства.
+
+	{
+	 "cloud": "name"
+	}
+
+	   /api/cloud - удаление пространства.
+*/
+func (h *Handler) deleteCloud(c *gin.Context) {
+	var req struct {
+		Cloud string `json:"cloud"`
+	}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "неверный формат"})
+		return
+	}
+	if err := services.DeleteCloud(req.Cloud, h.STORAGE); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"err": err.Error()})
 		return
 	}
 	c.JSON(http.StatusAccepted, gin.H{})
+}
+
+func (h *Handler) getRepoList(c *gin.Context) {
+	cloud := c.Param("cloud")
+	list, err := services.GetRepositoriesList(cloud, h.STORAGE)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"repositories": list})
 }
 
 /*
@@ -167,43 +207,4 @@ func (h *Handler) login(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"token": token})
-}
-
-/*
-settings - настройки.
-
-	/api/settings - получение настроек.
-	/api/settings?tag=<int> - установка количества тегов.
-	/api/settings?garbage=true - очистка хранилища.
-*/
-func (h *Handler) settings(c *gin.Context) {
-	if c.Request.Method == "GET" {
-		data, err := services.GetSettings(h.DB.Sql, h.STORAGE)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{
-			"version":       data.Version,
-			"count":         data.Count,
-			"total":         data.Total,
-			"used":          data.Used,
-			"usedToPercent": data.UsedToPercent})
-	} else if c.Request.Method == "POST" {
-		q := c.Query("garbage")
-		t := c.Query("tag")
-		if q == "true" {
-			h.STORAGE.GarbageCollection()
-			c.JSON(http.StatusAccepted, gin.H{"data": "Очистка завершена"})
-			return
-		}
-		if t != "" {
-			if err := services.SetCountTag(h.DB.Sql, t); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-				return
-			}
-			c.JSON(http.StatusAccepted, gin.H{"data": "Настройки сохранены"})
-			return
-		}
-	}
 }
