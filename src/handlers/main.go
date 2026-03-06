@@ -36,11 +36,13 @@ func (h *Handler) InitRouters() *gin.Engine {
 		AllowCredentials: true,
 		MaxAge:           24 * time.Hour,
 	}))
-	// router.Static("/assets/", "./assets")
+	router.Use(gin.LoggerWithConfig(gin.LoggerConfig{
+		SkipPaths: []string{"/check"},
+	}))
 
 	router.POST("/login", h.login)
 	router.GET("/check", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		c.Status(http.StatusOK)
 	})
 	router.POST("/registration", h.registration)
 	router.GET("/v2/auth", h.authHandler)
