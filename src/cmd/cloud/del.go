@@ -9,6 +9,7 @@ import (
 var delCmd = &cobra.Command{
 	Use:   "del",
 	Short: "del",
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		authToken, err := cr.Login(env.User.Login, env.User.Password)
 		if err != nil {

@@ -6,9 +6,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var RepositoriesCmd = &cobra.Command{
-	Use:   "repositories",
-	Short: "repositories",
+var ShowCmd = &cobra.Command{
+	Use:   "show",
+	Short: "show",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		authToken, err := cr.Login(env.User.Login, env.User.Password)
@@ -28,5 +28,5 @@ var RepositoriesCmd = &cobra.Command{
 }
 
 func init() {
-	CloudCmd.AddCommand(RepositoriesCmd)
+	CloudCmd.AddCommand(ShowCmd)
 }
