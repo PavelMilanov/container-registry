@@ -20,7 +20,6 @@ var delCmd = &cobra.Command{
 			fmt.Println(err)
 			return
 		}
-		fmt.Println("Пространство удалено")
 	},
 }
 

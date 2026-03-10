@@ -20,7 +20,6 @@ var addCmd = &cobra.Command{
 			fmt.Println(err)
 			return
 		}
-		fmt.Println("Пространство создано")
 	},
 }
 

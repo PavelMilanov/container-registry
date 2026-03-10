@@ -40,13 +40,13 @@ func (c *Client) GetCloudList(auth string) ([]string, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.New(string(body))
 	}
-	var result struct {
+	var data struct {
 		Clouds []string `json:"clouds"`
 	}
-	if err := json.Unmarshal(body, &result); err != nil {
+	if err := json.Unmarshal(body, &data); err != nil {
 		return nil, err
 	}
-	return result.Clouds, nil
+	return data.Clouds, nil
 }
 
 /*
@@ -81,9 +81,16 @@ func (c *Client) AddCloud(auth string, cloud string) error {
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusCreated {
 		return errors.New(string(body))
 	}
+	var data struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(body, &data); err != nil {
+		return err
+	}
+	fmt.Println(data.Message)
 	return nil
 }
 
@@ -110,6 +117,13 @@ func (c *Client) DelCloud(auth string, cloud string) error {
 	if resp.StatusCode != http.StatusAccepted {
 		return errors.New(string(body))
 	}
+	var data struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(body, &data); err != nil {
+		return err
+	}
+	fmt.Println(data.Message)
 	return nil
 }
 

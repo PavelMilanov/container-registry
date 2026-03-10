@@ -11,7 +11,6 @@ import (
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/storage"
 
-	"github.com/PavelMilanov/container-registry/system"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
@@ -64,94 +63,94 @@ func DeleteCloud(name string, storage storage.Storage) error {
 	return nil
 }
 
-func DeleteImage(name, image, hash string, sql *gorm.DB, storage storage.Storage) error {
-	img := db.Image{Name: image, Hash: hash}
-	err := sql.Transaction(func(tx *gorm.DB) error {
-		if err := img.Delete(tx); err != nil {
-			tx.Rollback()
-			return err
-		}
-		imgSize := img.GetSize(tx, "repository_id = ?", img.RepositoryID)
-		repo, _ := db.GetRepository(tx, "ID = ?", img.RepositoryID)
-		repo.Size = imgSize
-		repo.SizeAlias = system.ConvertSize(repo.Size)
-		if err := repo.UpdateSize(tx); err != nil {
-			tx.Rollback()
-			return err
-		}
-		repoSize := repo.GetSize(tx, "registry_id = ?", repo.RegistryID)
-		registry, _ := db.GetRegistry(tx, "ID = ?", repo.RegistryID)
-		registry.Size = repoSize
-		registry.SizeAlias = system.ConvertSize(registry.Size)
-		if err := registry.UpdateSize(tx); err != nil {
-			tx.Rollback()
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		logrus.Error(err)
-		return err
-	}
-	if err := storage.DeleteImage(name, img.Name, img.Tag, img.Hash); err != nil {
-		logrus.Error(err)
-		return err
-	}
-	return nil
-}
+// func DeleteImage(name, image, hash string, sql *gorm.DB, storage storage.Storage) error {
+// 	img := db.Image{Name: image, Hash: hash}
+// 	err := sql.Transaction(func(tx *gorm.DB) error {
+// 		if err := img.Delete(tx); err != nil {
+// 			tx.Rollback()
+// 			return err
+// 		}
+// 		imgSize := img.GetSize(tx, "repository_id = ?", img.RepositoryID)
+// 		repo, _ := db.GetRepository(tx, "ID = ?", img.RepositoryID)
+// 		repo.Size = imgSize
+// 		repo.SizeAlias = system.ConvertSize(repo.Size)
+// 		if err := repo.UpdateSize(tx); err != nil {
+// 			tx.Rollback()
+// 			return err
+// 		}
+// 		repoSize := repo.GetSize(tx, "registry_id = ?", repo.RegistryID)
+// 		registry, _ := db.GetRegistry(tx, "ID = ?", repo.RegistryID)
+// 		registry.Size = repoSize
+// 		registry.SizeAlias = system.ConvertSize(registry.Size)
+// 		if err := registry.UpdateSize(tx); err != nil {
+// 			tx.Rollback()
+// 			return err
+// 		}
+// 		return nil
+// 	})
+// 	if err != nil {
+// 		logrus.Error(err)
+// 		return err
+// 	}
+// 	if err := storage.DeleteImage(name, img.Name, img.Tag, img.Hash); err != nil {
+// 		logrus.Error(err)
+// 		return err
+// 	}
+// 	return nil
+// }
 
-func DeleteRepository(name, image string, sql *gorm.DB, storage storage.Storage) error {
-	repo, err := db.GetRepository(sql, "name = ?", image)
-	if err != nil {
-		logrus.Error(err)
-		return err
-	}
-	if err := sql.Transaction(func(tx *gorm.DB) error {
-		repoSize := repo.GetSize(tx, "registry_id = ?", repo.RegistryID)
-		if err := repo.Delete(tx); err != nil {
-			tx.Rollback()
-			logrus.Error(err)
-			return err
-		}
-		registry, _ := db.GetRegistry(tx, "ID = ?", repo.RegistryID)
-		registry.Size = repoSize
-		registry.SizeAlias = system.ConvertSize(registry.Size)
-		if err := registry.UpdateSize(tx); err != nil {
-			tx.Rollback()
-			logrus.Error(err)
-			return err
-		}
-		return nil
-	}); err != nil {
-		logrus.Error(err)
-		return err
-	}
-	if err := storage.DeleteRepository(name, repo.Name); err != nil {
-		logrus.Error(err)
-		return err
-	}
-	logrus.Infof("Удален репозиторий %+v", repo)
-	return nil
-}
+// func DeleteRepository(name, image string, sql *gorm.DB, storage storage.Storage) error {
+// 	repo, err := db.GetRepository(sql, "name = ?", image)
+// 	if err != nil {
+// 		logrus.Error(err)
+// 		return err
+// 	}
+// 	if err := sql.Transaction(func(tx *gorm.DB) error {
+// 		repoSize := repo.GetSize(tx, "registry_id = ?", repo.RegistryID)
+// 		if err := repo.Delete(tx); err != nil {
+// 			tx.Rollback()
+// 			logrus.Error(err)
+// 			return err
+// 		}
+// 		registry, _ := db.GetRegistry(tx, "ID = ?", repo.RegistryID)
+// 		registry.Size = repoSize
+// 		registry.SizeAlias = system.ConvertSize(registry.Size)
+// 		if err := registry.UpdateSize(tx); err != nil {
+// 			tx.Rollback()
+// 			logrus.Error(err)
+// 			return err
+// 		}
+// 		return nil
+// 	}); err != nil {
+// 		logrus.Error(err)
+// 		return err
+// 	}
+// 	if err := storage.DeleteRepository(name, repo.Name); err != nil {
+// 		logrus.Error(err)
+// 		return err
+// 	}
+// 	logrus.Infof("Удален репозиторий %+v", repo)
+// 	return nil
+// }
 
-func GetRepositories(sql *gorm.DB, name string) ([]db.Repository, error) {
-	var registry db.Registry
-	if err := registry.GetRepositories(sql, name); err != nil {
-		logrus.Error(err)
-		return registry.Repositories, err
-	}
-	return registry.Repositories, nil
-}
+// func GetRepositories(sql *gorm.DB, name string) ([]db.Repository, error) {
+// 	var registry db.Registry
+// 	if err := registry.GetRepositories(sql, name); err != nil {
+// 		logrus.Error(err)
+// 		return registry.Repositories, err
+// 	}
+// 	return registry.Repositories, nil
+// }
 
-func GetImages(image string, sql *gorm.DB) ([]db.Image, error) {
-	repo, err := db.GetRepository(sql, "name = ?", image)
-	if err != nil {
-		logrus.Error(err)
-		return nil, err
-	}
-	data := db.GetImageTags(sql, repo.ID, image)
-	return data, nil
-}
+// func GetImages(image string, sql *gorm.DB) ([]db.Image, error) {
+// 	repo, err := db.GetRepository(sql, "name = ?", image)
+// 	if err != nil {
+// 		logrus.Error(err)
+// 		return nil, err
+// 	}
+// 	data := db.GetImageTags(sql, repo.ID, image)
+// 	return data, nil
+// }
 
 // DeleteOlderImages удаляет старые образы из базы данных и хранилища.
 // func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {

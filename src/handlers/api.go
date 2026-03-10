@@ -48,14 +48,14 @@ func (h *Handler) addCloud(c *gin.Context) {
 		Cloud string `json:"cloud"`
 	}
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "неверный формат"})
+		c.JSON(http.StatusBadRequest, gin.H{"err": "неверный формат"})
 		return
 	}
 	if err := services.AddCloud(req.Cloud, h.STORAGE); err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"err": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{})
+	c.JSON(http.StatusCreated, gin.H{"message": "Пространство создано"})
 }
 
 /*
@@ -86,14 +86,14 @@ func (h *Handler) deleteCloud(c *gin.Context) {
 		Cloud string `json:"cloud"`
 	}
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "неверный формат"})
+		c.JSON(http.StatusBadRequest, gin.H{"err": "неверный формат"})
 		return
 	}
 	if err := services.DeleteCloud(req.Cloud, h.STORAGE); err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"err": err.Error()})
 		return
 	}
-	c.JSON(http.StatusAccepted, gin.H{})
+	c.JSON(http.StatusAccepted, gin.H{"message": "Пространство удалено"})
 }
 
 func (h *Handler) getRepoList(c *gin.Context) {
@@ -116,22 +116,22 @@ deleteImage -удаление указанного образа.
 	/api/<name>/<image>?hash=<hash> - удаляется указанный образ.
 */
 func (h *Handler) deleteImage(c *gin.Context) {
-	name := c.Param("name")
-	image := c.Param("image")
-	hash := c.Query("hash")
-	if hash != "" { // удаляется только образ
-		if err := services.DeleteImage(name, image, hash, h.DB.Sql, h.STORAGE); err != nil {
-			c.JSON(http.StatusForbidden, gin.H{"err": "Ошибка при удалении образа"})
-			return
-		}
-		c.JSON(http.StatusAccepted, gin.H{})
-	} else { // удаляется весь репозиторий
-		if err := services.DeleteRepository(name, image, h.DB.Sql, h.STORAGE); err != nil {
-			c.JSON(http.StatusForbidden, gin.H{"err": "Ошибка при удалении репозитория"})
-			return
-		}
-		c.JSON(http.StatusAccepted, gin.H{})
-	}
+	// name := c.Param("name")
+	// image := c.Param("image")
+	// hash := c.Query("hash")
+	// if hash != "" { // удаляется только образ
+	// 	if err := services.DeleteImage(name, image, hash, h.DB.Sql, h.STORAGE); err != nil {
+	// 		c.JSON(http.StatusForbidden, gin.H{"err": "Ошибка при удалении образа"})
+	// 		return
+	// 	}
+	// 	c.JSON(http.StatusAccepted, gin.H{})
+	// } else { // удаляется весь репозиторий
+	// 	if err := services.DeleteRepository(name, image, h.DB.Sql, h.STORAGE); err != nil {
+	// 		c.JSON(http.StatusForbidden, gin.H{"err": "Ошибка при удалении репозитория"})
+	// 		return
+	// 	}
+	// 	c.JSON(http.StatusAccepted, gin.H{})
+	// }
 }
 
 /*
@@ -143,13 +143,13 @@ getImages - получение всех тегов образа.
 	/api/<name>/<image>
 */
 func (h *Handler) getImages(c *gin.Context) {
-	ImageName := c.Param("image")
-	data, err := services.GetImages(ImageName, h.DB.Sql)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"err": err})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"data": data})
+	// ImageName := c.Param("image")
+	// data, err := services.GetImages(ImageName, h.DB.Sql)
+	// if err != nil {
+	// 	c.JSON(http.StatusBadRequest, gin.H{"err": err})
+	// 	return
+	// }
+	// c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
 /*

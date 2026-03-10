@@ -63,7 +63,7 @@ func setDefaultSettings(db *gorm.DB, env *config.Env) error {
 }
 
 func automigrate(db *gorm.DB) error {
-	if err := db.AutoMigrate(&Registry{}, &Repository{}, &Image{}, &User{}, &Settings{}); err != nil {
+	if err := db.AutoMigrate(&User{}, &Settings{}); err != nil {
 		return err
 	}
 	return nil
