@@ -21,7 +21,7 @@ func GenerateJWT(username string, cred *config.Env) (string, error) {
 
 // Валидирует токен аутентификации.
 func ValidateJWT(tokenString string, key []byte) bool {
-	token, err := jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, func(token *jwt.Token) (any, error) {
 		return key, nil
 	})
 	if err != nil {
