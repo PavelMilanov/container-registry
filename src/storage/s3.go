@@ -228,9 +228,9 @@ DeleteImage удаляет образ из хранилища.
 	imageTag - тег образа.
 	imageHash - хеш образа.
 */
-func (s *S3Storage) DeleteImage(repository, imageName, imageTag, imageHash string) error {
-	path := filepath.Join(config.MANIFEST_PATH, repository, imageName, imageHash)
-	tagPath := filepath.Join(config.MANIFEST_PATH, repository, imageName, "tags", imageTag)
+func (s *S3Storage) DeleteManifest(cloud, repository, tag string) error {
+	path := filepath.Join(config.MANIFEST_PATH, cloud, repository, tag)
+	tagPath := filepath.Join(config.MANIFEST_PATH, cloud, repository, "tags", tag)
 	opts := minio.RemoveObjectOptions{
 		GovernanceBypass: true,
 	}

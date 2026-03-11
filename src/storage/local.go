@@ -178,13 +178,17 @@ DeleteImage удаляет образ из хранилища.
 	imageTag - тег образа.
 	imageHash - хеш образа.
 */
-func (lc *LocalStorage) DeleteImage(repository, imageName, imageTag, imageHash string) error {
-	path := filepath.Join(config.MANIFEST_PATH, repository, imageName, imageHash)
-	tagPath := filepath.Join(config.MANIFEST_PATH, repository, imageName, "tags", imageTag)
+func (lc *LocalStorage) DeleteManifest(cloud, repository, tag string) error {
+	tagPath := filepath.Join(config.MANIFEST_PATH, cloud, repository, "tags", tag)
+	data, err := os.ReadFile(tagPath)
+	if err != nil {
+		return err
+	}
+	manifestPath := filepath.Join(config.MANIFEST_PATH, cloud, repository, string(data))
 	if err := os.Remove(tagPath); err != nil {
 		return err
 	}
-	if err := os.Remove(path); err != nil {
+	if err := os.Remove(manifestPath); err != nil {
 		return err
 	}
 	return nil
@@ -244,12 +248,17 @@ func (lc *LocalStorage) GarbageCollection() {
 	// logrus.Infof("Инвентаризация blob произведена. Удалено файлов %d\nОчищено пространства %s", len(buffer), system.HumanizeSize(clearSpace))
 }
 
-func (*LocalStorage) ReadFile(path string) ([]byte, error) {
-	return os.ReadFile(path)
-}
-
-func (*LocalStorage) GetManifestList(repository, image string) ([]string, error) {
-	return nil, nil
+func (*LocalStorage) GetManifestList(cloud, repository string) ([]string, error) {
+	tagPath := filepath.Join(config.MANIFEST_PATH, cloud, repository, "tags")
+	files, err := os.ReadDir(tagPath)
+	if err != nil {
+		return nil, err
+	}
+	var tags []string
+	for _, file := range files {
+		tags = append(tags, file.Name())
+	}
+	return tags, nil
 }
 
 /* Возвращает список пространств */

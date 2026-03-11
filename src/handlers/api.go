@@ -8,40 +8,13 @@ import (
 )
 
 /*
-getRegistry - получение информации о реестрах.
-
-	<name> - название реестра.
-
-	/api/ -вывод всех реестров.
-	/api/<name> - вывод всех образов репозитория.
-*/
-func (h *Handler) getRegistry(c *gin.Context) {
-	// name := c.Param("name")
-	// if name == "" {
-	// 	data, err := services.GetRegistries(h.DB.Sql)
-	// 	if err != nil {
-	// 		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
-	// 		return
-	// 	}
-	// 	c.JSON(http.StatusOK, gin.H{"data": data})
-	// 	return
-	// }
-	// data, err := services.GetRepositories(h.DB.Sql, name)
-	// if err != nil {
-	// 	c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
-	// 	return
-	// }
-	// c.JSON(http.StatusOK, gin.H{"data": data})
-}
-
-/*
 addCloud -добавление указанного пространства.
 
 	{
 	 "cloud": "name"
 	}
 
-	   /api/cloud - добавление облака.
+	   /api/cloud/create
 */
 func (h *Handler) addCloud(c *gin.Context) {
 	var req struct {
@@ -61,7 +34,7 @@ func (h *Handler) addCloud(c *gin.Context) {
 /*
 getCloudList -получение списка пространств.
 
-	/api/cloud/list - список пространств.
+	/api/cloud/list
 */
 func (h *Handler) getCloudList(c *gin.Context) {
 	list, err := services.GetCloudList(h.STORAGE)
@@ -79,7 +52,7 @@ deleteCloud -удаление указанного пространства.
 	 "cloud": "name"
 	}
 
-	   /api/cloud - удаление пространства.
+	   /api/cloud/delete
 */
 func (h *Handler) deleteCloud(c *gin.Context) {
 	var req struct {
@@ -107,6 +80,25 @@ func (h *Handler) getRepoList(c *gin.Context) {
 }
 
 /*
+getImagesList - получение всех образов указанного репозитория.
+
+	<cloud> - название пространства.
+	<repository> - название репозитория.
+
+	/api/<cloud>/<repository>
+*/
+func (h *Handler) getImagesList(c *gin.Context) {
+	cloud := c.Param("cloud")
+	repo := c.Param("repository")
+	list, err := services.GetImagesList(cloud, repo, h.STORAGE)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"images": list})
+}
+
+/*
 deleteImage -удаление указанного образа.
 
 	<name> - название репозитория.
@@ -116,40 +108,23 @@ deleteImage -удаление указанного образа.
 	/api/<name>/<image>?hash=<hash> - удаляется указанный образ.
 */
 func (h *Handler) deleteImage(c *gin.Context) {
-	// name := c.Param("name")
-	// image := c.Param("image")
-	// hash := c.Query("hash")
-	// if hash != "" { // удаляется только образ
-	// 	if err := services.DeleteImage(name, image, hash, h.DB.Sql, h.STORAGE); err != nil {
-	// 		c.JSON(http.StatusForbidden, gin.H{"err": "Ошибка при удалении образа"})
-	// 		return
-	// 	}
-	// 	c.JSON(http.StatusAccepted, gin.H{})
-	// } else { // удаляется весь репозиторий
-	// 	if err := services.DeleteRepository(name, image, h.DB.Sql, h.STORAGE); err != nil {
+	cloud := c.Param("cloud")
+	repo := c.Param("repository")
+	tag := c.Query("tag")
+	if tag != "" { // удаляется только образ
+		if err := services.DeleteImage(cloud, repo, tag, h.STORAGE); err != nil {
+			c.JSON(http.StatusForbidden, gin.H{"err": "Ошибка при удалении образа"})
+			return
+		}
+		c.JSON(http.StatusAccepted, gin.H{"message": "Образ успешно удален"})
+	}
+	// else { // удаляется весь репозиторий
+	// 	if err := services.DeleteRepository(cloud, repo, h.STORAGE); err != nil {
 	// 		c.JSON(http.StatusForbidden, gin.H{"err": "Ошибка при удалении репозитория"})
 	// 		return
 	// 	}
 	// 	c.JSON(http.StatusAccepted, gin.H{})
 	// }
-}
-
-/*
-getImages - получение всех тегов образа.
-
-	<name> - название репозитория.
-	<image> - название образа.
-
-	/api/<name>/<image>
-*/
-func (h *Handler) getImages(c *gin.Context) {
-	// ImageName := c.Param("image")
-	// data, err := services.GetImages(ImageName, h.DB.Sql)
-	// if err != nil {
-	// 	c.JSON(http.StatusBadRequest, gin.H{"err": err})
-	// 	return
-	// }
-	// c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
 /*

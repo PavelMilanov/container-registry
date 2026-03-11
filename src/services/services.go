@@ -50,6 +50,18 @@ func GetRepositoriesList(cloud string, storage storage.Storage) ([]string, error
 	return data, nil
 }
 
+func GetImagesList(cloud, repo string, storage storage.Storage) ([]string, error) {
+	data, err := storage.GetManifestList(cloud, repo)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"cloud":      cloud,
+			"repository": repo,
+		}).Error(err)
+		return data, err
+	}
+	return data, nil
+}
+
 func DeleteCloud(name string, storage storage.Storage) error {
 	if err := storage.DeleteCloud(name); err != nil {
 		logrus.WithFields(logrus.Fields{
@@ -63,41 +75,22 @@ func DeleteCloud(name string, storage storage.Storage) error {
 	return nil
 }
 
-// func DeleteImage(name, image, hash string, sql *gorm.DB, storage storage.Storage) error {
-// 	img := db.Image{Name: image, Hash: hash}
-// 	err := sql.Transaction(func(tx *gorm.DB) error {
-// 		if err := img.Delete(tx); err != nil {
-// 			tx.Rollback()
-// 			return err
-// 		}
-// 		imgSize := img.GetSize(tx, "repository_id = ?", img.RepositoryID)
-// 		repo, _ := db.GetRepository(tx, "ID = ?", img.RepositoryID)
-// 		repo.Size = imgSize
-// 		repo.SizeAlias = system.ConvertSize(repo.Size)
-// 		if err := repo.UpdateSize(tx); err != nil {
-// 			tx.Rollback()
-// 			return err
-// 		}
-// 		repoSize := repo.GetSize(tx, "registry_id = ?", repo.RegistryID)
-// 		registry, _ := db.GetRegistry(tx, "ID = ?", repo.RegistryID)
-// 		registry.Size = repoSize
-// 		registry.SizeAlias = system.ConvertSize(registry.Size)
-// 		if err := registry.UpdateSize(tx); err != nil {
-// 			tx.Rollback()
-// 			return err
-// 		}
-// 		return nil
-// 	})
-// 	if err != nil {
-// 		logrus.Error(err)
-// 		return err
-// 	}
-// 	if err := storage.DeleteImage(name, img.Name, img.Tag, img.Hash); err != nil {
-// 		logrus.Error(err)
-// 		return err
-// 	}
-// 	return nil
-// }
+func DeleteImage(cloud, repository, tag string, storage storage.Storage) error {
+	if err := storage.DeleteManifest(cloud, repository, tag); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"cloud":      cloud,
+			"repository": repository,
+			"tag":        tag,
+		}).Error(err)
+		return err
+	}
+	logrus.WithFields(logrus.Fields{
+		"cloud":      cloud,
+		"repository": repository,
+		"tag":        tag,
+	}).Info("Удален манифест")
+	return nil
+}
 
 // func DeleteRepository(name, image string, sql *gorm.DB, storage storage.Storage) error {
 // 	repo, err := db.GetRepository(sql, "name = ?", image)

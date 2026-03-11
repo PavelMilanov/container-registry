@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var ShowCmd = &cobra.Command{
+var showCmd = &cobra.Command{
 	Use:   "show",
 	Short: "show",
 	Args:  cobra.ExactArgs(1),
@@ -22,11 +22,18 @@ var ShowCmd = &cobra.Command{
 			return
 		}
 		for _, item := range data {
-			fmt.Printf(" - %s/%s\n", args[0], item)
+			images, err := cr.GetImagesList(authToken, args[0], item)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			for _, img := range images {
+				fmt.Printf(" - %s/%s:%s\n", args[0], item, img)
+			}
 		}
 	},
 }
 
 func init() {
-	CloudCmd.AddCommand(ShowCmd)
+	CloudCmd.AddCommand(showCmd)
 }

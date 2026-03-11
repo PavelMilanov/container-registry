@@ -69,14 +69,16 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	api := router.Group("/api/", baseApiMiddleware([]byte(h.ENV.Server.Jwt)))
 	{
-		api.GET("/", h.getRegistry)
-		api.GET("/:name", h.getRegistry)
-		api.GET("/cloud/list", h.getCloudList)
-		api.GET("/cloud/:cloud/repositories", h.getRepoList)
-		api.POST("/cloud", h.addCloud)
-		api.DELETE("/cloud", h.deleteCloud)
-		api.GET("/:name/:image", h.getImages)
-		api.DELETE("/:name/:image", h.deleteImage)
+		cloud := api.Group("/cloud/")
+		{
+			cloud.GET("/:cloud/:repository", h.getImagesList)
+			cloud.GET("/:cloud", h.getRepoList)
+			cloud.GET("/list", h.getCloudList)
+			cloud.POST("/create", h.addCloud)
+			cloud.DELETE("/delete", h.deleteCloud)
+			cloud.DELETE("/:cloud/:repository", h.deleteImage)
+
+		}
 	}
 	router.NoRoute(func(c *gin.Context) {
 		if strings.HasPrefix(c.Request.URL.Path, "/v2/") {
