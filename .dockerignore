@@ -1,8 +1,11 @@
-src/index.html
 vagrant
 .obsidian
 .vagrant
+docs
+Vagrantfile
+Makefile
 builder.sh
 buildkitd.toml
 .github/*
 go.sum
+version

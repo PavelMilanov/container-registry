@@ -11,12 +11,7 @@ var addCmd = &cobra.Command{
 	Short: "add",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		authToken, err := cr.Login(env.User.Login, env.User.Password)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		if err := cr.AddCloud(authToken, args[0]); err != nil {
+		if err := cr.AddCloud(args[0]); err != nil {
 			fmt.Println(err)
 			return
 		}

@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
+
+	"github.com/PavelMilanov/container-registry/config"
 )
 
 /*
@@ -19,7 +22,11 @@ Returns:
 	[]string: список пространств.
 	error: ошибка при выполнении запроса.
 */
-func (c *Client) GetCloudList(auth string) ([]string, error) {
+func (c *Client) GetCloudList() ([]string, error) {
+	auth, err := os.ReadFile(config.AUTH_PATH)
+	if err != nil {
+		return nil, err
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.ServerURL+"/api/cloud/list", nil)
@@ -27,7 +34,7 @@ func (c *Client) GetCloudList(auth string) ([]string, error) {
 		return nil, err
 	}
 	client := &http.Client{}
-	req.Header.Add("Authorization", "Bearer "+auth)
+	req.Header.Add("Authorization", "Bearer "+string(auth))
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -61,7 +68,11 @@ Returns:
 
 	error - ошибка, если запрос не удался.
 */
-func (c *Client) AddCloud(auth string, cloud string) error {
+func (c *Client) AddCloud(cloud string) error {
+	auth, err := os.ReadFile(config.AUTH_PATH)
+	if err != nil {
+		return err
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.ServerURL+"/api/cloud/create", nil)
@@ -69,7 +80,7 @@ func (c *Client) AddCloud(auth string, cloud string) error {
 		return err
 	}
 	client := &http.Client{}
-	req.Header.Add("Authorization", "Bearer "+auth)
+	req.Header.Add("Authorization", "Bearer "+string(auth))
 	req.Header.Add("Content-Type", "application/json")
 	req.Body = io.NopCloser(strings.NewReader(fmt.Sprintf(`{"cloud": "%s"}`, cloud)))
 	resp, err := client.Do(req)
@@ -84,17 +95,15 @@ func (c *Client) AddCloud(auth string, cloud string) error {
 	if resp.StatusCode != http.StatusCreated {
 		return errors.New(string(body))
 	}
-	var data struct {
-		Message string `json:"message"`
-	}
-	if err := json.Unmarshal(body, &data); err != nil {
-		return err
-	}
-	fmt.Println(data.Message)
+	fmt.Println(string(body))
 	return nil
 }
 
-func (c *Client) DelCloud(auth string, cloud string) error {
+func (c *Client) DelCloud(cloud string) error {
+	auth, err := os.ReadFile(config.AUTH_PATH)
+	if err != nil {
+		return err
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.ServerURL+"/api/cloud/delete", nil)
@@ -102,7 +111,7 @@ func (c *Client) DelCloud(auth string, cloud string) error {
 		return err
 	}
 	client := &http.Client{}
-	req.Header.Add("Authorization", "Bearer "+auth)
+	req.Header.Add("Authorization", "Bearer "+string(auth))
 	req.Header.Add("Content-Type", "application/json")
 	req.Body = io.NopCloser(strings.NewReader(fmt.Sprintf(`{"cloud": "%s"}`, cloud)))
 	resp, err := client.Do(req)
@@ -114,20 +123,18 @@ func (c *Client) DelCloud(auth string, cloud string) error {
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode != http.StatusAccepted {
+	if resp.StatusCode != http.StatusNoContent {
 		return errors.New(string(body))
 	}
-	var data struct {
-		Message string `json:"message"`
-	}
-	if err := json.Unmarshal(body, &data); err != nil {
-		return err
-	}
-	fmt.Println(data.Message)
+	fmt.Println(string(body))
 	return nil
 }
 
-func (c *Client) GetRepositoriesList(auth, cloud string) ([]string, error) {
+func (c *Client) GetRepositoriesList(cloud string) ([]string, error) {
+	auth, err := os.ReadFile(config.AUTH_PATH)
+	if err != nil {
+		return nil, err
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/api/cloud/%s", c.ServerURL, cloud), nil)
@@ -135,7 +142,7 @@ func (c *Client) GetRepositoriesList(auth, cloud string) ([]string, error) {
 		return nil, err
 	}
 	client := &http.Client{}
-	req.Header.Add("Authorization", "Bearer "+auth)
+	req.Header.Add("Authorization", "Bearer "+string(auth))
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -157,7 +164,11 @@ func (c *Client) GetRepositoriesList(auth, cloud string) ([]string, error) {
 	return data.Repositories, nil
 }
 
-func (c *Client) GetImagesList(auth, cloud, repository string) ([]string, error) {
+func (c *Client) GetImagesList(cloud, repository string) ([]string, error) {
+	auth, err := os.ReadFile(config.AUTH_PATH)
+	if err != nil {
+		return nil, err
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/api/cloud/%s/%s", c.ServerURL, cloud, repository), nil)
@@ -165,7 +176,7 @@ func (c *Client) GetImagesList(auth, cloud, repository string) ([]string, error)
 		return nil, err
 	}
 	client := &http.Client{}
-	req.Header.Add("Authorization", "Bearer "+auth)
+	req.Header.Add("Authorization", "Bearer "+string(auth))
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -187,7 +198,11 @@ func (c *Client) GetImagesList(auth, cloud, repository string) ([]string, error)
 	return data.Images, nil
 }
 
-func (c *Client) DelImage(auth string, cloud string, repository string, tag string) error {
+func (c *Client) DelImage(cloud string, repository string, tag string) error {
+	auth, err := os.ReadFile(config.AUTH_PATH)
+	if err != nil {
+		return err
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, fmt.Sprintf("%s/api/cloud/%s/%s", c.ServerURL, cloud, repository), nil)
@@ -198,7 +213,7 @@ func (c *Client) DelImage(auth string, cloud string, repository string, tag stri
 	q := req.URL.Query()
 	q.Add("tag", tag)
 	req.URL.RawQuery = q.Encode()
-	req.Header.Add("Authorization", "Bearer "+auth)
+	req.Header.Add("Authorization", "Bearer "+string(auth))
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
@@ -208,15 +223,38 @@ func (c *Client) DelImage(auth string, cloud string, repository string, tag stri
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode != http.StatusAccepted {
+	if resp.StatusCode != http.StatusNoContent {
 		return errors.New(string(body))
 	}
-	var data struct {
-		Message string `json:"message"`
-	}
-	if err := json.Unmarshal(body, &data); err != nil {
+	fmt.Println(string(body))
+	return nil
+}
+
+func (c *Client) DelRepository(cloud string, repository string) error {
+	auth, err := os.ReadFile(config.AUTH_PATH)
+	if err != nil {
 		return err
 	}
-	fmt.Println(data.Message)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, fmt.Sprintf("%s/api/cloud/%s/%s", c.ServerURL, cloud, repository), nil)
+	if err != nil {
+		return err
+	}
+	client := &http.Client{}
+	req.Header.Add("Authorization", "Bearer "+string(auth))
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		return errors.New(string(body))
+	}
+	fmt.Println(string(body))
 	return nil
 }

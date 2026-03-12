@@ -197,11 +197,11 @@ func (lc *LocalStorage) DeleteManifest(cloud, repository, tag string) error {
 /*
 DeleteRepository удаляет репозиторий из хранилища.
 
-	name - имя репозитория.
-	image - имя образа.
+	cloud - название пространства.
+	repository - название репозитория.
 */
-func (lc *LocalStorage) DeleteRepository(name, image string) error {
-	if err := os.RemoveAll(filepath.Join(config.MANIFEST_PATH, name, image)); err != nil {
+func (lc *LocalStorage) DeleteRepository(cloud, repository string) error {
+	if err := os.RemoveAll(filepath.Join(config.MANIFEST_PATH, cloud, repository)); err != nil {
 		return err
 	}
 	return nil
@@ -229,23 +229,11 @@ func (lc *LocalStorage) GarbageCollection() {
 			buffer = append(buffer, v)
 		}
 	}
-	// statBefore, err := lc.DiskUsage()
-	// if err != nil {
-	// 	logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
-	// 	return
-	// }
 	for _, i := range buffer {
 		if err := os.Remove(filepath.Join(config.BLOBS_PATH, i)); err != nil {
 			logrus.Error(err)
 		}
 	}
-	// statAfter, err := lc.DiskUsage()
-	// if err != nil {
-	// 	logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
-	// 	return
-	// }
-	// clearSpace := statBefore.Used - statAfter.Used
-	// logrus.Infof("Инвентаризация blob произведена. Удалено файлов %d\nОчищено пространства %s", len(buffer), system.HumanizeSize(clearSpace))
 }
 
 func (*LocalStorage) GetManifestList(cloud, repository string) ([]string, error) {

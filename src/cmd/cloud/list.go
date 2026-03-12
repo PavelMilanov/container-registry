@@ -10,12 +10,7 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "list",
 	Run: func(cmd *cobra.Command, args []string) {
-		authToken, err := cr.Login(env.User.Login, env.User.Password)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		data, err := cr.GetCloudList(authToken)
+		data, err := cr.GetCloudList()
 		if err != nil {
 			fmt.Println(err)
 			return

@@ -16,6 +16,8 @@ var (
 
 	BACKET_NAME              = "registry"
 	DEFAULT_TAG_EXPIRED_DAYS = 0
+
+	AUTH_PATH = filepath.Join(TMP_PATH, ".auth")
 )
 
 var MANIFEST_TYPE = map[string]string{

@@ -21,11 +21,11 @@ type Storage interface {
 	GetManifest(repository, image, reference string) ([]byte, error)
 	GetManifestList(cloud, repository string) ([]string, error)
 	DeleteManifest(cloud, repository, tag string) error
-	AddCloud(name string) error
-	DeleteCloud(name string) error
+	AddCloud(cloud string) error
+	DeleteCloud(cloud string) error
 	GetCloudList() ([]string, error)
 	GetRepositoriesList(cloud string) ([]string, error)
-	DeleteRepository(name, image string) error
+	DeleteRepository(cloud, repository string) error
 	GarbageCollection()
 }
 

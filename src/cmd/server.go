@@ -55,22 +55,15 @@ to quickly create a Cobra application.`,
 		}
 		defer db.CloseDatabase(sqlite.Sql)
 
-		// _, err = c.AddFunc("0 1 * * 0", func() {
-		// 	logrus.Debug("Запуск задания Garbage Collection")
-		// 	go store.GarbageCollection()
-		// }) // каждое воскресенье в 01:00
-		// if err != nil {
-		// 	logrus.Error(err)
-		// }
-		// _, err = c.AddFunc("0 0 * * 0", func() {
-		// 	logrus.Debug("Запуск задания удаления старых образов")
-		// 	go services.DeleteOlderImages(sqlite.Sql, store)
-		// }) // каждое воскресенье в 00:00
+		_, err = c.AddFunc("0 1 * * 0", func() {
+			logrus.WithField("task", "Garbage Collection").Info("Запуск задания")
+			go store.GarbageCollection()
+		}) // каждое воскресенье в 01:00
 		if err != nil {
 			logrus.Error(err)
 		}
 		c.Start()
-		logrus.Debugf("Запущено %d заданий планировщика", len(c.Entries()))
+		logrus.WithField("task", "Garbage Collection").Infof("Запущено %d заданий планировщика", len(c.Entries()))
 
 		handler := handlers.NewHandler(store, &sqlite, env)
 		srv := new(config.Server)

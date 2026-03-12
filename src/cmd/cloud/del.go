@@ -16,24 +16,30 @@ var delCmd = &cobra.Command{
 	Short: "del",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		authToken, err := cr.Login(env.User.Login, env.User.Password)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
+		var submit string
 		switch {
 		case repoName != "" && tagName != "":
-			if err := cr.DelImage(authToken, args[0], repoName, tagName); err != nil {
+			if err := cr.DelImage(args[0], repoName, tagName); err != nil {
 				fmt.Println(err)
 				return
 			}
 		case repoName != "":
-			// if err := cr.DelRepo(authToken, args[0], repoName); err != nil {
-			// 	fmt.Println(err)
-			// 	return
-			// }
+			fmt.Printf("Все образы будут удалены. Вы уверены? (y/n) ")
+			fmt.Scan(&submit)
+			if submit != "y" {
+				return
+			}
+			if err := cr.DelRepository(args[0], repoName); err != nil {
+				fmt.Println(err)
+				return
+			}
 		default:
-			if err := cr.DelCloud(authToken, args[0]); err != nil {
+			fmt.Printf("Все репозитории и образы будут удалены. Вы уверены? (y/n) ")
+			fmt.Scan(&submit)
+			if submit != "y" {
+				return
+			}
+			if err := cr.DelCloud(args[0]); err != nil {
 				fmt.Println(err)
 				return
 			}

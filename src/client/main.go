@@ -3,8 +3,13 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"time"
+
+	"github.com/PavelMilanov/container-registry/config"
 )
 
 type Client struct {
@@ -31,5 +36,34 @@ func (c *Client) HealthCheck() error {
 	if resp.StatusCode != http.StatusOK {
 		return errors.New("unhealthy")
 	}
+	return nil
+}
+
+func (c *Client) GarbageCollection() error {
+	auth, err := os.ReadFile(config.AUTH_PATH)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/api/garbage-collection", c.ServerURL), nil)
+	if err != nil {
+		return err
+	}
+	client := &http.Client{}
+	req.Header.Add("Authorization", "Bearer "+string(auth))
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusAccepted {
+		return errors.New(string(body))
+	}
+	fmt.Println(string(body))
 	return nil
 }

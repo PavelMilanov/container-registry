@@ -12,7 +12,7 @@ func GenerateJWT(username string, cred *config.Env) (string, error) {
 		"sub": username,
 		"aud": cred.Server.Service,
 		"iss": cred.Server.Issuer,
-		"exp": time.Now().Add(24 * time.Hour).Unix(),
+		"exp": time.Now().Add(2 * time.Hour).Unix(),
 		"iat": time.Now().Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, payload)
