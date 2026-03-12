@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/PavelMilanov/container-registry/client"
-	"github.com/PavelMilanov/container-registry/config"
 	"github.com/spf13/cobra"
 )
 
@@ -29,7 +28,7 @@ to quickly create a Cobra application.`,
 			fmt.Println(err)
 			return
 		}
-		if err := os.WriteFile(config.AUTH_PATH, []byte(authToken), 0644); err != nil {
+		if err := os.WriteFile("/tmp/.auth", []byte(authToken), 0750); err != nil {
 			fmt.Println(err)
 			return
 		}

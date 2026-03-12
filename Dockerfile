@@ -16,7 +16,10 @@ ARG VERSION
 ENV VERSION="${VERSION}"
 ENV CGO_ENABLED=1
 
-RUN go install -trimpath -ldflags="-s -w -X 'github.com/PavelMilanov/container-registry/config.VERSION=${VERSION}'"
+RUN go install -trimpath -ldflags="-s -w \
+-X 'github.com/PavelMilanov/container-registry/config.VERSION=${VERSION}' \
+-X 'github.com/PavelMilanov/container-registry/config.DATA_PATH=/app/var/registry' \
+-X 'github.com/PavelMilanov/container-registry/config.CONFIG_PATH=/etc/conf.d'"
 
 
 # Stage 2
@@ -29,11 +32,13 @@ ENV UID=10000
 
 RUN apk --update --no-cache add tzdata sqlite-libs
 
-RUN addgroup -g ${UID} ${USER} && \
-    adduser -u ${UID} -G ${USER} -s /bin/sh -D -H ${USER}
-
-
 WORKDIR /registry
+
+RUN addgroup -g ${UID} ${USER} && \
+    adduser -u ${UID} -G ${USER} -s /bin/sh -D -H ${USER} && \
+    chown -R ${UID}:${UID} /registry && \
+    mkdir -p /app/var/registry && \
+    chown -R ${UID}:${UID} /app/var/registry
 
 COPY --from=app /go/bin/container-registry /usr/bin/cr
 
@@ -41,10 +46,10 @@ RUN chmod +x /usr/bin/cr
 
 EXPOSE 5050/tcp
 
-USER ${USER}
-
 HEALTHCHECK --interval=10m --timeout=5s --start-period=5s --retries=3 CMD ["/usr/bin/cr", "healthcheck"]
 
-ENTRYPOINT [ "/usr/bin/cr" ]
+USER ${USER}
 
-CMD ["serve" ]
+VOLUME [ "/app/var/registry" ]
+
+CMD ["/usr/bin/cr", "serve"]

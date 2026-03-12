@@ -100,7 +100,7 @@ func (lc *LocalStorage) SaveManifest(meta config.Meta, body []byte, manifestPath
 	if err := os.MkdirAll(filepath.Dir(manifestPath), 0755); err != nil {
 		return err
 	}
-	if err := os.WriteFile(manifestPath, body, 0644); err != nil {
+	if err := os.WriteFile(manifestPath, body, 0755); err != nil {
 		return err
 	}
 	// Если это тег (а не digest), создаём символическую ссылку
@@ -108,7 +108,7 @@ func (lc *LocalStorage) SaveManifest(meta config.Meta, body []byte, manifestPath
 		if err := os.MkdirAll(filepath.Dir(tagPath), 0755); err != nil {
 			return err
 		}
-		if err := os.WriteFile(tagPath, []byte(meta.Digest), 0644); err != nil {
+		if err := os.WriteFile(tagPath, []byte(meta.Digest), 0755); err != nil {
 			return err
 		}
 	}

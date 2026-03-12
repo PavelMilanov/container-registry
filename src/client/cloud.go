@@ -7,11 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"time"
-
-	"github.com/PavelMilanov/container-registry/config"
 )
 
 /*
@@ -23,7 +20,7 @@ Returns:
 	error: ошибка при выполнении запроса.
 */
 func (c *Client) GetCloudList() ([]string, error) {
-	auth, err := os.ReadFile(config.AUTH_PATH)
+	auth, err := c.getToken()
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +31,7 @@ func (c *Client) GetCloudList() ([]string, error) {
 		return nil, err
 	}
 	client := &http.Client{}
-	req.Header.Add("Authorization", "Bearer "+string(auth))
+	req.Header.Add("Authorization", "Bearer "+auth)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -69,7 +66,7 @@ Returns:
 	error - ошибка, если запрос не удался.
 */
 func (c *Client) AddCloud(cloud string) error {
-	auth, err := os.ReadFile(config.AUTH_PATH)
+	auth, err := c.getToken()
 	if err != nil {
 		return err
 	}
@@ -80,7 +77,7 @@ func (c *Client) AddCloud(cloud string) error {
 		return err
 	}
 	client := &http.Client{}
-	req.Header.Add("Authorization", "Bearer "+string(auth))
+	req.Header.Add("Authorization", "Bearer "+auth)
 	req.Header.Add("Content-Type", "application/json")
 	req.Body = io.NopCloser(strings.NewReader(fmt.Sprintf(`{"cloud": "%s"}`, cloud)))
 	resp, err := client.Do(req)
@@ -100,7 +97,7 @@ func (c *Client) AddCloud(cloud string) error {
 }
 
 func (c *Client) DelCloud(cloud string) error {
-	auth, err := os.ReadFile(config.AUTH_PATH)
+	auth, err := c.getToken()
 	if err != nil {
 		return err
 	}
@@ -111,7 +108,7 @@ func (c *Client) DelCloud(cloud string) error {
 		return err
 	}
 	client := &http.Client{}
-	req.Header.Add("Authorization", "Bearer "+string(auth))
+	req.Header.Add("Authorization", "Bearer "+auth)
 	req.Header.Add("Content-Type", "application/json")
 	req.Body = io.NopCloser(strings.NewReader(fmt.Sprintf(`{"cloud": "%s"}`, cloud)))
 	resp, err := client.Do(req)
@@ -131,7 +128,7 @@ func (c *Client) DelCloud(cloud string) error {
 }
 
 func (c *Client) GetRepositoriesList(cloud string) ([]string, error) {
-	auth, err := os.ReadFile(config.AUTH_PATH)
+	auth, err := c.getToken()
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +139,7 @@ func (c *Client) GetRepositoriesList(cloud string) ([]string, error) {
 		return nil, err
 	}
 	client := &http.Client{}
-	req.Header.Add("Authorization", "Bearer "+string(auth))
+	req.Header.Add("Authorization", "Bearer "+auth)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -165,7 +162,7 @@ func (c *Client) GetRepositoriesList(cloud string) ([]string, error) {
 }
 
 func (c *Client) GetImagesList(cloud, repository string) ([]string, error) {
-	auth, err := os.ReadFile(config.AUTH_PATH)
+	auth, err := c.getToken()
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +173,7 @@ func (c *Client) GetImagesList(cloud, repository string) ([]string, error) {
 		return nil, err
 	}
 	client := &http.Client{}
-	req.Header.Add("Authorization", "Bearer "+string(auth))
+	req.Header.Add("Authorization", "Bearer "+auth)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -199,7 +196,7 @@ func (c *Client) GetImagesList(cloud, repository string) ([]string, error) {
 }
 
 func (c *Client) DelImage(cloud string, repository string, tag string) error {
-	auth, err := os.ReadFile(config.AUTH_PATH)
+	auth, err := c.getToken()
 	if err != nil {
 		return err
 	}
@@ -213,7 +210,7 @@ func (c *Client) DelImage(cloud string, repository string, tag string) error {
 	q := req.URL.Query()
 	q.Add("tag", tag)
 	req.URL.RawQuery = q.Encode()
-	req.Header.Add("Authorization", "Bearer "+string(auth))
+	req.Header.Add("Authorization", "Bearer "+auth)
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
@@ -231,7 +228,7 @@ func (c *Client) DelImage(cloud string, repository string, tag string) error {
 }
 
 func (c *Client) DelRepository(cloud string, repository string) error {
-	auth, err := os.ReadFile(config.AUTH_PATH)
+	auth, err := c.getToken()
 	if err != nil {
 		return err
 	}
@@ -242,7 +239,7 @@ func (c *Client) DelRepository(cloud string, repository string) error {
 		return err
 	}
 	client := &http.Client{}
-	req.Header.Add("Authorization", "Bearer "+string(auth))
+	req.Header.Add("Authorization", "Bearer "+auth)
 	resp, err := client.Do(req)
 	if err != nil {
 		return err

@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"os"
 	"time"
-
-	"github.com/PavelMilanov/container-registry/config"
 )
 
 type Client struct {
@@ -40,7 +38,7 @@ func (c *Client) HealthCheck() error {
 }
 
 func (c *Client) GarbageCollection() error {
-	auth, err := os.ReadFile(config.AUTH_PATH)
+	auth, err := c.getToken()
 	if err != nil {
 		return err
 	}
@@ -66,4 +64,12 @@ func (c *Client) GarbageCollection() error {
 	}
 	fmt.Println(string(body))
 	return nil
+}
+
+func (c *Client) getToken() (string, error) {
+	auth, err := os.ReadFile("/tmp/.auth")
+	if err != nil {
+		return "", errors.New("Доступ запрещен. Необходимо авторизоваться.")
+	}
+	return string(auth), nil
 }

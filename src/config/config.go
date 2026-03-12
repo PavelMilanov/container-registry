@@ -7,8 +7,8 @@ var (
 	DURATION = 3
 	VERSION  string
 
-	DATA_PATH     = "var"
-	CONFIG_PATH   = "conf.d"
+	DATA_PATH     = "var"    // меняется при сборке в прод
+	CONFIG_PATH   = "conf.d" // меняется при сборке в прод
 	STORAGE_PATH  = filepath.Join(DATA_PATH)
 	MANIFEST_PATH = filepath.Join(DATA_PATH, "manifests")
 	BLOBS_PATH    = filepath.Join(DATA_PATH, "blobs")
@@ -16,8 +16,6 @@ var (
 
 	BACKET_NAME              = "registry"
 	DEFAULT_TAG_EXPIRED_DAYS = 0
-
-	AUTH_PATH = filepath.Join(TMP_PATH, ".auth")
 )
 
 var MANIFEST_TYPE = map[string]string{
