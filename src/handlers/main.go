@@ -73,6 +73,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 			cloud.DELETE("/:cloud/:repository", h.deleteRepositoryOrImage)
 		}
 		api.POST("/garbage-collection", h.garbageCollection)
+		api.POST("/settings", h.settings)
 	}
 	router.NoRoute(func(c *gin.Context) {
 		if strings.HasPrefix(c.Request.URL.Path, "/v2/") {

@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -21,27 +22,27 @@ var delCmd = &cobra.Command{
 		case repoName != "" && tagName != "":
 			if err := cr.DelImage(args[0], repoName, tagName); err != nil {
 				fmt.Println(err)
-				return
+				os.Exit(1)
 			}
 		case repoName != "":
 			fmt.Printf("Все образы будут удалены. Вы уверены? (y/n) ")
 			fmt.Scan(&submit)
 			if submit != "y" {
-				return
+				os.Exit(0)
 			}
 			if err := cr.DelRepository(args[0], repoName); err != nil {
 				fmt.Println(err)
-				return
+				os.Exit(1)
 			}
 		default:
 			fmt.Printf("Все репозитории и образы будут удалены. Вы уверены? (y/n) ")
 			fmt.Scan(&submit)
 			if submit != "y" {
-				return
+				os.Exit(0)
 			}
 			if err := cr.DelCloud(args[0]); err != nil {
 				fmt.Println(err)
-				return
+				os.Exit(1)
 			}
 		}
 	},

@@ -120,7 +120,7 @@ func (c *Client) DelCloud(cloud string) error {
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode != http.StatusNoContent {
+	if resp.StatusCode != http.StatusAccepted {
 		return errors.New(string(body))
 	}
 	fmt.Println(string(body))

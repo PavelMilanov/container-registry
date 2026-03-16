@@ -66,7 +66,7 @@ func (h *Handler) deleteCloud(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		return
 	}
-	c.JSON(http.StatusNoContent, gin.H{"msg": "Пространство удалено"})
+	c.JSON(http.StatusAccepted, gin.H{"msg": "Пространство удалено"})
 }
 
 func (h *Handler) getRepoList(c *gin.Context) {
@@ -186,4 +186,17 @@ func (h *Handler) login(c *gin.Context) {
 func (h *Handler) garbageCollection(c *gin.Context) {
 	services.GarbageCollection(h.STORAGE)
 	c.JSON(http.StatusAccepted, gin.H{"msg": "Очистка завершена"})
+}
+
+func (h *Handler) settings(c *gin.Context) {
+	tag := c.Query("tag")
+	if tag != "" {
+		if err := services.SetCountTag(h.DB.Sql, tag); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusAccepted, gin.H{"msg": "Настройки сохранены"})
+		return
+	}
+
 }

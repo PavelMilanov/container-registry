@@ -8,9 +8,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// garbadgeCmd represents the garbage collection command
-var garbadgeCmd = &cobra.Command{
-	Use:   "garbage",
+var count int
+
+// settingsCmd represents the settings command
+var settingsCmd = &cobra.Command{
+	Use:   "settings",
 	Short: "A brief description of your command",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
@@ -21,7 +23,8 @@ to quickly create a Cobra application.`,
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		cr := client.NewClient()
-		if err := cr.GarbageCollection(); err != nil {
+		toStr := fmt.Sprintf("%d", count)
+		if err := cr.SetGarbageTagCount(toStr); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
@@ -29,5 +32,7 @@ to quickly create a Cobra application.`,
 }
 
 func init() {
-	rootCmd.AddCommand(garbadgeCmd)
+	rootCmd.AddCommand(settingsCmd)
+	settingsCmd.Flags().IntVarP(&count, "count", "c", 0, "количество тегов для удаления")
+	settingsCmd.MarkFlagRequired("count")
 }
