@@ -185,8 +185,8 @@ AddRegistry добавляет новый реестр в хранилище.
 
 	registry - имя реестра.
 */
-func (s *S3Storage) AddRegistry(registry string) error {
-	if err := os.MkdirAll(filepath.Join(config.MANIFEST_PATH, registry), 0755); err != nil {
+func (s *S3Storage) AddCloud(name string) error {
+	if err := os.MkdirAll(filepath.Join(config.MANIFEST_PATH, name), 0755); err != nil {
 		return err
 	}
 	return nil
@@ -197,8 +197,8 @@ DeleteRegistry удаляет реестр из хранилища.
 
 	registry - имя реестра.
 */
-func (s *S3Storage) DeleteRegistry(registry string) error {
-	path := filepath.Join(config.MANIFEST_PATH, registry)
+func (s *S3Storage) DeleteCloud(name string) error {
+	path := filepath.Join(config.MANIFEST_PATH, name)
 	objectsCh := make(chan minio.ObjectInfo)
 	go func() {
 		defer close(objectsCh)
@@ -214,7 +214,7 @@ func (s *S3Storage) DeleteRegistry(registry string) error {
 	for e := range err {
 		return e.Err
 	}
-	if err := os.RemoveAll(filepath.Join(config.MANIFEST_PATH, registry)); err != nil {
+	if err := os.RemoveAll(filepath.Join(config.MANIFEST_PATH, name)); err != nil {
 		return err
 	}
 	return nil
@@ -228,9 +228,9 @@ DeleteImage удаляет образ из хранилища.
 	imageTag - тег образа.
 	imageHash - хеш образа.
 */
-func (s *S3Storage) DeleteImage(repository, imageName, imageTag, imageHash string) error {
-	path := filepath.Join(config.MANIFEST_PATH, repository, imageName, imageHash)
-	tagPath := filepath.Join(config.MANIFEST_PATH, repository, imageName, "tags", imageTag)
+func (s *S3Storage) DeleteManifest(cloud, repository, tag string) error {
+	path := filepath.Join(config.MANIFEST_PATH, cloud, repository, tag)
+	tagPath := filepath.Join(config.MANIFEST_PATH, cloud, repository, "tags", tag)
 	opts := minio.RemoveObjectOptions{
 		GovernanceBypass: true,
 	}
@@ -297,21 +297,6 @@ func (s *S3Storage) GarbageCollection() {
 	fmt.Println(blobs)
 }
 
-func (s *S3Storage) DiskUsage() (Disk, error) {
-	var disk Disk
-	// opts := minio.ListObjectsOptions{
-	// 	Recursive: true,
-	// 	Prefix:    config.BLOBS_PATH,
-	// }
-	// for object := range s.S3.ListObjects(context.Background(), config.BACKET_NAME, opts) {
-	// 	if object.Err != nil {
-	// 		return disk, object.Err
-	// 	}
-	// 	disk.Used += object.Size
-	// }
-	return disk, nil
-}
-
 func (s *S3Storage) ReadFile(path string) ([]byte, error) {
 	reader, err := s.S3.GetObject(context.Background(), config.BACKET_NAME, path, minio.GetObjectOptions{})
 	if err != nil {
@@ -320,3 +305,17 @@ func (s *S3Storage) ReadFile(path string) ([]byte, error) {
 	defer reader.Close()
 	return io.ReadAll(reader)
 }
+
+func (*S3Storage) GetManifestList(repository, image string) ([]string, error) {
+	return nil, nil
+}
+
+func (*S3Storage) GetCloudList() ([]string, error) {
+	return nil, nil
+}
+
+func (s *S3Storage) GetRepositoriesList(cloud string) ([]string, error) {
+	return nil, nil
+}
+
+func (s *S3Storage) DeleteOlderTags(count int) error { return nil }

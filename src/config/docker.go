@@ -1,39 +1,34 @@
 package config
 
-type Descriptor struct {
-	MediaType string `json:"mediaType"`
-	Size      int64  `json:"size"`
-	Digest    string `json:"digest"`
+var MANIFEST_TYPE = map[string]string{
+	"manifest": "application/vnd.oci.image.manifest.v1+json",
+	"index":    "application/vnd.oci.image.index.v1+json",
 }
 
-type Platform struct {
-	Architecture string `json:"architecture"`
-	OS           string `json:"os"`
-}
-
-/*
-ManifestOCI абстракция
-
-	application/vnd.oci.image.manifest.v1+json
-*/
-type ManifestOCI struct {
-	MediaType string   `json:"mediaType"`
-	Digest    string   `json:"Digest"`
-	Size      int64    `json:"Size"`
-	Platform  Platform `json:"platform"`
-}
-
-/*
-Manifest абстракция
-
-	application/vnd.docker.distribution.manifest.v2+json
-*/
+// Абстракция application/vnd.oci.image.manifest.v1+json
 type Manifest struct {
-	SchemaVersion int           `json:"schemaVersion"`
-	MediaType     string        `json:"mediaType"`
-	Config        Descriptor    `json:"config"`
-	Layers        []Descriptor  `json:"layers"`
-	Manifests     []ManifestOCI `json:"manifests"`
+	MediaType string `json:"mediaType"`
+	Config    struct {
+		Digest string `json:"digest"`
+		Size   int64  `json:"size"`
+	} `json:"config"`
+	Layers []struct {
+		Digest string `json:"digest"`
+		Size   int64  `json:"size"`
+	} `json:"layers"`
+}
+
+// Абстракция application/vnd.oci.image.index.v1+json
+type Index struct {
+	MediaType string `json:"mediaType"`
+	Manifests []struct {
+		Digest   string `json:"digest"`
+		Size     int64  `json:"size"`
+		Platform struct {
+			Architecture string `json:"architecture"`
+			OS           string `json:"os"`
+		} `json:"platform"`
+	} `json:"manifests"`
 }
 
 /*

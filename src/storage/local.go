@@ -4,12 +4,10 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"slices"
+	"sort"
 	"strings"
-	"syscall"
 
 	"github.com/PavelMilanov/container-registry/config"
-	"github.com/PavelMilanov/container-registry/system"
 	"github.com/sirupsen/logrus"
 )
 
@@ -17,15 +15,6 @@ import (
 LocalStorage представляет хранилище на основе локальной файловой системы.
 */
 type LocalStorage struct {
-}
-
-/*
-Disk представляет информацию о дисковом пространстве на локальной файловой системе.
-*/
-type Disk struct {
-	Total         uint64
-	Used          uint64
-	UsedToPercent float64
 }
 
 /*
@@ -109,22 +98,18 @@ SaveManifest сохраняет манифест в хранилище.
 func (lc *LocalStorage) SaveManifest(meta config.Meta, body []byte, manifestPath string) error {
 	tagPath := filepath.Join(config.MANIFEST_PATH, meta.Repository, meta.Image, "tags", meta.Tag)
 	if err := os.MkdirAll(filepath.Dir(manifestPath), 0755); err != nil {
-		logrus.Error(err)
-		return errors.New("Не удалось создать директорию для манифеста")
+		return err
 	}
-	if err := os.WriteFile(manifestPath, body, 0644); err != nil {
-		logrus.Error(err)
-		return errors.New("Не удалось сохранить файл манифеста")
+	if err := os.WriteFile(manifestPath, body, 0755); err != nil {
+		return err
 	}
 	// Если это тег (а не digest), создаём символическую ссылку
 	if !strings.HasPrefix(meta.Tag, "sha256:") {
 		if err := os.MkdirAll(filepath.Dir(tagPath), 0755); err != nil {
-			logrus.Error(err)
-			return errors.New("Не удалось создать директорию для тега")
+			return err
 		}
-		if err := os.WriteFile(tagPath, []byte(meta.Digest), 0644); err != nil {
-			logrus.Error(err)
-			return errors.New("Не удалось сохранить файл тега")
+		if err := os.WriteFile(tagPath, []byte(meta.Digest), 0755); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -166,8 +151,8 @@ AddRegistry добавляет новый реестр в хранилище.
 
 	registry - имя реестра.
 */
-func (lc *LocalStorage) AddRegistry(registry string) error {
-	if err := os.MkdirAll(filepath.Join(config.MANIFEST_PATH, registry), 0755); err != nil {
+func (lc *LocalStorage) AddCloud(name string) error {
+	if err := os.MkdirAll(filepath.Join(config.MANIFEST_PATH, name), 0755); err != nil {
 		return err
 	}
 	return nil
@@ -178,8 +163,8 @@ DeleteRegistry удаляет реестр из хранилища.
 
 	registry - имя реестра.
 */
-func (lc *LocalStorage) DeleteRegistry(registry string) error {
-	if err := os.RemoveAll(filepath.Join(config.MANIFEST_PATH, registry)); err != nil {
+func (lc *LocalStorage) DeleteCloud(name string) error {
+	if err := os.RemoveAll(filepath.Join(config.MANIFEST_PATH, name)); err != nil {
 		return err
 	}
 	return nil
@@ -193,13 +178,38 @@ DeleteImage удаляет образ из хранилища.
 	imageTag - тег образа.
 	imageHash - хеш образа.
 */
-func (lc *LocalStorage) DeleteImage(repository, imageName, imageTag, imageHash string) error {
-	path := filepath.Join(config.MANIFEST_PATH, repository, imageName, imageHash)
-	tagPath := filepath.Join(config.MANIFEST_PATH, repository, imageName, "tags", imageTag)
+func (lc *LocalStorage) DeleteManifest(cloud, repository, tag string) error {
+	tagPath := filepath.Join(config.MANIFEST_PATH, cloud, repository, "tags", tag)
+	data, err := os.ReadFile(tagPath)
+	if err != nil {
+		return err
+	}
+	manifestDigest := string(data)
+	manifestPath := filepath.Join(config.MANIFEST_PATH, cloud, repository, manifestDigest)
 	if err := os.Remove(tagPath); err != nil {
 		return err
 	}
-	if err := os.Remove(path); err != nil {
+
+	// Если оставшиеся теги указывают на этот же digest, файл манифеста удалять нельзя.
+	tagsPath := filepath.Join(config.MANIFEST_PATH, cloud, repository, "tags")
+	tags, err := os.ReadDir(tagsPath)
+	if err == nil {
+		for _, item := range tags {
+			if item.IsDir() {
+				continue
+			}
+			otherTagPath := filepath.Join(tagsPath, item.Name())
+			otherDigest, err := os.ReadFile(otherTagPath)
+			if err != nil {
+				continue
+			}
+			if string(otherDigest) == manifestDigest {
+				return nil
+			}
+		}
+	}
+
+	if err := os.Remove(manifestPath); err != nil && !os.IsNotExist(err) {
 		return err
 	}
 	return nil
@@ -208,11 +218,11 @@ func (lc *LocalStorage) DeleteImage(repository, imageName, imageTag, imageHash s
 /*
 DeleteRepository удаляет репозиторий из хранилища.
 
-	name - имя репозитория.
-	image - имя образа.
+	cloud - название пространства.
+	repository - название репозитория.
 */
-func (lc *LocalStorage) DeleteRepository(name, image string) error {
-	if err := os.RemoveAll(filepath.Join(config.MANIFEST_PATH, name, image)); err != nil {
+func (lc *LocalStorage) DeleteRepository(cloud, repository string) error {
+	if err := os.RemoveAll(filepath.Join(config.MANIFEST_PATH, cloud, repository)); err != nil {
 		return err
 	}
 	return nil
@@ -224,59 +234,138 @@ GarbageCollection выполняет сборку мусора в хранили
 	Удаляет все образы и слои, которые не используются ни одним реестром.
 */
 func (lc *LocalStorage) GarbageCollection() {
-	// получаем список всех blob.
-	blobs := func() []string {
-		var blobs []string
-		digests, _ := os.ReadDir(config.BLOBS_PATH)
-		for _, blob := range digests {
-			blobs = append(blobs, blob.Name())
+	manifests := inventoryManifests()
+	usedBlobs := parseUsageBlobs(manifests)
+	usedBlobsMap := make(map[string]struct{}, len(usedBlobs))
+	for _, b := range usedBlobs {
+		usedBlobsMap[b] = struct{}{}
+	}
+	deleted := 0
+
+	blobs := inventoryBlobs()
+	for _, blob := range blobs {
+		if _, ok := usedBlobsMap[blob]; ok {
+			continue
 		}
-		return blobs
-	}()
-	actualBlobs := inventoryBlobs()
-	var buffer []string
-	for _, v := range blobs {
-		if !slices.Contains(actualBlobs, v) {
-			buffer = append(buffer, v)
+
+		if err := os.Remove(blob); err != nil {
+			logrus.WithField("GarbageCollection", "error").WithError(err).Error()
+			continue
 		}
+
+		deleted++
 	}
-	statBefore, err := lc.DiskUsage()
-	if err != nil {
-		logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
-		return
-	}
-	for _, i := range buffer {
-		if err := os.Remove(filepath.Join(config.BLOBS_PATH, i)); err != nil {
-			logrus.Error(err)
-		}
-	}
-	statAfter, err := lc.DiskUsage()
-	if err != nil {
-		logrus.Printf("Ошибка получения информации о дисковом пространстве: %v", err)
-		return
-	}
-	clearSpace := statBefore.Used - statAfter.Used
-	logrus.Infof("Инвентаризация blob произведена. Удалено файлов %d\nОчищено пространства %s", len(buffer), system.HumanizeSize(clearSpace))
+	logrus.WithField("GarbageCollection", "deleted").Infof("Удалено %d файлов", deleted)
 }
 
-func (*LocalStorage) DiskUsage() (Disk, error) {
-	fs := syscall.Statfs_t{}
-	err := syscall.Statfs("/", &fs)
+func (*LocalStorage) GetManifestList(cloud, repository string) ([]string, error) {
+	tagPath := filepath.Join(config.MANIFEST_PATH, cloud, repository, "tags")
+	files, err := os.ReadDir(tagPath)
 	if err != nil {
-		return Disk{}, err
+		return nil, err
 	}
-
-	blockSize := uint64(fs.Bsize) // Размер блока в байтах
-	totalBlocks := fs.Blocks      // Всего блоков
-	freeBlocks := fs.Bavail
-	usedBlocks := totalBlocks - freeBlocks
-
-	totalBytes := blockSize * totalBlocks
-	usedBytes := blockSize * usedBlocks
-	usedToPercent := float64(usedBytes) / float64(totalBytes) * 100
-	return Disk{Total: totalBytes, Used: usedBytes, UsedToPercent: usedToPercent}, nil
+	var tags []string
+	for _, file := range files {
+		tags = append(tags, file.Name())
+	}
+	return tags, nil
 }
 
-func (*LocalStorage) ReadFile(path string) ([]byte, error) {
-	return os.ReadFile(path)
+/* Возвращает список пространств */
+func (*LocalStorage) GetCloudList() ([]string, error) {
+	var cloud []string
+	dirs, err := os.ReadDir(config.MANIFEST_PATH)
+	if err != nil {
+		return cloud, err
+	}
+	for _, dir := range dirs {
+		if dir.IsDir() {
+			cloud = append(cloud, dir.Name())
+		}
+	}
+	return cloud, nil
+}
+
+func (*LocalStorage) GetRepositoriesList(cloud string) ([]string, error) {
+	var data []string
+	repos, err := os.ReadDir(filepath.Join(config.MANIFEST_PATH, cloud))
+	if err != nil {
+		return data, errors.New(cloud + " не найден")
+	}
+	for _, repo := range repos {
+		data = append(data, repo.Name())
+	}
+	return data, nil
+}
+
+func (lc *LocalStorage) DeleteOlderTags(count int) error {
+	type tagMeta struct {
+		Name    string
+		ModTime int64
+	}
+
+	deleted := 0
+	clouds, err := lc.GetCloudList()
+	if err != nil {
+		return err
+	}
+
+	for _, cloud := range clouds {
+		repositories, err := lc.GetRepositoriesList(cloud)
+		if err != nil {
+			logrus.WithField("cloud", cloud).WithError(err).Warn("не удалось получить список репозиториев")
+			continue
+		}
+		for _, repository := range repositories {
+			tags, err := lc.GetManifestList(cloud, repository)
+			if err != nil {
+				logrus.WithFields(logrus.Fields{
+					"cloud":      cloud,
+					"repository": repository,
+				}).WithError(err).Warn("не удалось получить список тегов")
+				continue
+			}
+			if len(tags) <= count {
+				continue
+			}
+
+			withMeta := make([]tagMeta, 0, len(tags))
+			for _, tag := range tags {
+				tagPath := filepath.Join(config.MANIFEST_PATH, cloud, repository, "tags", tag)
+				info, err := os.Stat(tagPath)
+				if err != nil {
+					logrus.WithFields(logrus.Fields{
+						"cloud":      cloud,
+						"repository": repository,
+						"tag":        tag,
+					}).WithError(err).Warn("не удалось прочитать метаданные тега")
+					continue
+				}
+				withMeta = append(withMeta, tagMeta{Name: tag, ModTime: info.ModTime().UnixNano()})
+			}
+
+			if len(withMeta) <= count {
+				continue
+			}
+
+			sort.Slice(withMeta, func(i, j int) bool {
+				return withMeta[i].ModTime > withMeta[j].ModTime
+			})
+
+			for i := count; i < len(withMeta); i++ {
+				tag := withMeta[i].Name
+				if err := lc.DeleteManifest(cloud, repository, tag); err != nil {
+					logrus.WithFields(logrus.Fields{
+						"cloud":      cloud,
+						"repository": repository,
+						"tag":        tag,
+					}).WithError(err).Warn("не удалось удалить старый тег")
+					continue
+				}
+				deleted++
+			}
+		}
+	}
+	logrus.WithField("deleted_tags", deleted).Info("Удалены старые теги")
+	return nil
 }

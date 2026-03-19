@@ -7,8 +7,8 @@ var (
 	DURATION = 3
 	VERSION  string
 
-	DATA_PATH     = "var"
-	CONFIG_PATH   = "conf.d"
+	DATA_PATH     = "var"    // меняется при сборке в прод
+	CONFIG_PATH   = "conf.d" // меняется при сборке в прод
 	STORAGE_PATH  = filepath.Join(DATA_PATH)
 	MANIFEST_PATH = filepath.Join(DATA_PATH, "manifests")
 	BLOBS_PATH    = filepath.Join(DATA_PATH, "blobs")
@@ -17,8 +17,3 @@ var (
 	BACKET_NAME              = "registry"
 	DEFAULT_TAG_EXPIRED_DAYS = 0
 )
-
-var MANIFEST_TYPE = map[string]string{
-	"docker": "application/vnd.docker.distribution.manifest.v2+json",
-	"oci":    "application/vnd.oci.image.index.v1+json",
-}

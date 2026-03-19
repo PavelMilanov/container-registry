@@ -8,108 +8,122 @@ import (
 )
 
 /*
-getRegistry - получение информации о реестрах.
+addCloud -добавление указанного пространства.
 
-	<name> - название реестра.
+	{
+	 "cloud": "name"
+	}
 
-	/api/ -вывод всех реестров.
-	/api/<name> - вывод всех образов репозитория.
+	   /api/cloud/create
 */
-func (h *Handler) getRegistry(c *gin.Context) {
-	name := c.Param("name")
-	if name == "" {
-		data, err := services.GetRegistries(h.DB.Sql)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"data": data})
+func (h *Handler) addCloud(c *gin.Context) {
+	var req struct {
+		Cloud string `json:"cloud"`
+	}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"err": "неверный формат"})
 		return
 	}
-	data, err := services.GetRepositories(h.DB.Sql, name)
+	if err := services.AddCloud(req.Cloud, h.STORAGE); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"msg": "Пространство создано"})
+}
+
+/*
+getCloudList -получение списка пространств.
+
+	/api/cloud/list
+*/
+func (h *Handler) getCloudList(c *gin.Context) {
+	list, err := services.GetCloudList(h.STORAGE)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"data": data})
+	c.JSON(http.StatusOK, gin.H{"clouds": list})
 }
 
 /*
-addRegistry -добавление указанного реестра.
+deleteCloud -удаление указанного пространства.
 
-	<name> - название реестра.
+	{
+	 "cloud": "name"
+	}
 
-	/api/<name> - добавление реестра.
+	   /api/cloud/delete
 */
-func (h *Handler) addRegistry(c *gin.Context) {
-	data := c.Param("name")
-	if err := services.AddRegistry(data, h.DB.Sql, h.STORAGE); err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"err": err.Error()})
+func (h *Handler) deleteCloud(c *gin.Context) {
+	var req struct {
+		Cloud string `json:"cloud"`
+	}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"err": "неверный формат"})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{})
+	if err := services.DeleteCloud(req.Cloud, h.STORAGE); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+		return
+	}
+	c.JSON(http.StatusAccepted, gin.H{"msg": "Пространство удалено"})
+}
+
+func (h *Handler) getRepoList(c *gin.Context) {
+	cloud := c.Param("cloud")
+	list, err := services.GetRepositoriesList(cloud, h.STORAGE)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"repositories": list})
 }
 
 /*
-deleteRegistry -удаление указанного реестра.
+getImagesList - получение всех образов указанного репозитория.
 
-	<name> - название реестра.
+	<cloud> - название пространства.
+	<repository> - название репозитория.
 
-	/api/<name> - удаляется реестр.
+	/api/<cloud>/<repository>
 */
-func (h *Handler) deleteRegistry(c *gin.Context) {
-	data := c.Param("name")
-	if err := services.DeleteRegistry(data, h.DB.Sql, h.STORAGE); err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"err": "Ошибка при удалении реестра"})
+func (h *Handler) getImagesList(c *gin.Context) {
+	cloud := c.Param("cloud")
+	repo := c.Param("repository")
+	list, err := services.GetImagesList(cloud, repo, h.STORAGE)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		return
 	}
-	c.JSON(http.StatusAccepted, gin.H{})
+	c.JSON(http.StatusOK, gin.H{"images": list})
 }
 
 /*
 deleteImage -удаление указанного образа.
 
-	<name> - название репозитория.
-	<image> - название образа.
-	<hash> - хеш образа.
+	<cloud> - название пространства.
+	<repository> - название репозитория.
+	<tag> - название образа.
 
-	/api/<name>/<image>?hash=<hash> - удаляется указанный образ.
+	/api/<cloud>/<repository>?tag=<tag>.
 */
-func (h *Handler) deleteImage(c *gin.Context) {
-	name := c.Param("name")
-	image := c.Param("image")
-	hash := c.Query("hash")
-	if hash != "" { // удаляется только образ
-		if err := services.DeleteImage(name, image, hash, h.DB.Sql, h.STORAGE); err != nil {
-			c.JSON(http.StatusForbidden, gin.H{"err": "Ошибка при удалении образа"})
+func (h *Handler) deleteRepositoryOrImage(c *gin.Context) {
+	cloud := c.Param("cloud")
+	repo := c.Param("repository")
+	tag := c.Query("tag")
+	if tag != "" {
+		if err := services.DeleteImage(cloud, repo, tag, h.STORAGE); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"err": "Ошибка при удалении образа"})
 			return
 		}
-		c.JSON(http.StatusAccepted, gin.H{})
-	} else { // удаляется весь репозиторий
-		if err := services.DeleteRepository(name, image, h.DB.Sql, h.STORAGE); err != nil {
-			c.JSON(http.StatusForbidden, gin.H{"err": "Ошибка при удалении репозитория"})
+		c.JSON(http.StatusNoContent, gin.H{"msg": "Образ успешно удален"})
+	} else {
+		if err := services.DeleteRepository(cloud, repo, h.STORAGE); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"err": "репозиторий не найден"})
 			return
 		}
-		c.JSON(http.StatusAccepted, gin.H{})
+		c.JSON(http.StatusNoContent, gin.H{"msg": "Репозиторий успешно удален"})
 	}
-}
-
-/*
-getImages - получение всех тегов образа.
-
-	<name> - название репозитория.
-	<image> - название образа.
-
-	/api/<name>/<image>
-*/
-func (h *Handler) getImages(c *gin.Context) {
-	ImageName := c.Param("image")
-	data, err := services.GetImages(ImageName, h.DB.Sql)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"err": err})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
 /*
@@ -140,7 +154,7 @@ func (h *Handler) registration(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{})
+	c.JSON(http.StatusCreated, gin.H{"msg": "Пользователь зарегистрирован"})
 }
 
 /*
@@ -169,41 +183,38 @@ func (h *Handler) login(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
-/*
-settings - настройки.
+func (h *Handler) garbageCollection(c *gin.Context) {
+	services.GarbageCollection(h.STORAGE)
+	c.JSON(http.StatusAccepted, gin.H{"msg": "Очистка завершена"})
+}
 
-	/api/settings - получение настроек.
-	/api/settings?tag=<int> - установка количества тегов.
-	/api/settings?garbage=true - очистка хранилища.
-*/
 func (h *Handler) settings(c *gin.Context) {
-	if c.Request.Method == "GET" {
-		data, err := services.GetSettings(h.DB.Sql, h.STORAGE)
+	switch c.Request.Method {
+	case http.MethodGet:
+		count, err := services.GetCountTag(h.DB.Sql)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{
-			"version":       data.Version,
-			"count":         data.Count,
-			"total":         data.Total,
-			"used":          data.Used,
-			"usedToPercent": data.UsedToPercent})
-	} else if c.Request.Method == "POST" {
-		q := c.Query("garbage")
-		t := c.Query("tag")
-		if q == "true" {
-			h.STORAGE.GarbageCollection()
-			c.JSON(http.StatusAccepted, gin.H{"data": "Очистка завершена"})
-			return
-		}
-		if t != "" {
-			if err := services.SetCountTag(h.DB.Sql, t); err != nil {
+		c.JSON(http.StatusOK, gin.H{"tagCount": count})
+	case http.MethodPost:
+		tag := c.Query("tag")
+		if tag != "" {
+			if err := services.SetCountTag(h.DB.Sql, tag); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 				return
 			}
-			c.JSON(http.StatusAccepted, gin.H{"data": "Настройки сохранены"})
-			return
+			c.JSON(http.StatusAccepted, gin.H{"msg": "Настройки сохранены"})
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "не указано значение tag"})
 		}
 	}
+}
+
+func (h *Handler) deleteOlderTags(c *gin.Context) {
+	if err := services.DeleteOlderTags(h.DB.Sql, h.STORAGE); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusAccepted, gin.H{"msg": "Операция завершена успешно"})
 }

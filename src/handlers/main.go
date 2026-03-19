@@ -5,6 +5,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
@@ -24,15 +25,18 @@ func NewHandler(storage storage.Storage, db *db.SQLite, env *config.Env) *Handle
 }
 
 func (h *Handler) InitRouters() *gin.Engine {
-
 	router := gin.Default()
-	setupCORS(router, h)
-
-	router.Static("/assets/", "./assets")
-
+	// router.Use(cors.New(cors.Config{
+	// 	AllowOrigins:     []string{"http://localhost:5050"},
+	// 	AllowMethods:     []string{"GET", "POST", "DELETE"},
+	// 	AllowHeaders:     []string{"Origin", "Authorization", "Content-Type"},
+	// 	ExposeHeaders:    []string{"Content-Length"},
+	// 	AllowCredentials: true,
+	// 	MaxAge:           24 * time.Hour,
+	// }))
 	router.POST("/login", h.login)
 	router.GET("/check", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		c.Status(http.StatusOK)
 	})
 	router.POST("/registration", h.registration)
 	router.GET("/v2/auth", h.authHandler)
@@ -42,6 +46,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 	{
 		// Пинг для проверки
 		v2.GET("/", func(c *gin.Context) {
+			c.Header("Docker-Distribution-Api-Version", "registry/2.0")
 			c.JSON(http.StatusOK, gin.H{"message": "Docker Registry API"})
 		})
 		// manifests
@@ -58,15 +63,30 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 	api := router.Group("/api/", baseApiMiddleware([]byte(h.ENV.Server.Jwt)))
 	{
-		api.GET("/", h.getRegistry)
-		api.GET("/:name", h.getRegistry)
-		api.POST("/:name", h.addRegistry)
-		api.DELETE("/:name", h.deleteRegistry)
-		api.GET("/:name/:image", h.getImages)
-		api.DELETE("/:name/:image", h.deleteImage)
-		api.POST("/settings", h.settings)
+		cloud := api.Group("/cloud/")
+		{
+			cloud.GET("/:cloud/:repository", h.getImagesList)
+			cloud.GET("/:cloud", h.getRepoList)
+			cloud.GET("/list", h.getCloudList)
+			cloud.POST("/create", h.addCloud)
+			cloud.DELETE("/delete", h.deleteCloud)
+			cloud.DELETE("/:cloud/:repository", h.deleteRepositoryOrImage)
+		}
+		garbage := api.Group("/garbage/")
+		{
+			garbage.POST("/collection", h.garbageCollection)
+			garbage.POST("/tags", h.deleteOlderTags)
+
+		}
 		api.GET("/settings", h.settings)
+		api.POST("/settings", h.settings)
 	}
-	noRouter(router, h)
+	router.NoRoute(func(c *gin.Context) {
+		if strings.HasPrefix(c.Request.URL.Path, "/v2/") {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		c.String(http.StatusOK, "is OK.")
+	})
 	return router
 }

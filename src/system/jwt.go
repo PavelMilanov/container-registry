@@ -12,7 +12,7 @@ func GenerateJWT(username string, cred *config.Env) (string, error) {
 		"sub": username,
 		"aud": cred.Server.Service,
 		"iss": cred.Server.Issuer,
-		"exp": time.Now().Add(24 * time.Hour).Unix(),
+		"exp": time.Now().Add(2 * time.Hour).Unix(),
 		"iat": time.Now().Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, payload)
@@ -21,7 +21,7 @@ func GenerateJWT(username string, cred *config.Env) (string, error) {
 
 // Валидирует токен аутентификации.
 func ValidateJWT(tokenString string, key []byte) bool {
-	token, err := jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, func(token *jwt.Token) (any, error) {
 		return key, nil
 	})
 	if err != nil {

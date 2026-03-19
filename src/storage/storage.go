@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/PavelMilanov/container-registry/config"
@@ -12,89 +11,190 @@ import (
 )
 
 /*
-inventoryBlobs сканирует директорию и возвращает список используемых blob-ов.
+inventoryBlobs сканирует директорию и возвращает список слоев в хранилище.
+
+Returns:
+  - []string: ссылки на слои.
 */
 func inventoryBlobs() []string {
-	var blobsBuffer []string
 	var buffer []string
-	registies, _ := os.ReadDir(config.MANIFEST_PATH)
-	for _, d := range registies {
-		registryDir := filepath.Join(config.MANIFEST_PATH, d.Name()) // var/manifests/dev
-		repositories, _ := os.ReadDir(registryDir)
-		for _, file := range repositories {
-			repositoryDir := filepath.Join(registryDir, file.Name()) // var/manifests/dev/registry
-			checkManifests(repositoryDir)
-			manifests, _ := os.ReadDir(repositoryDir)
-			tagsDir := filepath.Join(repositoryDir, "tags")
-			tags, _ := os.ReadDir(tagsDir)
-			for _, tag := range tags { // ищем ссылки на манифесты в тегах, добавляем в буффер
-				data, _ := os.ReadFile(filepath.Join(tagsDir, tag.Name()))
-				buffer = append(buffer, string(data))
-			}
-			var m config.Manifest
-			for _, manifest := range manifests {
-				data, _ := os.ReadFile(filepath.Join(repositoryDir, manifest.Name()))
-				json.Unmarshal(data, &m)
-				// ищем манифесты, в которых есть ссылки на blob-ы и копируем ссылку
-				if m.MediaType == "application/vnd.docker.distribution.manifest.v2+json" || m.MediaType == "application/vnd.oci.image.manifest.v1+json" {
-					configDigest := strings.Split(m.Config.Digest, ":")[1]
-					blobsBuffer = append(blobsBuffer, configDigest)
-					for _, layer := range m.Layers {
-						layerDigest := strings.Split(layer.Digest, ":")[1]
-						blobsBuffer = append(blobsBuffer, layerDigest)
-					}
-				}
-			}
-		}
+	blobs, _ := os.ReadDir(config.BLOBS_PATH)
+	for _, blob := range blobs {
+		buffer = append(buffer, filepath.Join(config.BLOBS_PATH, blob.Name()))
 	}
-	return blobsBuffer
+	logrus.WithField("GarbageCollection", "blobs").Infof("Количество слоев: %d", len(buffer))
+	return buffer
 }
 
 /*
-CheckManifests сканирует директорию и удаляет лишние файлы манифестов.
+inventoryManifests сканирует директории и удаляет неиспользуемые файлы манифестов.
 
-	path - путь к директории с манифестами для конкретного репозитория.
+Returns:
+  - []string: ссылки на используемые манифесты.
 */
-func checkManifests(path string) {
-	var tagList []string
+func inventoryManifests() []string {
 	var buffer []string
-	tags, _ := os.ReadDir(filepath.Join(path, "tags"))
-	// проходим по тегам и забираем их digest
-	for _, file := range tags {
-		digest, err := os.ReadFile(filepath.Join(path, "tags", file.Name()))
-		if err != nil {
-			logrus.Error("Error reading file:", err)
-		}
-		tagList = append(tagList, string(digest))
-		buffer = append(buffer, string(digest))
+	path := config.MANIFEST_PATH
+	clouds, err := os.ReadDir(path)
+	if err != nil {
+		logrus.WithField("GarbageCollection", "error").
+			WithError(err).
+			Errorf("не удалось прочитать директорию манифестов: %s", path)
+		return buffer
 	}
-	var manifest config.Manifest
-	// читаем манифесты и сканируем зависимости
-	// сохраняем манифесты в буфер
-	for _, file := range tagList {
+	for _, cloud := range clouds {
+		cloudPath := filepath.Join(path, cloud.Name())
+		repositories, err := os.ReadDir(cloudPath)
+		if err != nil {
+			logrus.WithField("GarbageCollection", "error").
+				WithError(err).
+				Errorf("не удалось прочитать директорию: %s", cloudPath)
+			continue
+		}
+		for _, repo := range repositories {
+			repoPath := filepath.Join(cloudPath, repo.Name())
+			logrus.WithField("GarbageCollection", "scan").
+				Debugf("чтение директории: %s", repoPath)
+			activeTags := parseActiveTags(repoPath)
+			activeTagSet := make(map[string]struct{}, len(activeTags))
+			for _, tag := range activeTags {
+				activeTagSet[tag] = struct{}{}
+			}
+			manifests := parseManifests(repoPath)
+			for _, manifest := range manifests {
+				fileLink := filepath.Join(repoPath, manifest)
+				if _, found := activeTagSet[manifest]; !found {
+					if err := os.Remove(fileLink); err != nil {
+						logrus.WithField("GarbageCollection", "error").
+							WithError(err).
+							Errorf("не удалось удалить файл: %s", fileLink)
+					}
+					continue
+				}
+				buffer = append(buffer, fileLink)
+			}
+		}
+	}
+	logrus.WithField("GarbageCollection", "manifests").Infof("Количество манифестов: %d", len(buffer))
+	return buffer
+}
+
+/*
+parseActiveTags читает директорию с тегами и возвращает список активных тегов.
+
+Params:
+  - path: путь к директории с тегами. Формат: <manifest>/<repo>/tags/<tag>
+
+Returns:
+  - []string: список активных тегов
+*/
+func parseActiveTags(path string) []string {
+	var tagsLink []string
+	var activeTags []string
+	tagPath := filepath.Join(path, "tags")
+	tags, _ := os.ReadDir(tagPath)
+	for _, tag := range tags {
+		filePath := filepath.Join(tagPath, tag.Name())
+		logrus.WithField("GarbageCollection", "scan").Debug("Чтение файла: ", filePath)
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			logrus.WithField("GarbageCollection", "scan").WithError(err).Warn("Ошибка чтения файла: ", filePath)
+			continue
+		}
+		tagsLink = append(tagsLink, string(data))
+	}
+
+	for _, file := range tagsLink {
+		logrus.WithField("GarbageCollection", "scan").Debug("Чтение файла: ", file)
+		body := struct {
+			MediaType string `json:"mediaType"`
+		}{}
 		data, err := os.ReadFile(filepath.Join(path, file))
 		if err != nil {
-			logrus.Error("Error reading file:", err)
+			logrus.WithField("GarbageCollection", "scan").WithError(err).Warn("Ошибка чтения файла: ", file)
+			break
 		}
-		json.Unmarshal(data, &manifest)
-		switch manifest.MediaType {
-		// стандартные манифесты с сылками на блобы
-		case config.MANIFEST_TYPE["docker"]:
-			buffer = append(buffer, file)
-		// ищем манифесты, в которых ссылки на манифесты мультиплатформенных сборок
-		case config.MANIFEST_TYPE["oci"]:
-			for _, item := range manifest.Manifests {
-				buffer = append(buffer, item.Digest)
+		json.Unmarshal(data, &body)
+		switch body.MediaType {
+		case config.MANIFEST_TYPE["manifest"]:
+			activeTags = append(activeTags, file)
+		case config.MANIFEST_TYPE["index"]:
+			var index config.Index
+			json.Unmarshal(data, &index)
+			activeTags = append(activeTags, file) // добавляем сам тег
+			for _, manifest := range index.Manifests {
+				activeTags = append(activeTags, manifest.Digest)
 			}
+		default:
+			logrus.WithField("GarbageCollection", "scan").Warn("Неизвестный тип медиа: ", file)
 		}
 	}
-	manifests, _ := os.ReadDir(path)
-	//заново проходим по директории и удаляет файлы, которые не содержатся в буфере
-	for _, file := range manifests {
+	return activeTags
+}
+
+/*
+parseManifests сканирует директорию и возвращает список используемых манифестов.
+
+Returns:
+  - []string: список манифестов.
+*/
+func parseManifests(path string) []string {
+	var manifests []string
+	files, _ := os.ReadDir(path)
+	for _, file := range files {
 		if !file.IsDir() {
-			if !slices.Contains(buffer, file.Name()) {
-				os.Remove(filepath.Join(path, file.Name()))
-			}
+			logrus.WithField("GarbageCollection", "scan").Debug("Чтение файла: ", file.Name())
+			manifests = append(manifests, file.Name())
 		}
 	}
+	return manifests
+}
+
+/*
+parseUsageBlobs сканирует список ссылок на файлы и возвращает список используемых слоев.
+
+Returns:
+  - []string: ссылки на используемые слои.
+*/
+func parseUsageBlobs(links []string) []string {
+	var buffer []string
+	var manifest config.Manifest
+	// var index config.Index
+	body := struct {
+		MediaType string `json:"mediaType"`
+	}{}
+	for _, link := range links {
+		file, err := os.ReadFile(link)
+		if err != nil {
+			logrus.WithField("GarbageCollection", "scan").WithError(err).Warn("Ошибка чтения файла: ", link)
+			continue
+		}
+		json.Unmarshal(file, &body)
+		switch body.MediaType {
+		case config.MANIFEST_TYPE["manifest"]:
+			json.Unmarshal(file, &manifest)
+			configBlob := strings.Split(manifest.Config.Digest, ":")[1]
+			buffer = append(buffer, filepath.Join(config.BLOBS_PATH, configBlob))
+			for _, layer := range manifest.Layers {
+				layerBlob := strings.Split(layer.Digest, ":")[1]
+				buffer = append(buffer, filepath.Join(config.BLOBS_PATH, layerBlob))
+			}
+		case config.MANIFEST_TYPE["index"]:
+			continue
+		// здесь ссылки на манифесты типа manifest
+		// никак не обрабатываются???
+		default:
+			logrus.WithField("GarbageCollection", "scan").Warn("Неизвестный тип файла: ", link)
+		}
+	}
+	uniqueBlobs := make(map[string]struct{}, len(buffer))
+	for _, blob := range buffer {
+		uniqueBlobs[blob] = struct{}{}
+	}
+	result := make([]string, 0, len(uniqueBlobs))
+	for blob := range uniqueBlobs {
+		result = append(result, blob)
+	}
+	logrus.WithField("GarbageCollection", "blobs").Infof("Количество используемых слоев: %d", len(result))
+	return result
 }

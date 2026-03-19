@@ -1,10 +1,12 @@
-FROM golang:1.25-alpine AS app
+# Stage 1
+FROM golang:1.26-alpine AS app
 
 RUN apk --update --no-cache add gcc musl-dev
 
 WORKDIR /build
 
 COPY src/go.mod .
+COPY src/go.sum .
 
 RUN go mod download
 
@@ -15,36 +17,38 @@ ARG VERSION
 ENV VERSION="${VERSION}"
 ENV CGO_ENABLED=1
 
-RUN go install -tags=prod -trimpath -ldflags="-s -w -X 'github.com/PavelMilanov/container-registry/config.VERSION=${VERSION}'"
+RUN go build -trimpath -o /out/cr -ldflags="-s -w \
+-X 'github.com/PavelMilanov/container-registry/config.VERSION=${VERSION}' \
+-X 'github.com/PavelMilanov/container-registry/config.DATA_PATH=/app/var/registry' \
+-X 'github.com/PavelMilanov/container-registry/config.CONFIG_PATH=/etc/conf.d'" .
 
 
-FROM node:25-alpine AS web
-
-WORKDIR /app
-
-COPY web/package*.json .
-
-RUN npm ci
-
-COPY web/ .
-
-RUN npm run build
-
-
+# Stage 2
 FROM alpine:3.23
 
 ENV TZ=Europe/Moscow
 ENV GIN_MODE=release
+ENV USER=registry
+ENV UID=10000
+
+RUN apk --update --no-cache add tzdata sqlite-libs
 
 WORKDIR /registry
 
-COPY --from=app /go/bin/container-registry /registry/registry
-COPY --from=web /app/dist /registry/
+RUN addgroup -g ${UID} ${USER} && \
+    adduser -u ${UID} -G ${USER} -s /bin/sh -D -H ${USER} && \
+    chown -R ${UID}:${UID} /registry && \
+    mkdir -p /app/var/registry && \
+    chown -R ${UID}:${UID} /app/var/registry
 
-RUN apk --update --no-cache add tzdata sqlite-libs curl
+COPY --from=app /out/cr /usr/bin/cr
 
 EXPOSE 5050/tcp
 
-HEALTHCHECK --interval=10m --timeout=3s --start-period=5s --retries=3 CMD curl -f http://localhost:5050/check || exit 1
+HEALTHCHECK --interval=10m --timeout=5s --start-period=5s --retries=3 CMD ["/usr/bin/cr", "healthcheck"]
 
-ENTRYPOINT ["./registry" ]
+USER ${USER}
+
+VOLUME [ "/app/var/registry" ]
+
+CMD ["/usr/bin/cr", "serve"]

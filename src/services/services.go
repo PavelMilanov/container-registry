@@ -3,177 +3,96 @@
 package services
 
 import (
-	"bufio"
-	"bytes"
-	"encoding/json"
-	"io"
+	"errors"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/storage"
 
-	"github.com/PavelMilanov/container-registry/system"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
-func AddRegistry(name string, sql *gorm.DB, storage storage.Storage) error {
-	if err := storage.AddRegistry(name); err != nil {
-		logrus.Error(err)
-		return err
+func AddCloud(name string, storage storage.Storage) error {
+	if err := storage.AddCloud(name); err != nil {
+		logrus.WithField("name", name).Error(err)
+		return errors.New("Ошибка при создании реестра")
 	}
-	registry := db.Registry{Name: name}
-	if err := registry.Add(sql); err != nil {
-		logrus.Error(err)
-		return err
-	}
-	logrus.Infof("Создан новый реестр %+v", registry)
+	logrus.WithField("name", name).Info("Создано пространство")
 	return nil
 }
 
-func GetRegistries(sql *gorm.DB) ([]db.Registry, error) {
-	data, err := db.GetRegistires(sql)
+func GetCloudList(storage storage.Storage) ([]string, error) {
+	data, err := storage.GetCloudList()
 	if err != nil {
-		logrus.Error(err)
-		return nil, err
+		logrus.WithField("task", "clouds").Error(err)
+		return data, err
 	}
 	return data, nil
 }
 
-func DeleteRegistry(name string, sql *gorm.DB, storage storage.Storage) error {
-	if err := storage.DeleteRegistry(name); err != nil {
-		logrus.Error(err)
-		return err
-	}
-	registy := db.Registry{Name: name}
-	if err := registy.Delete(sql); err != nil {
-		logrus.Error(err)
-		return err
-	}
-	logrus.Infof("Удален реестр %+v", registy)
-	return nil
-}
-
-func DeleteImage(name, image, hash string, sql *gorm.DB, storage storage.Storage) error {
-	img := db.Image{Name: image, Hash: hash}
-	err := sql.Transaction(func(tx *gorm.DB) error {
-		if err := img.Delete(tx); err != nil {
-			tx.Rollback()
-			return err
-		}
-		imgSize := img.GetSize(tx, "repository_id = ?", img.RepositoryID)
-		repo, _ := db.GetRepository(tx, "ID = ?", img.RepositoryID)
-		repo.Size = imgSize
-		repo.SizeAlias = system.ConvertSize(repo.Size)
-		if err := repo.UpdateSize(tx); err != nil {
-			tx.Rollback()
-			return err
-		}
-		repoSize := repo.GetSize(tx, "registry_id = ?", repo.RegistryID)
-		registry, _ := db.GetRegistry(tx, "ID = ?", repo.RegistryID)
-		registry.Size = repoSize
-		registry.SizeAlias = system.ConvertSize(registry.Size)
-		if err := registry.UpdateSize(tx); err != nil {
-			tx.Rollback()
-			return err
-		}
-		return nil
-	})
+func GetRepositoriesList(cloud string, storage storage.Storage) ([]string, error) {
+	data, err := storage.GetRepositoriesList(cloud)
 	if err != nil {
-		logrus.Error(err)
-		return err
+		logrus.WithField("task", "repositories").Error(err)
+		return data, err
 	}
-	if err := storage.DeleteImage(name, img.Name, img.Tag, img.Hash); err != nil {
-		logrus.Error(err)
-		return err
-	}
-	return nil
-}
-
-func DeleteRepository(name, image string, sql *gorm.DB, storage storage.Storage) error {
-	repo, err := db.GetRepository(sql, "name = ?", image)
-	if err != nil {
-		logrus.Error(err)
-		return err
-	}
-	if err := sql.Transaction(func(tx *gorm.DB) error {
-		repoSize := repo.GetSize(tx, "registry_id = ?", repo.RegistryID)
-		if err := repo.Delete(tx); err != nil {
-			tx.Rollback()
-			logrus.Error(err)
-			return err
-		}
-		registry, _ := db.GetRegistry(tx, "ID = ?", repo.RegistryID)
-		registry.Size = repoSize
-		registry.SizeAlias = system.ConvertSize(registry.Size)
-		if err := registry.UpdateSize(tx); err != nil {
-			tx.Rollback()
-			logrus.Error(err)
-			return err
-		}
-		return nil
-	}); err != nil {
-		logrus.Error(err)
-		return err
-	}
-	if err := storage.DeleteRepository(name, repo.Name); err != nil {
-		logrus.Error(err)
-		return err
-	}
-	logrus.Infof("Удален репозиторий %+v", repo)
-	return nil
-}
-
-func GetRepositories(sql *gorm.DB, name string) ([]db.Repository, error) {
-	var registry db.Registry
-	if err := registry.GetRepositories(sql, name); err != nil {
-		logrus.Error(err)
-		return registry.Repositories, err
-	}
-	return registry.Repositories, nil
-}
-
-func GetImages(image string, sql *gorm.DB) ([]db.Image, error) {
-	repo, err := db.GetRepository(sql, "name = ?", image)
-	if err != nil {
-		logrus.Error(err)
-		return nil, err
-	}
-	data := db.GetImageTags(sql, repo.ID, image)
 	return data, nil
 }
 
-// DeleteOlderImages удаляет старые образы из базы данных и хранилища.
-func DeleteOlderImages(sql *gorm.DB, storage storage.Storage) {
-	tagCount, err := db.GetCountTag(sql)
+func GetImagesList(cloud, repo string, storage storage.Storage) ([]string, error) {
+	data, err := storage.GetManifestList(cloud, repo)
 	if err != nil {
-		logrus.Errorf("Не найден тег: %v", err)
-		return
+		logrus.WithFields(logrus.Fields{
+			"cloud":      cloud,
+			"repository": repo,
+		}).Error(err)
+		return data, err
 	}
-	data, err := db.GetLastTagImages(sql, tagCount)
-	if err != nil {
-		logrus.Error(err)
-		return
+	return data, nil
+}
+
+func DeleteCloud(name string, storage storage.Storage) error {
+	if err := storage.DeleteCloud(name); err != nil {
+		logrus.WithField("name", name).Error(err)
+		return err
 	}
-	statBefore, err := storage.DiskUsage()
-	if err != nil {
-		logrus.Errorf("Ошибка получения информации о дисковом пространстве: %v", err)
-		return
+	logrus.WithField("name", name).Info("Удалено пространство")
+	return nil
+}
+
+func DeleteImage(cloud, repository, tag string, storage storage.Storage) error {
+	if err := storage.DeleteManifest(cloud, repository, tag); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"cloud":      cloud,
+			"repository": repository,
+			"tag":        tag,
+		}).Error(err)
+		return err
 	}
-	for _, item := range data {
-		repo, _ := db.GetRepository(sql, "ID = ?", item.RepositoryID)
-		DeleteImage(repo.Name, item.Name, item.Hash, sql, storage)
+	logrus.WithFields(logrus.Fields{
+		"cloud":      cloud,
+		"repository": repository,
+		"tag":        tag,
+	}).Info("Удален манифест")
+	return nil
+}
+
+func DeleteRepository(cloud, repository string, storage storage.Storage) error {
+	if err := storage.DeleteRepository(cloud, repository); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"cloud":      cloud,
+			"repository": repository,
+		}).Error(err)
+		return err
 	}
-	statAfter, err := storage.DiskUsage()
-	if err != nil {
-		logrus.Errorf("Ошибка получения информации о дисковом пространстве: %v", err)
-		return
-	}
-	clearSpace := statBefore.Used - statAfter.Used
-	logrus.Infof("Удалено %d старых образов\nОчищено пространства %s", len(data), system.HumanizeSize(clearSpace))
+	logrus.WithFields(logrus.Fields{
+		"cloud":      cloud,
+		"repository": repository,
+	}).Info("Удален репозиторий")
+	return nil
 }
 
 /*
@@ -198,30 +117,11 @@ Login - реализация авторизации пользователя.
 func Login(sql *gorm.DB, cred *config.Env, username, password string) (string, error) {
 	user := db.User{Name: username, Password: password}
 	if err := user.Login(sql, cred); err != nil {
-		logrus.Error(err)
+		logrus.WithField("username", username).Error(err)
 		return user.Token, err
 	}
+	logrus.WithField("username", username).Info("Успешная авторизация")
 	return user.Token, nil
-}
-
-func GetSettings(sql *gorm.DB, storage storage.Storage) (Settings, error) {
-	count, err := db.GetCountTag(sql)
-	if err != nil {
-		logrus.Error(err)
-		return Settings{}, err
-	}
-	diskStat, err := storage.DiskUsage()
-	if err != nil {
-		logrus.Error(err)
-		return Settings{}, err
-	}
-	return Settings{
-		Count:         count,
-		Total:         system.HumanizeSize(diskStat.Total),
-		Used:          system.HumanizeSize(diskStat.Used),
-		UsedToPercent: int(diskStat.UsedToPercent),
-		Version:       config.VERSION,
-	}, nil
 }
 
 func SetCountTag(sql *gorm.DB, count string) error {
@@ -230,6 +130,10 @@ func SetCountTag(sql *gorm.DB, count string) error {
 		logrus.Error(err)
 		return err
 	}
+	if newCount <= 0 {
+		logrus.Error("значение tag должно быть больше 0")
+		return errors.New("значение tag должно быть больше 0")
+	}
 	if err := db.SetCountTag(sql, newCount); err != nil {
 		logrus.Error(err)
 		return err
@@ -237,102 +141,40 @@ func SetCountTag(sql *gorm.DB, count string) error {
 	return nil
 }
 
+func GetCountTag(sql *gorm.DB) (int, error) {
+	count, err := db.GetCountTag(sql)
+	if err != nil {
+		logrus.Error(err)
+		return 0, err
+	}
+	return count, nil
+}
+
+func DeleteOlderTags(sql *gorm.DB, st storage.Storage) error {
+	tagCount, err := db.GetCountTag(sql)
+	if err != nil {
+		return err
+	}
+	if tagCount <= 0 {
+		return errors.New("значение tag_count должно быть больше 0")
+	}
+	return st.DeleteOlderTags(tagCount)
+}
+
 /*
-SaveManifest - логика сохранения манифеста в базу данных и хранилище.
+SaveManifest - логика сохранения манифеста в хранилище.
 */
-func SaveManifest(sql *gorm.DB, storage storage.Storage, meta config.Meta, body []byte) error {
-	reader := bufio.NewReader(bytes.NewBuffer(body))
+func SaveManifest(storage storage.Storage, meta config.Meta, body []byte) error {
 	manifestPath := filepath.Join(config.MANIFEST_PATH, meta.Repository, meta.Image, meta.Digest)
-	var manifest config.Manifest
-
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		logrus.Error(err)
-		return err
-	}
-	if err := json.Unmarshal(data, &manifest); err != nil {
-		logrus.Error(err)
-		return err
-	}
-	switch manifest.MediaType {
-	case config.MANIFEST_TYPE["docker"]:
-		var sum int64
-		for _, descriptor := range manifest.Layers {
-			blob, _ := storage.GetBlob(descriptor.Digest)
-			sum += blob.Size + descriptor.Size
-		}
-		meta.Size = sum
-		meta.Platform = "docker"
-	case config.MANIFEST_TYPE["oci"]:
-		platforms := []string{}
-		for _, item := range manifest.Manifests {
-			// ищем манифесты с описанием слоев образов
-			// может быть несколько, если была мультиплатформенная сборка
-			if item.Platform.Architecture != "unknown" {
-				platforms = append(platforms, item.Platform.OS+"/"+item.Platform.Architecture)
-				var m2 config.Manifest
-				if err := json.Unmarshal(data, &m2); err != nil {
-					logrus.Error(err)
-					return err
-				}
-				var sum int64
-				for _, descriptor := range m2.Layers {
-					blob, _ := storage.GetBlob(descriptor.Digest)
-					sum += blob.Size + descriptor.Size
-				}
-				meta.Size = sum
-				meta.Platform = strings.Join(platforms, ",")
-			}
-		}
-	}
-	registry, err := db.GetRegistry(sql, "name = ?", meta.Repository)
-	if err != nil {
-		logrus.Error(err)
-	}
-	repo := db.Repository{
-		Name:       meta.Image,
-		RegistryID: registry.ID,
-	}
-	if err := repo.Add(sql); err != nil {
-		logrus.Error(err)
-		return err
-	}
-	logrus.WithFields(logrus.Fields{
-		"name": repo.Name,
-	}).Info("Создан новый репозиторий")
-
-	image := db.Image{
-		Name:         meta.Image,
-		Hash:         meta.Digest,
-		Tag:          meta.Tag,
-		Platform:     meta.Platform,
-		Size:         meta.Size,
-		SizeAlias:    system.ConvertSize(meta.Size),
-		RepositoryID: repo.ID,
-	}
-	if err := image.Add(sql); err != nil {
-		logrus.Error(err)
-		return err
-	}
-	logrus.WithFields(logrus.Fields{
-		"image": image.Name,
-		"tag":   image.Tag,
-	}).Info("Создан новый образ")
 	if err := storage.SaveManifest(meta, body, manifestPath); err != nil {
-		logrus.Error(err)
+		logrus.WithField("digest", meta.Digest).Error(err)
 		return err
 	}
-	logrus.WithFields(logrus.Fields{
-		"manifest": meta.Digest,
-	}).Info("Загружен манифест")
+	logrus.WithField("digest", meta.Digest).Info("Загружен манифест")
+	return nil
+}
 
-	imgSize := image.GetSize(sql, "repository_id = ?", image.RepositoryID)
-	repo.Size = imgSize
-	repo.SizeAlias = system.ConvertSize(repo.Size)
-	repo.UpdateSize(sql)
-	repoSize := repo.GetSize(sql, "registry_id = ?", repo.RegistryID)
-	registry.Size = repoSize
-	registry.SizeAlias = system.ConvertSize(registry.Size)
-	registry.UpdateSize(sql)
+func GarbageCollection(storage storage.Storage) error {
+	storage.GarbageCollection()
 	return nil
 }
