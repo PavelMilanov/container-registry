@@ -6,6 +6,7 @@ RUN apk --update --no-cache add gcc musl-dev
 WORKDIR /build
 
 COPY src/go.mod .
+COPY src/go.sum .
 
 RUN go mod download
 
@@ -16,10 +17,10 @@ ARG VERSION
 ENV VERSION="${VERSION}"
 ENV CGO_ENABLED=1
 
-RUN go install -trimpath -ldflags="-s -w \
+RUN go build -trimpath -o /out/cr -ldflags="-s -w \
 -X 'github.com/PavelMilanov/container-registry/config.VERSION=${VERSION}' \
 -X 'github.com/PavelMilanov/container-registry/config.DATA_PATH=/app/var/registry' \
--X 'github.com/PavelMilanov/container-registry/config.CONFIG_PATH=/etc/conf.d'"
+-X 'github.com/PavelMilanov/container-registry/config.CONFIG_PATH=/etc/conf.d'" .
 
 
 # Stage 2
@@ -40,9 +41,7 @@ RUN addgroup -g ${UID} ${USER} && \
     mkdir -p /app/var/registry && \
     chown -R ${UID}:${UID} /app/var/registry
 
-COPY --from=app /go/bin/container-registry /usr/bin/cr
-
-RUN chmod +x /usr/bin/cr
+COPY --from=app /out/cr /usr/bin/cr
 
 EXPOSE 5050/tcp
 
