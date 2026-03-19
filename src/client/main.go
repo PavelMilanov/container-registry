@@ -59,11 +59,16 @@ func (c *Client) GarbageCollection() error {
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode != http.StatusAccepted {
+	switch resp.StatusCode {
+	case http.StatusUnauthorized:
+		c.removeToken()
+		return errors.New("Необходима авторизация")
+	case http.StatusAccepted:
+		fmt.Println(string(body))
+		return nil
+	default:
 		return errors.New(string(body))
 	}
-	fmt.Println(string(body))
-	return nil
 }
 
 func (c *Client) SetGarbageTagCount(tag string) error {
@@ -104,4 +109,11 @@ func (c *Client) getToken() (string, error) {
 		return "", errors.New("Доступ запрещен. Необходимо авторизоваться.")
 	}
 	return string(auth), nil
+}
+
+func (c *Client) removeToken() error {
+	if err := os.Remove("/tmp/.auth"); err != nil {
+		return err
+	}
+	return nil
 }

@@ -56,7 +56,7 @@ to quickly create a Cobra application.`,
 		defer db.CloseDatabase(sqlite.Sql)
 
 		_, err = c.AddFunc("0 1 * * 0", func() {
-			logrus.WithField("task", "Garbage Collection").Info("Запуск задания")
+			logrus.WithField("Garbage Collection", "start").Info("Запуск задания")
 			go store.GarbageCollection()
 		}) // каждое воскресенье в 01:00
 		if err != nil {

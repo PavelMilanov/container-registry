@@ -179,6 +179,5 @@ func SaveManifest(storage storage.Storage, meta config.Meta, body []byte) error 
 
 func GarbageCollection(storage storage.Storage) error {
 	storage.GarbageCollection()
-	logrus.WithField("task", "GarbageCollection").Info("Очистка завершена")
 	return nil
 }

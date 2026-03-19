@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/PavelMilanov/container-registry/config"
@@ -213,27 +212,28 @@ GarbageCollection выполняет сборку мусора в хранили
 	Удаляет все образы и слои, которые не используются ни одним реестром.
 */
 func (lc *LocalStorage) GarbageCollection() {
-	// получаем список всех blob.
-	blobs := func() []string {
-		var blobs []string
-		digests, _ := os.ReadDir(config.BLOBS_PATH)
-		for _, blob := range digests {
-			blobs = append(blobs, blob.Name())
-		}
-		return blobs
-	}()
-	actualBlobs := inventoryBlobs()
-	var buffer []string
-	for _, v := range blobs {
-		if !slices.Contains(actualBlobs, v) {
-			buffer = append(buffer, v)
-		}
+	manifests := inventoryManifests()
+	usedBlobs := parseUsageBlobs(manifests)
+	usedBlobsMap := make(map[string]struct{}, len(usedBlobs))
+	for _, b := range usedBlobs {
+		usedBlobsMap[b] = struct{}{}
 	}
-	for _, i := range buffer {
-		if err := os.Remove(filepath.Join(config.BLOBS_PATH, i)); err != nil {
-			logrus.Error(err)
+	deleted := 0
+
+	blobs := inventoryBlobs()
+	for _, blob := range blobs {
+		if _, ok := usedBlobsMap[blob]; ok {
+			continue
 		}
+
+		if err := os.Remove(blob); err != nil {
+			logrus.WithField("GarbageCollection", "error").WithError(err).Error()
+			continue
+		}
+
+		deleted++
 	}
+	logrus.WithField("GarbageCollection", "deleted").Infof("Удалено %d файлов", deleted)
 }
 
 func (*LocalStorage) GetManifestList(cloud, repository string) ([]string, error) {
