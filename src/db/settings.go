@@ -18,10 +18,7 @@ func GetCountTag(sql *gorm.DB) (int, error) {
 }
 
 func SetCountTag(sql *gorm.DB, count int) error {
-	var settings Settings
-	result := sql.Raw("UPDATE settings SET tag_count = ?", count).Scan(&settings)
-	if result.Error != nil {
-		return result.Error
-	}
-	return nil
+	// В таблице настроек хранится одна активная запись.
+	// Обновляем её явно, чтобы избежать массового UPDATE без WHERE.
+	return sql.Model(&Settings{}).Where("id = ?", 1).Update("tag_count", count).Error
 }

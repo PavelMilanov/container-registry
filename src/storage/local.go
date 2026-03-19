@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/PavelMilanov/container-registry/config"
@@ -183,11 +184,32 @@ func (lc *LocalStorage) DeleteManifest(cloud, repository, tag string) error {
 	if err != nil {
 		return err
 	}
-	manifestPath := filepath.Join(config.MANIFEST_PATH, cloud, repository, string(data))
+	manifestDigest := string(data)
+	manifestPath := filepath.Join(config.MANIFEST_PATH, cloud, repository, manifestDigest)
 	if err := os.Remove(tagPath); err != nil {
 		return err
 	}
-	if err := os.Remove(manifestPath); err != nil {
+
+	// Если оставшиеся теги указывают на этот же digest, файл манифеста удалять нельзя.
+	tagsPath := filepath.Join(config.MANIFEST_PATH, cloud, repository, "tags")
+	tags, err := os.ReadDir(tagsPath)
+	if err == nil {
+		for _, item := range tags {
+			if item.IsDir() {
+				continue
+			}
+			otherTagPath := filepath.Join(tagsPath, item.Name())
+			otherDigest, err := os.ReadFile(otherTagPath)
+			if err != nil {
+				continue
+			}
+			if string(otherDigest) == manifestDigest {
+				return nil
+			}
+		}
+	}
+
+	if err := os.Remove(manifestPath); err != nil && !os.IsNotExist(err) {
 		return err
 	}
 	return nil
@@ -274,4 +296,76 @@ func (*LocalStorage) GetRepositoriesList(cloud string) ([]string, error) {
 		data = append(data, repo.Name())
 	}
 	return data, nil
+}
+
+func (lc *LocalStorage) DeleteOlderTags(count int) error {
+	type tagMeta struct {
+		Name    string
+		ModTime int64
+	}
+
+	deleted := 0
+	clouds, err := lc.GetCloudList()
+	if err != nil {
+		return err
+	}
+
+	for _, cloud := range clouds {
+		repositories, err := lc.GetRepositoriesList(cloud)
+		if err != nil {
+			logrus.WithField("cloud", cloud).WithError(err).Warn("не удалось получить список репозиториев")
+			continue
+		}
+		for _, repository := range repositories {
+			tags, err := lc.GetManifestList(cloud, repository)
+			if err != nil {
+				logrus.WithFields(logrus.Fields{
+					"cloud":      cloud,
+					"repository": repository,
+				}).WithError(err).Warn("не удалось получить список тегов")
+				continue
+			}
+			if len(tags) <= count {
+				continue
+			}
+
+			withMeta := make([]tagMeta, 0, len(tags))
+			for _, tag := range tags {
+				tagPath := filepath.Join(config.MANIFEST_PATH, cloud, repository, "tags", tag)
+				info, err := os.Stat(tagPath)
+				if err != nil {
+					logrus.WithFields(logrus.Fields{
+						"cloud":      cloud,
+						"repository": repository,
+						"tag":        tag,
+					}).WithError(err).Warn("не удалось прочитать метаданные тега")
+					continue
+				}
+				withMeta = append(withMeta, tagMeta{Name: tag, ModTime: info.ModTime().UnixNano()})
+			}
+
+			if len(withMeta) <= count {
+				continue
+			}
+
+			sort.Slice(withMeta, func(i, j int) bool {
+				return withMeta[i].ModTime > withMeta[j].ModTime
+			})
+
+			for i := count; i < len(withMeta); i++ {
+				tag := withMeta[i].Name
+				if err := lc.DeleteManifest(cloud, repository, tag); err != nil {
+					logrus.WithFields(logrus.Fields{
+						"cloud":      cloud,
+						"repository": repository,
+						"tag":        tag,
+					}).WithError(err).Warn("не удалось удалить старый тег")
+					continue
+				}
+				deleted++
+			}
+		}
+	}
+	logrus.WithField("deleted_tags", deleted).Info("Удалены старые теги")
+	return nil
 }

@@ -130,11 +130,35 @@ func SetCountTag(sql *gorm.DB, count string) error {
 		logrus.Error(err)
 		return err
 	}
+	if newCount <= 0 {
+		logrus.Error("значение tag должно быть больше 0")
+		return errors.New("значение tag должно быть больше 0")
+	}
 	if err := db.SetCountTag(sql, newCount); err != nil {
 		logrus.Error(err)
 		return err
 	}
 	return nil
+}
+
+func GetCountTag(sql *gorm.DB) (int, error) {
+	count, err := db.GetCountTag(sql)
+	if err != nil {
+		logrus.Error(err)
+		return 0, err
+	}
+	return count, nil
+}
+
+func DeleteOlderTags(sql *gorm.DB, st storage.Storage) error {
+	tagCount, err := db.GetCountTag(sql)
+	if err != nil {
+		return err
+	}
+	if tagCount <= 0 {
+		return errors.New("значение tag_count должно быть больше 0")
+	}
+	return st.DeleteOlderTags(tagCount)
 }
 
 /*
@@ -147,33 +171,6 @@ func SaveManifest(storage storage.Storage, meta config.Meta, body []byte) error 
 		return err
 	}
 	logrus.WithField("digest", meta.Digest).Info("Загружен манифест")
-	// reader := bufio.NewReader(bytes.NewBuffer(body))
-	// manifestDescriptor := struct {
-	// 	Schema int    `json:"schemaVersion"`
-	// 	Type   string `json:"mediaType"`
-	// 	Config struct {
-	// 		Digest string `json:"digest"`
-	// 	} `json:"config"`
-	// 	Manifests []struct {
-	// 		Digest   string `json:"digest"`
-	// 		Platform struct {
-	// 			Architecture string `json:"architecture"`
-	// 			OS           string `json:"os"`
-	// 		} `json:"platform"`
-	// 	} `json:"manifests"`
-	// 	Layers []struct {
-	// 		Size int64 `json:"size"`
-	// 	} `json:"layers"`
-	// }{}
-	// data, err := io.ReadAll(reader)
-	// if err != nil {
-	// 	logrus.Error(err)
-	// 	return err
-	// }
-	// if err := json.Unmarshal(data, &manifestDescriptor); err != nil {
-	// 	logrus.Error(err)
-	// 	return err
-	// }
 	return nil
 }
 

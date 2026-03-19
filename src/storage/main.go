@@ -27,6 +27,7 @@ type Storage interface {
 	GetRepositoriesList(cloud string) ([]string, error)
 	DeleteRepository(cloud, repository string) error
 	GarbageCollection()
+	DeleteOlderTags(count int) error
 }
 
 /*

@@ -7,9 +7,11 @@ import (
 )
 
 var showCmd = &cobra.Command{
-	Use:   "show",
-	Short: "show",
-	Args:  cobra.ExactArgs(1),
+	Use:     "show",
+	Short:   "Показывает репозитории и теги в пространстве",
+	Long:    "Команда выводит содержимое указанного пространства: репозитории и их теги образов.",
+	Example: `  cr cloud show dev`,
+	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		data, err := cr.GetRepositoriesList(args[0])
 		if err != nil {

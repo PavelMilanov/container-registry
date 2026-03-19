@@ -14,8 +14,15 @@ var (
 
 var delCmd = &cobra.Command{
 	Use:   "del",
-	Short: "del",
-	Args:  cobra.ExactArgs(1),
+	Short: "Удаляет пространство, репозиторий или тег",
+	Long: `Команда удаляет данные в зависимости от переданных флагов:
+- без флагов: удаляет целое пространство;
+- с --repo: удаляет репозиторий;
+- с --repo и --tag: удаляет конкретный тег образа.`,
+	Example: `  cr cloud del dev
+  cr cloud del dev -r api
+  cr cloud del dev -r api -t latest`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		var submit string
 		switch {

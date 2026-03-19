@@ -13,6 +13,7 @@ import (
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/handlers"
+	"github.com/PavelMilanov/container-registry/services"
 	"github.com/PavelMilanov/container-registry/storage"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
@@ -20,15 +21,11 @@ import (
 )
 
 var serveCmd = &cobra.Command{
-	Use:   "serve",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Args: cobra.NoArgs,
+	Use:     "serve",
+	Short:   "Запускает HTTP-сервер реестра",
+	Long:    `Команда запускает API-сервер container registry.`,
+	Example: `  cr serve`,
+	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		logrus.SetLevel(logrus.DebugLevel)
 		logrus.SetFormatter(&logrus.TextFormatter{
@@ -55,9 +52,13 @@ to quickly create a Cobra application.`,
 		}
 		defer db.CloseDatabase(sqlite.Sql)
 
+		_, err = c.AddFunc("0 0 * * 0", func() {
+			logrus.WithField("Garbage Collection", "start").Info("Запуск задания по удалению старых тегов")
+			go services.DeleteOlderTags(sqlite.Sql, store)
+		}) // каждое воскресенье в 00:00
 		_, err = c.AddFunc("0 1 * * 0", func() {
-			logrus.WithField("Garbage Collection", "start").Info("Запуск задания")
-			go store.GarbageCollection()
+			logrus.WithField("Garbage Collection", "start").Info("Запуск задания по сборке мусора")
+			go services.GarbageCollection(store)
 		}) // каждое воскресенье в 01:00
 		if err != nil {
 			logrus.Error(err)

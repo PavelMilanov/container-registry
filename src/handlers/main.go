@@ -72,7 +72,13 @@ func (h *Handler) InitRouters() *gin.Engine {
 			cloud.DELETE("/delete", h.deleteCloud)
 			cloud.DELETE("/:cloud/:repository", h.deleteRepositoryOrImage)
 		}
-		api.POST("/garbage-collection", h.garbageCollection)
+		garbage := api.Group("/garbage/")
+		{
+			garbage.POST("/collection", h.garbageCollection)
+			garbage.POST("/tags", h.deleteOlderTags)
+
+		}
+		api.GET("/settings", h.settings)
 		api.POST("/settings", h.settings)
 	}
 	router.NoRoute(func(c *gin.Context) {

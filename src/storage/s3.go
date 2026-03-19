@@ -317,3 +317,5 @@ func (*S3Storage) GetCloudList() ([]string, error) {
 func (s *S3Storage) GetRepositoriesList(cloud string) ([]string, error) {
 	return nil, nil
 }
+
+func (s *S3Storage) DeleteOlderTags(count int) error { return nil }

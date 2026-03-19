@@ -44,7 +44,7 @@ func (c *Client) GarbageCollection() error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/api/garbage-collection", c.ServerURL), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/api/garbage/collection", c.ServerURL), nil)
 	if err != nil {
 		return err
 	}
@@ -71,21 +71,18 @@ func (c *Client) GarbageCollection() error {
 	}
 }
 
-func (c *Client) SetGarbageTagCount(tag string) error {
+func (c *Client) GarbageTags() error {
 	auth, err := c.getToken()
 	if err != nil {
 		return err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/api/settings", c.ServerURL), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/api/garbage/tags", c.ServerURL), nil)
 	if err != nil {
 		return err
 	}
 	client := &http.Client{}
-	q := req.URL.Query()
-	q.Add("tag", tag)
-	req.URL.RawQuery = q.Encode()
 	req.Header.Add("Authorization", "Bearer "+auth)
 	resp, err := client.Do(req)
 	if err != nil {
@@ -96,11 +93,17 @@ func (c *Client) SetGarbageTagCount(tag string) error {
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode != http.StatusAccepted {
+	switch resp.StatusCode {
+	case http.StatusUnauthorized:
+		c.removeToken()
+		return errors.New("Необходима авторизация")
+	case http.StatusAccepted:
+		fmt.Println(string(body))
+		return nil
+	default:
 		return errors.New(string(body))
 	}
-	fmt.Println(string(body))
-	return nil
+
 }
 
 func (c *Client) getToken() (string, error) {

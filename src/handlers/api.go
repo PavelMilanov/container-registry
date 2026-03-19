@@ -189,14 +189,32 @@ func (h *Handler) garbageCollection(c *gin.Context) {
 }
 
 func (h *Handler) settings(c *gin.Context) {
-	tag := c.Query("tag")
-	if tag != "" {
-		if err := services.SetCountTag(h.DB.Sql, tag); err != nil {
+	switch c.Request.Method {
+	case http.MethodGet:
+		count, err := services.GetCountTag(h.DB.Sql)
+		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusAccepted, gin.H{"msg": "Настройки сохранены"})
+		c.JSON(http.StatusOK, gin.H{"tagCount": count})
+	case http.MethodPost:
+		tag := c.Query("tag")
+		if tag != "" {
+			if err := services.SetCountTag(h.DB.Sql, tag); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusAccepted, gin.H{"msg": "Настройки сохранены"})
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "не указано значение tag"})
+		}
+	}
+}
+
+func (h *Handler) deleteOlderTags(c *gin.Context) {
+	if err := services.DeleteOlderTags(h.DB.Sql, h.STORAGE); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
+	c.JSON(http.StatusAccepted, gin.H{"msg": "Операция завершена успешно"})
 }

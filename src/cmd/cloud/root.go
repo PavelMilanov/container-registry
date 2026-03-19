@@ -15,7 +15,9 @@ var (
 
 var CloudCmd = &cobra.Command{
 	Use:       "cloud",
-	Short:     "cloud",
+	Short:     "Управление пространствами и репозиториями",
+	Long:      "Группа команд для создания, просмотра и удаления пространств (cloud), репозиториев и тегов образов.",
+	Example:   "  cr cloud list\n  cr cloud add dev\n  cr cloud show dev\n  cr cloud del dev -r api -t latest",
 	ValidArgs: []string{"add", "del", "list", "show"},
 	Args:      cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 	Run: func(cmd *cobra.Command, args []string) {
