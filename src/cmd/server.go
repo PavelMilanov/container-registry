@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -41,8 +42,18 @@ var serveCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		location, _ := time.LoadLocation(os.Getenv("TZ"))
+		cronLogger := cron.VerbosePrintfLogger(log.New(
+			logrus.StandardLogger().WriterLevel(logrus.DebugLevel),
+			"cron: ",
+			log.LstdFlags,
+		))
 		c := cron.New(
 			cron.WithLocation(location),
+			cron.WithLogger(cronLogger),
+			cron.WithChain(
+				cron.Recover(cronLogger),
+				cron.SkipIfStillRunning(cronLogger),
+			),
 		)
 
 		sqliteFIle := fmt.Sprintf("%s/registry.db", config.DATA_PATH)
@@ -54,14 +65,23 @@ var serveCmd = &cobra.Command{
 
 		_, err = c.AddFunc("0 0 * * 0", func() {
 			logrus.WithField("Garbage Collection", "start").Info("Запуск задания по удалению старых тегов")
-			go services.DeleteOlderTags(sqlite.Sql, store)
+			if err := services.DeleteOlderTags(sqlite.Sql, store); err != nil {
+				logrus.WithError(err).Error("Ошибка при удалении старых тегов")
+			}
+			logrus.WithField("Garbage Collection", "end").Info("Завершение задания по удалению старых тегов")
 		}) // каждое воскресенье в 00:00
+		if err != nil {
+			logrus.WithError(err).Error("Не удалось добавить cron-задачу удаления старых тегов")
+		}
 		_, err = c.AddFunc("0 1 * * 0", func() {
 			logrus.WithField("Garbage Collection", "start").Info("Запуск задания по сборке мусора")
-			go services.GarbageCollection(store)
+			if err := services.GarbageCollection(store); err != nil {
+				logrus.WithError(err).Error("Ошибка при сборке мусора")
+			}
+			logrus.WithField("Garbage Collection", "end").Info("Завершение задания по сборке мусора")
 		}) // каждое воскресенье в 01:00
 		if err != nil {
-			logrus.Error(err)
+			logrus.WithError(err).Error("Не удалось добавить cron-задачу сборки мусора")
 		}
 		c.Start()
 		logrus.WithField("task", "Garbage Collection").Infof("Запущено %d заданий планировщика", len(c.Entries()))
