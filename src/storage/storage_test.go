@@ -10,7 +10,7 @@ import (
 
 func TestInventoryBlobs(t *testing.T) {
 	buffer := []string{}
-	path := "../var/tmp/blobs"
+	path := "../var/blobs"
 	blobs, _ := os.ReadDir(path)
 	for _, blob := range blobs {
 		buffer = append(buffer, filepath.Join(path, blob.Name()))
@@ -20,7 +20,7 @@ func TestInventoryBlobs(t *testing.T) {
 
 func TestInventoryManifests(t *testing.T) {
 	buffer := []string{}
-	path := "../var/tmp/manifests"
+	path := "../var/manifests"
 	clouds, _ := os.ReadDir(path)
 	for _, cloud := range clouds {
 		cloudPath := filepath.Join(path, cloud.Name())
