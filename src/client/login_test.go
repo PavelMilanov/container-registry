@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -41,7 +42,7 @@ func TestLogin(t *testing.T) {
 	cr.ServerURL = server.URL
 
 	t.Run("Failure", func(t *testing.T) {
-		_, err := cr.Login("test", "test")
+		_, err := cr.Login(context.Background(), "test", "test")
 		if err == nil {
 			t.Fatal("expected error for invalid credentials, got nil")
 		}
@@ -50,7 +51,7 @@ func TestLogin(t *testing.T) {
 		}
 	})
 	t.Run("Success", func(t *testing.T) {
-		token, err := cr.Login("admin", "admin")
+		token, err := cr.Login(context.Background(), "admin", "admin")
 		if err != nil {
 			t.Fatal(err)
 		}

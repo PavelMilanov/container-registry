@@ -19,7 +19,7 @@ var healthcheckCmd = &cobra.Command{
 	Example: `  cr healthcheck`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cr := client.NewClient()
-		if err := cr.HealthCheck(); err != nil {
+		if err := cr.HealthCheck(cmd.Context()); err != nil {
 			os.Exit(1)
 		}
 	},

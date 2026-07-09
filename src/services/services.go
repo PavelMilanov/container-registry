@@ -175,6 +175,5 @@ func SaveManifest(storage storage.Storage, meta config.Meta, body []byte) error 
 }
 
 func GarbageCollection(storage storage.Storage) error {
-	storage.GarbageCollection()
-	return nil
+	return storage.GarbageCollection()
 }

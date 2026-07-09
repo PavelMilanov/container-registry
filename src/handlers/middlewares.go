@@ -1,16 +1,72 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/system"
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
+
+func addRequestError(c *gin.Context, err error) {
+	if err == nil {
+		return
+	}
+	_ = c.Error(err)
+}
+
+func addRequestErrorMessage(c *gin.Context, msg string) {
+	addRequestError(c, errors.New(msg))
+}
+
+/*
+requestLoggerMiddleware логирует HTTP-запросы в едином structured logrus формате.
+*/
+func requestLoggerMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+		c.Next()
+
+		status := c.Writer.Status()
+		fields := logrus.Fields{
+			"method":    c.Request.Method,
+			"uri":       c.Request.RequestURI,
+			"path":      c.Request.URL.Path,
+			"status":    status,
+			"latency":   time.Since(start).String(),
+			"remote_ip": c.ClientIP(),
+			"host":      c.Request.Host,
+		}
+
+		if len(c.Errors) > 0 {
+			fields["error"] = c.Errors.String()
+		} else if status >= http.StatusInternalServerError {
+			fields["error"] = http.StatusText(status)
+		}
+
+		entry := logrus.WithFields(fields)
+		if len(c.Errors) > 0 {
+			entry.Error("HTTP request")
+			return
+		}
+		if status >= http.StatusInternalServerError {
+			entry.Error("HTTP request")
+			return
+		}
+		if status >= http.StatusBadRequest {
+			entry.Warn("HTTP request")
+			return
+		}
+		entry.Info("HTTP request")
+	}
+}
 
 /*
 baseApiMiddleware для авторизации на уровне REST-API.
@@ -22,6 +78,7 @@ func baseApiMiddleware(jwtKey []byte) gin.HandlerFunc {
 		data := c.GetHeader("Authorization")
 		payload := strings.TrimPrefix(data, "Bearer ")
 		if !system.ValidateJWT(payload, jwtKey) {
+			addRequestErrorMessage(c, "token is not valid")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "token is not valid"})
 			c.Abort()
 			return
@@ -40,6 +97,7 @@ func baseRegistryMiddleware() gin.HandlerFunc {
 		repo := c.Param("repository")
 		if _, err := os.Stat(filepath.Join(config.MANIFEST_PATH, repo)); err != nil {
 			if os.IsNotExist(err) {
+				addRequestError(c, err)
 				c.JSON(http.StatusNotFound, gin.H{
 					"errors": []gin.H{
 						{
@@ -68,6 +126,7 @@ func urlChallenge(c *gin.Context, realm string) {
 		challenge += fmt.Sprintf(`,scope="%s"`, scope)
 	}
 	c.Header("WWW-Authenticate", challenge)
+	addRequestErrorMessage(c, "authorization required")
 	c.AbortWithStatus(http.StatusUnauthorized)
 }
 

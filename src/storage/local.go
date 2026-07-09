@@ -233,16 +233,25 @@ GarbageCollection выполняет сборку мусора в хранили
 
 	Удаляет все образы и слои, которые не используются ни одним реестром.
 */
-func (lc *LocalStorage) GarbageCollection() {
-	manifests := inventoryManifests()
-	usedBlobs := parseUsageBlobs(manifests)
+func (lc *LocalStorage) GarbageCollection() error {
+	manifests, err := inventoryManifestsStrict()
+	if err != nil {
+		return err
+	}
+	usedBlobs, err := parseUsageBlobsStrict(manifests)
+	if err != nil {
+		return err
+	}
 	usedBlobsMap := make(map[string]struct{}, len(usedBlobs))
 	for _, b := range usedBlobs {
 		usedBlobsMap[b] = struct{}{}
 	}
 	deleted := 0
 
-	blobs := inventoryBlobs()
+	blobs, err := inventoryBlobsStrict()
+	if err != nil {
+		return err
+	}
 	for _, blob := range blobs {
 		if _, ok := usedBlobsMap[blob]; ok {
 			continue
@@ -256,6 +265,7 @@ func (lc *LocalStorage) GarbageCollection() {
 		deleted++
 	}
 	logrus.WithField("GarbageCollection", "deleted").Infof("Удалено %d файлов", deleted)
+	return nil
 }
 
 func (*LocalStorage) GetManifestList(cloud, repository string) ([]string, error) {

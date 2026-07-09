@@ -1,9 +1,10 @@
 package client
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
-	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -49,31 +50,23 @@ func setupCloudTestServer(t *testing.T) *httptest.Server {
 	return httptest.NewServer(mux)
 }
 
-func setupAuthToken(t *testing.T) {
+func setupAuthToken(t *testing.T, cr *Client) {
 	t.Helper()
-	original, err := os.ReadFile("/tmp/.auth")
-	hasOriginal := err == nil
-	if err := os.WriteFile("/tmp/.auth", []byte("test-token"), 0600); err != nil {
+	cr.tokenPath = filepath.Join(t.TempDir(), "auth")
+	if err := cr.SetToken("test-token"); err != nil {
 		t.Fatalf("failed to prepare auth token: %v", err)
 	}
-	t.Cleanup(func() {
-		if hasOriginal {
-			_ = os.WriteFile("/tmp/.auth", original, 0600)
-			return
-		}
-		_ = os.Remove("/tmp/.auth")
-	})
 }
 
 func TestGetCloudList(t *testing.T) {
-	setupAuthToken(t)
 	server := setupCloudTestServer(t)
 	defer server.Close()
 
 	cr := NewClient()
 	cr.ServerURL = server.URL
+	setupAuthToken(t, cr)
 
-	data, err := cr.GetCloudList()
+	data, err := cr.GetCloudList(context.Background())
 	if err != nil {
 		t.Fatalf("GetCloudList() error = %v", err)
 	}
@@ -83,14 +76,14 @@ func TestGetCloudList(t *testing.T) {
 }
 
 func TestGetImagesList(t *testing.T) {
-	setupAuthToken(t)
 	server := setupCloudTestServer(t)
 	defer server.Close()
 
 	cr := NewClient()
 	cr.ServerURL = server.URL
+	setupAuthToken(t, cr)
 
-	data, err := cr.GetImagesList("dev", "registry")
+	data, err := cr.GetImagesList(context.Background(), "dev", "registry")
 	if err != nil {
 		t.Fatalf("GetImagesList() error = %v", err)
 	}
@@ -100,14 +93,14 @@ func TestGetImagesList(t *testing.T) {
 }
 
 func TestDelImage(t *testing.T) {
-	setupAuthToken(t)
 	server := setupCloudTestServer(t)
 	defer server.Close()
 
 	cr := NewClient()
 	cr.ServerURL = server.URL
+	setupAuthToken(t, cr)
 
-	if err := cr.DelImage("dev", "registry", "latest"); err != nil {
+	if err := cr.DelImage(context.Background(), "dev", "registry", "latest"); err != nil {
 		t.Fatalf("DelImage() error = %v", err)
 	}
 }

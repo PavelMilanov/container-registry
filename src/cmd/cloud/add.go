@@ -14,7 +14,7 @@ var addCmd = &cobra.Command{
   cr cloud add production`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := cr.AddCloud(args[0]); err != nil {
+		if err := cr.AddCloud(cmd.Context(), args[0]); err != nil {
 			fmt.Println(err)
 			return
 		}

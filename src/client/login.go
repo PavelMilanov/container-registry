@@ -7,7 +7,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"time"
 )
 
 /*
@@ -23,20 +22,18 @@ Returns:
 	string - токен.
 	error - ошибка, если запрос не удался.
 */
-func (c *Client) Login(login, password string) (string, error) {
+func (c *Client) Login(ctx context.Context, login, password string) (string, error) {
 	data := map[string]string{
 		"username": login,
 		"password": password,
 	}
 	jsonData, _ := json.Marshal(data)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.ServerURL+"/login", bytes.NewBuffer(jsonData))
+	req, cancel, err := c.newRequest(ctx, http.MethodPost, "/login", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", err
 	}
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	defer cancel()
+	resp, err := c.do(req)
 	if err != nil {
 		return "", err
 	}

@@ -21,10 +21,12 @@ func (h *Handler) addCloud(c *gin.Context) {
 		Cloud string `json:"cloud"`
 	}
 	if err := c.BindJSON(&req); err != nil {
+		addRequestError(c, err)
 		c.JSON(http.StatusBadRequest, gin.H{"err": "неверный формат"})
 		return
 	}
 	if err := services.AddCloud(req.Cloud, h.STORAGE); err != nil {
+		addRequestError(c, err)
 		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		return
 	}
@@ -39,6 +41,7 @@ getCloudList -получение списка пространств.
 func (h *Handler) getCloudList(c *gin.Context) {
 	list, err := services.GetCloudList(h.STORAGE)
 	if err != nil {
+		addRequestError(c, err)
 		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		return
 	}
@@ -59,10 +62,12 @@ func (h *Handler) deleteCloud(c *gin.Context) {
 		Cloud string `json:"cloud"`
 	}
 	if err := c.BindJSON(&req); err != nil {
+		addRequestError(c, err)
 		c.JSON(http.StatusBadRequest, gin.H{"err": "неверный формат"})
 		return
 	}
 	if err := services.DeleteCloud(req.Cloud, h.STORAGE); err != nil {
+		addRequestError(c, err)
 		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		return
 	}
@@ -73,6 +78,7 @@ func (h *Handler) getRepoList(c *gin.Context) {
 	cloud := c.Param("cloud")
 	list, err := services.GetRepositoriesList(cloud, h.STORAGE)
 	if err != nil {
+		addRequestError(c, err)
 		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		return
 	}
@@ -92,6 +98,7 @@ func (h *Handler) getImagesList(c *gin.Context) {
 	repo := c.Param("repository")
 	list, err := services.GetImagesList(cloud, repo, h.STORAGE)
 	if err != nil {
+		addRequestError(c, err)
 		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		return
 	}
@@ -113,12 +120,14 @@ func (h *Handler) deleteRepositoryOrImage(c *gin.Context) {
 	tag := c.Query("tag")
 	if tag != "" {
 		if err := services.DeleteImage(cloud, repo, tag, h.STORAGE); err != nil {
+			addRequestError(c, err)
 			c.JSON(http.StatusBadRequest, gin.H{"err": "Ошибка при удалении образа"})
 			return
 		}
 		c.JSON(http.StatusNoContent, gin.H{"msg": "Образ успешно удален"})
 	} else {
 		if err := services.DeleteRepository(cloud, repo, h.STORAGE); err != nil {
+			addRequestError(c, err)
 			c.JSON(http.StatusBadRequest, gin.H{"err": "репозиторий не найден"})
 			return
 		}
@@ -143,14 +152,17 @@ func (h *Handler) registration(c *gin.Context) {
 	}
 	var req userRegisterData
 	if err := c.BindJSON(&req); err != nil {
+		addRequestError(c, err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "не указан логин или пароль"})
 		return
 	}
 	if req.Password != req.ConfirmPassword {
+		addRequestErrorMessage(c, "пароли не совпадают")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "пароли не совпадают"})
 		return
 	}
 	if err := services.Registration(h.DB.Sql, req.Username, req.Password); err != nil {
+		addRequestError(c, err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -172,11 +184,13 @@ func (h *Handler) login(c *gin.Context) {
 	}
 	var req userLoginData
 	if err := c.BindJSON(&req); err != nil {
+		addRequestError(c, err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "не указан логин или пароль"})
 		return
 	}
 	token, err := services.Login(h.DB.Sql, h.ENV, req.Username, req.Password)
 	if err != nil {
+		addRequestError(c, err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -184,7 +198,11 @@ func (h *Handler) login(c *gin.Context) {
 }
 
 func (h *Handler) garbageCollection(c *gin.Context) {
-	services.GarbageCollection(h.STORAGE)
+	if err := services.GarbageCollection(h.STORAGE); err != nil {
+		addRequestError(c, err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusAccepted, gin.H{"msg": "Очистка завершена"})
 }
 
@@ -193,6 +211,7 @@ func (h *Handler) settings(c *gin.Context) {
 	case http.MethodGet:
 		count, err := services.GetCountTag(h.DB.Sql)
 		if err != nil {
+			addRequestError(c, err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -201,11 +220,13 @@ func (h *Handler) settings(c *gin.Context) {
 		tag := c.Query("tag")
 		if tag != "" {
 			if err := services.SetCountTag(h.DB.Sql, tag); err != nil {
+				addRequestError(c, err)
 				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 				return
 			}
 			c.JSON(http.StatusAccepted, gin.H{"msg": "Настройки сохранены"})
 		} else {
+			addRequestErrorMessage(c, "не указано значение tag")
 			c.JSON(http.StatusBadRequest, gin.H{"error": "не указано значение tag"})
 		}
 	}
@@ -213,6 +234,7 @@ func (h *Handler) settings(c *gin.Context) {
 
 func (h *Handler) deleteOlderTags(c *gin.Context) {
 	if err := services.DeleteOlderTags(h.DB.Sql, h.STORAGE); err != nil {
+		addRequestError(c, err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

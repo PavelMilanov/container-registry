@@ -7,26 +7,84 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 )
 
+const defaultRequestTimeout = 5 * time.Second
+
 type Client struct {
-	ServerURL string
+	ServerURL  string
+	httpClient *http.Client
+	timeout    time.Duration
+	token      string
+	tokenPath  string
 }
 
 func NewClient() *Client {
-	return &Client{ServerURL: "http://0.0.0.0:5050"}
+	return &Client{
+		ServerURL:  "http://0.0.0.0:5050",
+		httpClient: http.DefaultClient,
+		timeout:    defaultRequestTimeout,
+		tokenPath:  defaultTokenPath(),
+	}
 }
 
-func (c *Client) HealthCheck() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.ServerURL+"/check", nil)
+func (c *Client) newRequest(ctx context.Context, method, path string, body io.Reader) (*http.Request, context.CancelFunc, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	timeout := c.timeout
+	if timeout <= 0 {
+		timeout = defaultRequestTimeout
+	}
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
+	req, err := http.NewRequestWithContext(timeoutCtx, method, c.ServerURL+path, body)
+	if err != nil {
+		cancel()
+		return nil, nil, err
+	}
+	return req, cancel, nil
+}
+
+func (c *Client) do(req *http.Request) (*http.Response, error) {
+	client := c.httpClient
+	if client == nil {
+		client = http.DefaultClient
+	}
+	return client.Do(req)
+}
+
+func (c *Client) newAuthorizedRequest(ctx context.Context, method, path string, body io.Reader) (*http.Request, context.CancelFunc, error) {
+	auth, err := c.getToken()
+	if err != nil {
+		return nil, nil, err
+	}
+	req, cancel, err := c.newRequest(ctx, method, path, body)
+	if err != nil {
+		return nil, nil, err
+	}
+	req.Header.Add("Authorization", "Bearer "+auth)
+	return req, cancel, nil
+}
+
+func defaultTokenPath() string {
+	configDir, err := os.UserConfigDir()
+	if err != nil || configDir == "" {
+		return ""
+	}
+	return filepath.Join(configDir, "container-registry", "auth")
+}
+
+func (c *Client) HealthCheck(ctx context.Context) error {
+	req, cancel, err := c.newRequest(ctx, http.MethodGet, "/check", nil)
 	if err != nil {
 		return err
 	}
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	defer cancel()
+	resp, err := c.do(req)
 	if err != nil {
 		return err
 	}
@@ -37,20 +95,13 @@ func (c *Client) HealthCheck() error {
 	return nil
 }
 
-func (c *Client) GarbageCollection() error {
-	auth, err := c.getToken()
+func (c *Client) GarbageCollection(ctx context.Context) error {
+	req, cancel, err := c.newAuthorizedRequest(ctx, http.MethodPost, "/api/garbage/collection", nil)
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/api/garbage/collection", c.ServerURL), nil)
-	if err != nil {
-		return err
-	}
-	client := &http.Client{}
-	req.Header.Add("Authorization", "Bearer "+auth)
-	resp, err := client.Do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return err
 	}
@@ -71,20 +122,13 @@ func (c *Client) GarbageCollection() error {
 	}
 }
 
-func (c *Client) GarbageTags() error {
-	auth, err := c.getToken()
+func (c *Client) GarbageTags(ctx context.Context) error {
+	req, cancel, err := c.newAuthorizedRequest(ctx, http.MethodPost, "/api/garbage/tags", nil)
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/api/garbage/tags", c.ServerURL), nil)
-	if err != nil {
-		return err
-	}
-	client := &http.Client{}
-	req.Header.Add("Authorization", "Bearer "+auth)
-	resp, err := client.Do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return err
 	}
@@ -107,15 +151,37 @@ func (c *Client) GarbageTags() error {
 }
 
 func (c *Client) getToken() (string, error) {
-	auth, err := os.ReadFile("/tmp/.auth")
+	if c.token != "" {
+		return c.token, nil
+	}
+	if c.tokenPath == "" {
+		return "", errors.New("Доступ запрещен. Необходимо авторизоваться.")
+	}
+	auth, err := os.ReadFile(c.tokenPath)
 	if err != nil {
 		return "", errors.New("Доступ запрещен. Необходимо авторизоваться.")
 	}
-	return string(auth), nil
+	c.token = string(auth)
+	return c.token, nil
+}
+
+func (c *Client) SetToken(token string) error {
+	c.token = token
+	if c.tokenPath == "" {
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(c.tokenPath), 0700); err != nil {
+		return err
+	}
+	return os.WriteFile(c.tokenPath, []byte(token), 0600)
 }
 
 func (c *Client) removeToken() error {
-	if err := os.Remove("/tmp/.auth"); err != nil {
+	c.token = ""
+	if c.tokenPath == "" {
+		return nil
+	}
+	if err := os.Remove(c.tokenPath); err != nil && !os.IsNotExist(err) {
 		return err
 	}
 	return nil

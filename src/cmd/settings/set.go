@@ -21,7 +21,7 @@ var setCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cr := client.NewClient()
 		toStr := fmt.Sprintf("%d", count)
-		if err := cr.SetGarbageTagCount(toStr); err != nil {
+		if err := cr.SetGarbageTagCount(cmd.Context(), toStr); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}

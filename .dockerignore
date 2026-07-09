@@ -9,3 +9,4 @@ buildkitd.toml
 .github/*
 go.sum
 version
+cache

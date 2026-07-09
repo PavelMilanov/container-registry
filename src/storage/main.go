@@ -26,7 +26,7 @@ type Storage interface {
 	GetCloudList() ([]string, error)
 	GetRepositoriesList(cloud string) ([]string, error)
 	DeleteRepository(cloud, repository string) error
-	GarbageCollection()
+	GarbageCollection() error
 	DeleteOlderTags(count int) error
 }
 

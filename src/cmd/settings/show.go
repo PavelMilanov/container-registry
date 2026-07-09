@@ -17,7 +17,7 @@ var getCmd = &cobra.Command{
 	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		cr := client.NewClient()
-		if err := cr.GetGarbageTagCount(); err != nil {
+		if err := cr.GetGarbageTagCount(cmd.Context()); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
