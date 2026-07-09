@@ -11,7 +11,6 @@ import (
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/services"
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 )
 
 /*
@@ -26,7 +25,7 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	mediaType := c.GetHeader("Content-Type")
 	if err != nil {
-		logrus.Error(err)
+		addRequestError(c, err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read request body"})
 		return
 	}
@@ -37,6 +36,7 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 	calculatedDigest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
 	// Проверяем, что клиент передал digest как reference, если это digest (а не тег)
 	if strings.HasPrefix(reference, "sha256:") && reference != calculatedDigest {
+		addRequestErrorMessage(c, "digest mismatch")
 		c.JSON(http.StatusBadRequest, gin.H{
 			"errors": []gin.H{
 				{
@@ -56,6 +56,7 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 		Digest:     calculatedDigest,
 	}
 	if err := services.SaveManifest(h.STORAGE, meta, body); err != nil {
+		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
@@ -74,6 +75,7 @@ func (h *Handler) getManifest(c *gin.Context) {
 	reference := c.Param("reference")
 	data, err := h.STORAGE.GetManifest(repository, imageName, reference)
 	if err != nil {
+		addRequestError(c, err)
 		c.JSON(http.StatusNotFound, gin.H{
 			"errors": []gin.H{
 				{
@@ -90,6 +92,7 @@ func (h *Handler) getManifest(c *gin.Context) {
 	calculatedDigest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
 	var manifest config.Manifest
 	if err := json.Unmarshal(data, &manifest); err != nil {
+		addRequestError(c, err)
 		c.JSON(http.StatusNotFound, gin.H{
 			"errors": []gin.H{
 				{
@@ -99,6 +102,7 @@ func (h *Handler) getManifest(c *gin.Context) {
 				},
 			},
 		})
+		return
 	}
 	c.Header("Docker-Content-Digest", calculatedDigest)
 	c.Header("Content-Length", fmt.Sprintf("%d", len(data)))

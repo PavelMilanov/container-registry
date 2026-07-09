@@ -20,6 +20,7 @@ func (h *Handler) authHandler(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 	user := db.User{Name: username, Password: password}
 	if err := user.Login(h.DB.Sql, h.ENV); err != nil {
+		addRequestError(c, err)
 		c.Header("WWW-Authenticate", `Basic realm="registry"`)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"errors": []gin.H{

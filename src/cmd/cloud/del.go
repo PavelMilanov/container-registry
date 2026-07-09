@@ -27,7 +27,7 @@ var delCmd = &cobra.Command{
 		var submit string
 		switch {
 		case repoName != "" && tagName != "":
-			if err := cr.DelImage(args[0], repoName, tagName); err != nil {
+			if err := cr.DelImage(cmd.Context(), args[0], repoName, tagName); err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}
@@ -37,7 +37,7 @@ var delCmd = &cobra.Command{
 			if submit != "y" {
 				os.Exit(0)
 			}
-			if err := cr.DelRepository(args[0], repoName); err != nil {
+			if err := cr.DelRepository(cmd.Context(), args[0], repoName); err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}
@@ -47,7 +47,7 @@ var delCmd = &cobra.Command{
 			if submit != "y" {
 				os.Exit(0)
 			}
-			if err := cr.DelCloud(args[0]); err != nil {
+			if err := cr.DelCloud(cmd.Context(), args[0]); err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}

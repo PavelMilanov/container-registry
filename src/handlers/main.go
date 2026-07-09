@@ -25,7 +25,8 @@ func NewHandler(storage storage.Storage, db *db.SQLite, env *config.Env) *Handle
 }
 
 func (h *Handler) InitRouters() *gin.Engine {
-	router := gin.Default()
+	router := gin.New()
+	router.Use(requestLoggerMiddleware(), gin.Recovery())
 	// router.Use(cors.New(cors.Config{
 	// 	AllowOrigins:     []string{"http://localhost:5050"},
 	// 	AllowMethods:     []string{"GET", "POST", "DELETE"},
@@ -83,6 +84,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 	}
 	router.NoRoute(func(c *gin.Context) {
 		if strings.HasPrefix(c.Request.URL.Path, "/v2/") {
+			addRequestErrorMessage(c, "route not found")
 			c.Status(http.StatusNotFound)
 			return
 		}

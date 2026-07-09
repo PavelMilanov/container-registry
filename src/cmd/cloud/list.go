@@ -12,7 +12,7 @@ var listCmd = &cobra.Command{
 	Long:    "Команда запрашивает и выводит все доступные пространства (cloud) в реестре.",
 	Example: `  cr cloud list`,
 	Run: func(cmd *cobra.Command, args []string) {
-		data, err := cr.GetCloudList()
+		data, err := cr.GetCloudList(cmd.Context())
 		if err != nil {
 			fmt.Println(err)
 			return

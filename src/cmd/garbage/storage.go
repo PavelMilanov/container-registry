@@ -17,7 +17,7 @@ var storageCmd = &cobra.Command{
 	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		cr := client.NewClient()
-		if err := cr.GarbageCollection(); err != nil {
+		if err := cr.GarbageCollection(cmd.Context()); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}

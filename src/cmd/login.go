@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/PavelMilanov/container-registry/client"
 	"github.com/spf13/cobra"
@@ -19,12 +18,12 @@ var loginCmd = &cobra.Command{
 	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		cr := client.NewClient()
-		authToken, err := cr.Login(username, password)
+		authToken, err := cr.Login(cmd.Context(), username, password)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		if err := os.WriteFile("/tmp/.auth", []byte(authToken), 0750); err != nil {
+		if err := cr.SetToken(authToken); err != nil {
 			fmt.Println(err)
 			return
 		}

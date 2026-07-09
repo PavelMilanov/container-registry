@@ -42,7 +42,7 @@ var serveCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		location, _ := time.LoadLocation(os.Getenv("TZ"))
-		cronLogger := cron.VerbosePrintfLogger(log.New(
+		cronLogger := cron.PrintfLogger(log.New(
 			logrus.StandardLogger().WriterLevel(logrus.DebugLevel),
 			"cron: ",
 			log.LstdFlags,
@@ -94,7 +94,10 @@ var serveCmd = &cobra.Command{
 			}
 		}()
 
-		defer c.Stop()
+		defer func() {
+			cronCtx := c.Stop()
+			<-cronCtx.Done()
+		}()
 
 		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

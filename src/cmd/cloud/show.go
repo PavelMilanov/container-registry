@@ -13,13 +13,13 @@ var showCmd = &cobra.Command{
 	Example: `  cr cloud show dev`,
 	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		data, err := cr.GetRepositoriesList(args[0])
+		data, err := cr.GetRepositoriesList(cmd.Context(), args[0])
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 		for _, item := range data {
-			images, err := cr.GetImagesList(args[0], item)
+			images, err := cr.GetImagesList(cmd.Context(), args[0], item)
 			if err != nil {
 				fmt.Println(err)
 				continue

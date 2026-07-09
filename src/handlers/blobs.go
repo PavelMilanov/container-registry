@@ -11,7 +11,6 @@ import (
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/gin-gonic/gin"
 	uid "github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 )
 
 /*
@@ -23,6 +22,7 @@ func (h *Handler) checkBlob(c *gin.Context) {
 	uuid := c.Param("uuid")
 	// Проверяем, существует ли слой
 	if err := h.STORAGE.CheckBlob(uuid); err != nil {
+		addRequestError(c, err)
 		c.JSON(http.StatusNotFound, gin.H{
 			"errors": []gin.H{
 				{
@@ -58,9 +58,17 @@ uploadBlobPart реализация.
 */
 func (h *Handler) uploadBlobPart(c *gin.Context) {
 	uuid := c.Param("uuid")
-	file, err := io.ReadAll(c.Request.Body)
+	tempPath := filepath.Join(config.TMP_PATH, uuid)
+	f, err := os.OpenFile(tempPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		logrus.WithError(err).Error(uuid)
+		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+	defer f.Close()
+
+	if _, err := io.Copy(f, c.Request.Body); err != nil {
+		addRequestError(c, err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"errors": []gin.H{
 				{
@@ -71,25 +79,20 @@ func (h *Handler) uploadBlobPart(c *gin.Context) {
 		})
 		return
 	}
-	// Путь к временному файлу
-	tempPath := filepath.Join(config.TMP_PATH, uuid)
-	f, err := os.OpenFile(tempPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+
+	info, err := f.Stat()
 	if err != nil {
-		logrus.Error(err)
+		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
-	defer f.Close()
-	// Записываем данные во временный файл
-	_, err = f.Write(file)
-	if err != nil {
-		logrus.Error(err)
-		c.JSON(http.StatusInternalServerError, gin.H{})
-		return
+	lastByte := info.Size() - 1
+	if lastByte < 0 {
+		lastByte = 0
 	}
 	c.Header("Docker-Upload-UUID", uuid)
-	c.Header("Range", fmt.Sprintf("%d-%d", 0, len(file)-1))
-	c.JSON(http.StatusNoContent, gin.H{})
+	c.Header("Range", fmt.Sprintf("%d-%d", 0, lastByte))
+	c.Status(http.StatusNoContent)
 }
 
 /*
@@ -100,10 +103,9 @@ finalizeBlobUpload реализация.
 */
 func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 	uuid := c.Param("uuid")
-	status := c.Request.Header.Get("Content-Type")
-	// если есть заголовок Content-Type, то это не первый запрос и образ грузится частями
 	digest := c.Query("digest")
 	if digest == "" {
+		addRequestErrorMessage(c, "digest not specified")
 		c.JSON(http.StatusBadRequest, gin.H{
 			"errors": []gin.H{
 				{
@@ -115,36 +117,37 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 		return
 	}
 	tempPath := filepath.Join(config.TMP_PATH, uuid)
-	hasher := sha256.New()
-	if status == "" {
-		file, err := os.Open(tempPath)
-		if err != nil {
-			logrus.Error(err)
-			if os.IsNotExist(err) {
-				logrus.WithError(err).Error(uuid)
-				c.JSON(http.StatusNotFound, gin.H{
-					"errors": []gin.H{
-						{
-							"code":    "BLOB_UPLOAD_INVALID",
-							"message": "failed to read blob part",
-						},
-					},
-				})
-				return
-			}
-			c.JSON(http.StatusInternalServerError, gin.H{})
-		}
-		defer file.Close()
-		if _, err := io.Copy(hasher, file); err != nil {
-			logrus.Error(err)
-			c.JSON(http.StatusInternalServerError, gin.H{})
-			return
-		}
-	} else {
-		body, err := io.ReadAll(c.Request.Body)
-		if err != nil {
-			logrus.WithError(err).Error(uuid)
-			c.JSON(http.StatusBadRequest, gin.H{
+
+	f, err := os.OpenFile(tempPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+	if _, err := io.Copy(f, c.Request.Body); err != nil {
+		_ = f.Close()
+		addRequestError(c, err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"errors": []gin.H{
+				{
+					"code":    "BLOB_UPLOAD_INVALID",
+					"message": "failed to read blob part",
+				},
+			},
+		})
+		return
+	}
+	if err := f.Close(); err != nil {
+		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	file, err := os.Open(tempPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			addRequestError(c, err)
+			c.JSON(http.StatusNotFound, gin.H{
 				"errors": []gin.H{
 					{
 						"code":    "BLOB_UPLOAD_INVALID",
@@ -154,27 +157,22 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 			})
 			return
 		}
-		f, err := os.OpenFile(tempPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			logrus.Error(err)
-			c.JSON(http.StatusInternalServerError, gin.H{})
-			return
-		}
-		defer f.Close()
-		if _, err = f.Write(body); err != nil {
-			logrus.Error(err)
-			c.JSON(http.StatusInternalServerError, gin.H{})
-			return
-		}
-		if _, err := f.Seek(0, 0); err != nil {
-			logrus.Error(err)
-			c.JSON(http.StatusInternalServerError, gin.H{})
-			return
-		}
-		hasher.Write(body)
+		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
 	}
+	defer file.Close()
+
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, file); err != nil {
+		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
 	calculatedDigest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
 	if calculatedDigest != digest {
+		addRequestErrorMessage(c, "digest mismatch")
 		c.JSON(http.StatusBadRequest, gin.H{
 			"errors": []gin.H{
 				{
@@ -189,7 +187,7 @@ func (h *Handler) finalizeBlobUpload(c *gin.Context) {
 
 	// переименование временного файла в итоговый файл
 	if err := h.STORAGE.SaveBlob(tempPath, digest); err != nil {
-		logrus.Error(err)
+		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
@@ -208,7 +206,7 @@ func (h *Handler) getBlob(c *gin.Context) {
 	info, err := h.STORAGE.GetBlob(uuid)
 	if err != nil {
 		if err.Error() == "Blob not found" {
-			logrus.WithError(err).Error(uuid)
+			addRequestError(c, err)
 			c.JSON(http.StatusNotFound, gin.H{
 				"errors": []gin.H{
 					{
@@ -219,6 +217,7 @@ func (h *Handler) getBlob(c *gin.Context) {
 			})
 			return
 		} else {
+			_ = c.Error(err)
 			c.JSON(http.StatusInternalServerError, gin.H{})
 			return
 		}
