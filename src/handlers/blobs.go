@@ -226,5 +226,5 @@ func (h *Handler) getBlob(c *gin.Context) {
 	c.Header("Content-Type", "application/octet-stream")
 	c.Header("Content-Length", fmt.Sprintf("%d", info.Size))
 	c.Header("Docker-Content-Digest", info.Digest)
-	c.File(filepath.Join(config.BLOBS_PATH, info.Digest))
+	c.File(info.Path)
 }

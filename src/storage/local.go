@@ -67,8 +67,8 @@ GetBlob возвращает Blob из хранилища в двоичном в
 */
 func (lc *LocalStorage) GetBlob(digest string) (config.Blob, error) {
 	var data config.Blob
-	digest = strings.Split(digest, ":")[1]
-	blobPath := filepath.Join(config.BLOBS_PATH, digest)
+	encodedDigest := strings.Split(digest, ":")[1]
+	blobPath := filepath.Join(config.BLOBS_PATH, encodedDigest)
 	file, err := os.Open(blobPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -82,6 +82,7 @@ func (lc *LocalStorage) GetBlob(digest string) (config.Blob, error) {
 		return data, errors.New("Failed to stat blob file")
 	}
 	data.Digest = digest
+	data.Path = blobPath
 	data.Size = fileInfo.Size()
 	return data, nil
 }

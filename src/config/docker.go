@@ -39,6 +39,7 @@ Blob абстракция
 type Blob struct {
 	Size   int64
 	Digest string
+	Path   string
 }
 
 /*
