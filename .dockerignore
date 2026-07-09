@@ -10,3 +10,4 @@ buildkitd.toml
 go.sum
 version
 cache
+src/var

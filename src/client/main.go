@@ -7,11 +7,11 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"time"
 )
 
 const defaultRequestTimeout = 5 * time.Second
+const defaultTokenPath = "/tmp/.auth"
 
 type Client struct {
 	ServerURL  string
@@ -26,7 +26,7 @@ func NewClient() *Client {
 		ServerURL:  "http://0.0.0.0:5050",
 		httpClient: http.DefaultClient,
 		timeout:    defaultRequestTimeout,
-		tokenPath:  defaultTokenPath(),
+		tokenPath:  defaultTokenPath,
 	}
 }
 
@@ -68,14 +68,6 @@ func (c *Client) newAuthorizedRequest(ctx context.Context, method, path string, 
 	}
 	req.Header.Add("Authorization", "Bearer "+auth)
 	return req, cancel, nil
-}
-
-func defaultTokenPath() string {
-	configDir, err := os.UserConfigDir()
-	if err != nil || configDir == "" {
-		return ""
-	}
-	return filepath.Join(configDir, "container-registry", "auth")
 }
 
 func (c *Client) HealthCheck(ctx context.Context) error {
@@ -169,9 +161,6 @@ func (c *Client) SetToken(token string) error {
 	c.token = token
 	if c.tokenPath == "" {
 		return nil
-	}
-	if err := os.MkdirAll(filepath.Dir(c.tokenPath), 0700); err != nil {
-		return err
 	}
 	return os.WriteFile(c.tokenPath, []byte(token), 0600)
 }
