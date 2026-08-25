@@ -13,6 +13,8 @@ import (
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/handlers"
+	registryauth "github.com/PavelMilanov/container-registry/internal/auth"
+	"github.com/PavelMilanov/container-registry/services"
 	"github.com/PavelMilanov/container-registry/storage"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -54,11 +56,34 @@ var serveCmd = &cobra.Command{
 		}
 
 		sqliteFIle := fmt.Sprintf("%s/registry.db", config.DATA_PATH)
-		sqlite, err := db.NewDatabase(sqliteFIle, env)
+		sqlite, err := db.NewDatabase(sqliteFIle)
 		if err != nil {
 			logrus.Fatal(err)
 		}
 		defer db.CloseDatabase(sqlite.Sql)
+
+		passwords := registryauth.NewPasswordHasher()
+		tokens, err := registryauth.NewTokenManager(registryauth.TokenConfig{
+			Secret:   []byte(env.Server.Jwt),
+			Issuer:   env.Server.Issuer,
+			Audience: env.Server.Service,
+			TTL:      env.Server.TokenTTL,
+		})
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		authService := services.NewAuthService(
+			db.NewUserRepository(sqlite.Sql),
+			passwords,
+			tokens,
+		)
+		if err := authService.EnsureUser(
+			cmd.Context(),
+			env.User.Login,
+			env.User.Password,
+		); err != nil {
+			logrus.Fatal(err)
+		}
 
 		scheduler, err := newCronScheduler(os.Getenv("TZ"))
 		if err != nil {
@@ -77,7 +102,13 @@ var serveCmd = &cobra.Command{
 		logrus.WithField("tasks", len(scheduler.Entries())).
 			Info("Задачи планировщика запущены")
 
-		handler := handlers.NewHandler(store, uploadStore, &sqlite, env)
+		handler := handlers.NewHandler(
+			store,
+			uploadStore,
+			authService,
+			&sqlite,
+			env,
+		)
 		srv := new(config.Server)
 		go func() {
 			if err := srv.Run(handler.InitRouters()); err != nil {

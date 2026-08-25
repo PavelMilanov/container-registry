@@ -25,6 +25,7 @@ type LocalStorage struct {
 
 var _ BlobUploadStore = (*LocalStorage)(nil)
 var _ UploadCleaner = (*LocalStorage)(nil)
+var _ NamespaceStore = (*LocalStorage)(nil)
 
 /*
 newLocalStorage инициализирует новый экземпляр LocalStorage.
@@ -40,6 +41,38 @@ func newLocalStorage() (*LocalStorage, error) {
 		return &LocalStorage{}, err
 	}
 	return &LocalStorage{}, nil
+}
+
+/*
+NamespaceExists проверяет наличие пространства имён registry.
+
+	ctx - контекст выполнения операции.
+	name - имя пространства.
+*/
+func (*LocalStorage) NamespaceExists(
+	ctx context.Context,
+	name string,
+) (bool, error) {
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+	if !validNamespaceName(name) {
+		return false, nil
+	}
+
+	info, err := os.Stat(filepath.Join(config.MANIFEST_PATH, name))
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf(
+			"не удалось проверить пространство %s: %w",
+			name,
+			err,
+		)
+	}
+
+	return info.IsDir(), nil
 }
 
 /*

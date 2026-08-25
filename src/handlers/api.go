@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
+	"github.com/PavelMilanov/container-registry/db"
+	registryauth "github.com/PavelMilanov/container-registry/internal/auth"
 	"github.com/PavelMilanov/container-registry/services"
 	"github.com/gin-gonic/gin"
 )
@@ -161,9 +164,17 @@ func (h *Handler) registration(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "пароли не совпадают"})
 		return
 	}
-	if err := services.Registration(h.DB.Sql, req.Username, req.Password); err != nil {
+	if err := h.AUTH.Register(c.Request.Context(), req.Username, req.Password); err != nil {
 		addRequestError(c, err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		switch {
+		case errors.Is(err, db.ErrUserExists):
+			c.JSON(http.StatusConflict, gin.H{"error": "пользователь уже существует"})
+		case errors.Is(err, registryauth.ErrEmptyPassword),
+			errors.Is(err, registryauth.ErrPasswordTooLong):
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "ошибка регистрации"})
+		}
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"msg": "Пользователь зарегистрирован"})
@@ -188,13 +199,22 @@ func (h *Handler) login(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "не указан логин или пароль"})
 		return
 	}
-	token, err := services.Login(h.DB.Sql, h.ENV, req.Username, req.Password)
+	token, err := h.AUTH.Login(
+		c.Request.Context(),
+		req.Username,
+		req.Password,
+		nil,
+	)
 	if err != nil {
 		addRequestError(c, err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if errors.Is(err, services.ErrInvalidCredentials) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "ошибка авторизации"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	c.JSON(http.StatusOK, gin.H{"token": token.Value})
 }
 
 func (h *Handler) garbageCollection(c *gin.Context) {

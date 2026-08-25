@@ -26,6 +26,8 @@ type S3Storage struct {
 	S3 *minio.Client
 }
 
+var _ NamespaceStore = (*S3Storage)(nil)
+
 /*
 newS3Storage создает новый экземпляр S3Storage.
 
@@ -50,6 +52,49 @@ func newS3Storage(env *config.Env) (*S3Storage, error) {
 	return &S3Storage{
 		S3: s3Client,
 	}, nil
+}
+
+/*
+NamespaceExists проверяет наличие пространства имён registry.
+
+	ctx - контекст выполнения операции.
+	name - имя пространства.
+*/
+func (s *S3Storage) NamespaceExists(
+	ctx context.Context,
+	name string,
+) (bool, error) {
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+	if !validNamespaceName(name) {
+		return false, nil
+	}
+
+	prefix := filepath.Join(config.MANIFEST_PATH, name) + "/"
+	objects := s.S3.ListObjects(
+		ctx,
+		config.BACKET_NAME,
+		minio.ListObjectsOptions{
+			Prefix:    prefix,
+			Recursive: true,
+		},
+	)
+
+	for object := range objects {
+		if object.Err != nil {
+			return false, fmt.Errorf(
+				"не удалось проверить пространство %s: %w",
+				name,
+				object.Err,
+			)
+		}
+		if object.Key != "" {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 /*

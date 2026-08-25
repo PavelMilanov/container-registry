@@ -15,6 +15,18 @@ import (
 )
 
 /*
+validNamespaceName проверяет, что имя пространства является одним сегментом пути.
+
+	name - имя пространства.
+*/
+func validNamespaceName(name string) bool {
+	return name != "" &&
+		name != "." &&
+		name != ".." &&
+		!strings.ContainsAny(name, `/\\`)
+}
+
+/*
 localUploadPath формирует путь к временному файлу загрузки Blob.
 
 	uploadID - идентификатор загрузки.

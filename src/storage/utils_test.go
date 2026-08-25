@@ -8,6 +8,30 @@ import (
 	"testing"
 )
 
+func TestValidNamespaceName(t *testing.T) {
+	tests := []struct {
+		name string
+		want bool
+	}{
+		{name: "dev", want: true},
+		{name: "team-1", want: true},
+		{name: ""},
+		{name: "."},
+		{name: ".."},
+		{name: "../dev"},
+		{name: `team\\dev`},
+		{name: "team/dev"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := validNamespaceName(tt.name); got != tt.want {
+				t.Fatalf("validNamespaceName(%q) = %t, want %t", tt.name, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestCalculateFileDigest(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "blob")
 	if err := os.WriteFile(path, []byte("hello world"), 0600); err != nil {

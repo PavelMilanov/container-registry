@@ -2,9 +2,12 @@ package config
 
 import (
 	"errors"
+	"time"
 
 	"github.com/spf13/viper"
 )
+
+const DefaultTokenTTL = 2 * time.Hour
 
 /*
 Env описывает конфигурацию приложения.
@@ -19,10 +22,11 @@ type Env struct {
 server описывает конфигурацию сервера.
 */
 type server struct {
-	Realm   string `mapstructure:"realm"`
-	Service string `mapstructure:"service"`
-	Issuer  string `mapstructure:"issuer"`
-	Jwt     string `mapstructure:"jwt"`
+	Realm    string        `mapstructure:"realm"`
+	Service  string        `mapstructure:"service"`
+	Issuer   string        `mapstructure:"issuer"`
+	Jwt      string        `mapstructure:"jwt"`
+	TokenTTL time.Duration `mapstructure:"token_ttl"`
 }
 
 /*
@@ -61,17 +65,19 @@ NewEnv инициализирует переменные из файла кон�
 */
 func NewEnv(path, file string) (*Env, error) {
 	var env Env
-	viper.SetConfigName(file) // имя файла без расширения
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath(path)
+	reader := viper.New()
+	reader.SetConfigName(file) // имя файла без расширения
+	reader.SetConfigType("yaml")
+	reader.AddConfigPath(path)
+	reader.SetDefault("server.token_ttl", DefaultTokenTTL)
 
-	err := viper.ReadInConfig()
+	err := reader.ReadInConfig()
 	if err != nil {
 		return &env, err
 
 	}
 
-	err = viper.Unmarshal(&env)
+	err = reader.Unmarshal(&env)
 	if err != nil {
 		return &env, err
 	}

@@ -95,35 +95,6 @@ func DeleteRepository(cloud, repository string, storage storage.Storage) error {
 	return nil
 }
 
-/*
-Registration- реализация регистрации пользователя.
-
-	При успешной регистрации ничего не возвращает.
-*/
-func Registration(sql *gorm.DB, username, password string) error {
-	user := db.User{Name: username, Password: password}
-	if err := user.Add(sql); err != nil {
-		logrus.Error(err)
-		return err
-	}
-	return nil
-}
-
-/*
-Login - реализация авторизации пользователя.
-
-	При успешной авторизации возвращает токен пользователя.
-*/
-func Login(sql *gorm.DB, cred *config.Env, username, password string) (string, error) {
-	user := db.User{Name: username, Password: password}
-	if err := user.Login(sql, cred); err != nil {
-		logrus.WithField("username", username).Error(err)
-		return user.Token, err
-	}
-	logrus.WithField("username", username).Info("Успешная авторизация")
-	return user.Token, nil
-}
-
 func SetCountTag(sql *gorm.DB, count string) error {
 	newCount, err := strconv.Atoi(count)
 	if err != nil {

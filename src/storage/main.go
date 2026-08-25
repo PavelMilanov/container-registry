@@ -18,6 +18,7 @@ Storage абстракция хранилища.
 */
 type Storage interface {
 	BlobStore
+	NamespaceStore
 	SaveManifest(meta config.Meta, body []byte, link string) error
 	GetManifest(repository, image, reference string) ([]byte, error)
 	GetManifestList(cloud, repository string) ([]string, error)
@@ -29,6 +30,16 @@ type Storage interface {
 	DeleteRepository(cloud, repository string) error
 	GarbageCollection() error
 	DeleteOlderTags(count int) error
+}
+
+/*
+NamespaceStore контракт для проверки пространств имён registry.
+*/
+type NamespaceStore interface {
+	NamespaceExists(
+		ctx context.Context,
+		name string,
+	) (bool, error)
 }
 
 type BlobStore interface {

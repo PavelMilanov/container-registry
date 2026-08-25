@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/PavelMilanov/container-registry/config"
-	"github.com/PavelMilanov/container-registry/system"
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -18,7 +17,7 @@ type SQLite struct {
 	Mutex *sync.Mutex
 }
 
-func NewDatabase(sql string, env *config.Env) (SQLite, error) {
+func NewDatabase(sql string) (SQLite, error) {
 	conn, err := gorm.Open(sqlite.Open(sql+"?_foreign_keys=on"), &gorm.Config{
 		PrepareStmt: true,
 		Logger:      logger.Default.LogMode(logger.Silent)})
@@ -30,7 +29,7 @@ func NewDatabase(sql string, env *config.Env) (SQLite, error) {
 	if err := automigrate(db.Sql); err != nil {
 		return db, err
 	}
-	if err := setDefaultSettings(db.Sql, env); err != nil {
+	if err := setDefaultSettings(db.Sql); err != nil {
 		return db, err
 	}
 	return db, nil
@@ -43,15 +42,10 @@ func CloseDatabase(db *gorm.DB) {
 	}
 }
 
-func setDefaultSettings(db *gorm.DB, env *config.Env) error {
+func setDefaultSettings(db *gorm.DB) error {
 	err := db.Transaction(func(tx *gorm.DB) error {
 		var settings Settings
 		if err := tx.FirstOrCreate(&settings, Settings{TagCount: config.DEFAULT_TAG_EXPIRED_DAYS}).Error; err != nil {
-			return err
-		}
-		var newUser User
-		hash := system.Hashed(env.User.Password)
-		if err := tx.FirstOrCreate(&newUser, User{Name: env.User.Login, Password: hash}).Error; err != nil {
 			return err
 		}
 		return nil
