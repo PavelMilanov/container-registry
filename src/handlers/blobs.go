@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"uuid"
 
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/gin-gonic/gin"
-	uid "github.com/google/uuid"
 )
 
 /*
@@ -44,7 +44,7 @@ startBlobUpload реализация.
 func (h *Handler) startBlobUpload(c *gin.Context) {
 	repository := c.Param("repository")
 	imageName := c.Param("name")
-	uuid := uid.New().String()
+	uuid := uuid.NewV4().String()
 	c.Header("Location", fmt.Sprintf("/v2/%s/%s/blobs/uploads/%s", repository, imageName, uuid))
 	c.Header("Docker-Upload-UUID", uuid)
 	c.Header("Range", fmt.Sprintf("%d-%d", 0, 0))
