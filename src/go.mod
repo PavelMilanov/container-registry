@@ -1,6 +1,6 @@
 module github.com/PavelMilanov/container-registry
 
-go 1.26
+go 1.27
 
 require (
 	github.com/gin-gonic/gin v1.12.0
