@@ -18,7 +18,7 @@ checkBlob реализация.
 func (h *Handler) checkBlob(c *gin.Context) {
 	digest := c.Param("uuid")
 	// Проверяем, существует ли слой
-	if err := h.STORAGE.CheckBlob(digest); err != nil {
+	if err := h.BLOBS.CheckBlob(digest); err != nil {
 		addRequestError(c, err)
 		if errors.Is(err, storage.ErrBlobNotFound) ||
 			errors.Is(err, storage.ErrInvalidDigest) {
@@ -167,7 +167,7 @@ getBlob реализация.
 func (h *Handler) getBlob(c *gin.Context) {
 	digest := c.Param("uuid")
 	// Определяем путь к блобу
-	info, err := h.STORAGE.GetBlob(digest)
+	info, err := h.BLOBS.GetBlob(digest)
 	if err != nil {
 		addRequestError(c, err)
 		if errors.Is(err, storage.ErrBlobNotFound) ||

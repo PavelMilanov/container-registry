@@ -61,13 +61,15 @@ registerCronTasks регистрирует фоновые задания при�
 
 	scheduler - планировщик cron.
 	database - подключение к базе данных.
-	store - основное хранилище registry.
+	tagPruner - хранилище с поддержкой удаления старых тегов.
+	garbageCollector - хранилище с поддержкой сборки мусора.
 	uploadCleaner - хранилище с поддержкой очистки незавершённых uploads.
 */
 func registerCronTasks(
 	scheduler *cron.Cron,
 	database *db.SQLite,
-	store storage.Storage,
+	tagPruner storage.TagPruner,
+	garbageCollector storage.GarbageCollector,
 	uploadCleaner storage.UploadCleaner,
 ) error {
 	tasks := []cronTask{
@@ -75,14 +77,14 @@ func registerCronTasks(
 			name:     "delete_older_tags",
 			schedule: deleteOlderTagsSchedule,
 			run: func(context.Context) (logrus.Fields, error) {
-				return nil, services.DeleteOlderTags(database.Sql, store)
+				return nil, services.DeleteOlderTags(database.Sql, tagPruner)
 			},
 		},
 		{
 			name:     "garbage_collection",
 			schedule: garbageCollectionSchedule,
 			run: func(context.Context) (logrus.Fields, error) {
-				return nil, services.GarbageCollection(store)
+				return nil, services.GarbageCollection(garbageCollector)
 			},
 		},
 		{

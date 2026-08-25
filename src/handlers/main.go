@@ -19,12 +19,35 @@ import (
 
 // Handler основная сущность взаимодействия с API.
 type Handler struct {
-	STORAGE storage.Storage
-	UPLOADS storage.BlobUploadStore
-	AUTH    Authenticator
+	BLOBS        storage.BlobStore
+	UPLOADS      storage.BlobUploadStore
+	MANIFESTS    storage.ManifestStore
+	NAMESPACES   storage.NamespaceStore
+	CLOUDS       storage.CloudStore
+	REPOSITORIES storage.RepositoryStore
+	TAGS         storage.TagStore
+
+	GARBAGE_COLLECTOR storage.GarbageCollector
+	TAG_PRUNER        storage.TagPruner
+
+	AUTH Authenticator
 
 	DB  *db.SQLite
 	ENV *config.Env
+}
+
+// StorageDependencies содержит storage-возможности HTTP-обработчиков.
+type StorageDependencies struct {
+	Blobs        storage.BlobStore
+	Uploads      storage.BlobUploadStore
+	Manifests    storage.ManifestStore
+	Namespaces   storage.NamespaceStore
+	Clouds       storage.CloudStore
+	Repositories storage.RepositoryStore
+	Tags         storage.TagStore
+
+	GarbageCollector storage.GarbageCollector
+	TagPruner        storage.TagPruner
 }
 
 // Authenticator предоставляет обработчикам операции аутентификации.
@@ -42,25 +65,30 @@ type Authenticator interface {
 /*
 NewHandler инициализирует обработчик API.
 
-	store - основное хранилище данных registry.
-	uploads - хранилище незавершённых загрузок Blob.
+	stores - отдельные storage-возможности обработчиков.
 	authService - сервис регистрации, входа и проверки JWT.
 	db - подключение к базе данных.
 	env - конфигурация приложения.
 */
 func NewHandler(
-	store storage.Storage,
-	uploads storage.BlobUploadStore,
+	stores StorageDependencies,
 	authService Authenticator,
 	db *db.SQLite,
 	env *config.Env,
 ) *Handler {
 	return &Handler{
-		STORAGE: store,
-		UPLOADS: uploads,
-		AUTH:    authService,
-		DB:      db,
-		ENV:     env,
+		BLOBS:             stores.Blobs,
+		UPLOADS:           stores.Uploads,
+		MANIFESTS:         stores.Manifests,
+		NAMESPACES:        stores.Namespaces,
+		CLOUDS:            stores.Clouds,
+		REPOSITORIES:      stores.Repositories,
+		TAGS:              stores.Tags,
+		GARBAGE_COLLECTOR: stores.GarbageCollector,
+		TAG_PRUNER:        stores.TagPruner,
+		AUTH:              authService,
+		DB:                db,
+		ENV:               env,
 	}
 }
 
@@ -123,7 +151,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 
 		repository := v2.Group(
 			"/:repository/:name",
-			middleware.RequireNamespace(h.STORAGE),
+			middleware.RequireNamespace(h.NAMESPACES),
 		)
 		// manifests
 		repository.HEAD("/manifests/:reference", h.getManifest)

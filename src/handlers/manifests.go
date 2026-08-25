@@ -55,7 +55,7 @@ func (h *Handler) uploadManifest(c *gin.Context) {
 		MediaType:  mediaType,
 		Digest:     calculatedDigest,
 	}
-	if err := services.SaveManifest(h.STORAGE, meta, body); err != nil {
+	if err := services.SaveManifest(h.MANIFESTS, meta, body); err != nil {
 		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
@@ -73,7 +73,7 @@ func (h *Handler) getManifest(c *gin.Context) {
 	repository := c.Param("repository")
 	imageName := c.Param("name")
 	reference := c.Param("reference")
-	data, err := h.STORAGE.GetManifest(repository, imageName, reference)
+	data, err := h.MANIFESTS.GetManifest(repository, imageName, reference)
 	if err != nil {
 		addRequestError(c, err)
 		c.JSON(http.StatusNotFound, gin.H{

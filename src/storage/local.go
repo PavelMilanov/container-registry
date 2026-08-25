@@ -26,6 +26,13 @@ type LocalStorage struct {
 var _ BlobUploadStore = (*LocalStorage)(nil)
 var _ UploadCleaner = (*LocalStorage)(nil)
 var _ NamespaceStore = (*LocalStorage)(nil)
+var _ BlobStore = (*LocalStorage)(nil)
+var _ ManifestStore = (*LocalStorage)(nil)
+var _ CloudStore = (*LocalStorage)(nil)
+var _ RepositoryStore = (*LocalStorage)(nil)
+var _ TagStore = (*LocalStorage)(nil)
+var _ GarbageCollector = (*LocalStorage)(nil)
+var _ TagPruner = (*LocalStorage)(nil)
 
 /*
 newLocalStorage инициализирует новый экземпляр LocalStorage.

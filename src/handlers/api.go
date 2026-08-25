@@ -28,7 +28,7 @@ func (h *Handler) addCloud(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"err": "неверный формат"})
 		return
 	}
-	if err := services.AddCloud(req.Cloud, h.STORAGE); err != nil {
+	if err := services.AddCloud(req.Cloud, h.CLOUDS); err != nil {
 		addRequestError(c, err)
 		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		return
@@ -42,7 +42,7 @@ getCloudList -получение списка пространств.
 	/api/cloud/list
 */
 func (h *Handler) getCloudList(c *gin.Context) {
-	list, err := services.GetCloudList(h.STORAGE)
+	list, err := services.GetCloudList(h.CLOUDS)
 	if err != nil {
 		addRequestError(c, err)
 		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
@@ -69,7 +69,7 @@ func (h *Handler) deleteCloud(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"err": "неверный формат"})
 		return
 	}
-	if err := services.DeleteCloud(req.Cloud, h.STORAGE); err != nil {
+	if err := services.DeleteCloud(req.Cloud, h.CLOUDS); err != nil {
 		addRequestError(c, err)
 		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
 		return
@@ -79,7 +79,7 @@ func (h *Handler) deleteCloud(c *gin.Context) {
 
 func (h *Handler) getRepoList(c *gin.Context) {
 	cloud := c.Param("cloud")
-	list, err := services.GetRepositoriesList(cloud, h.STORAGE)
+	list, err := services.GetRepositoriesList(cloud, h.REPOSITORIES)
 	if err != nil {
 		addRequestError(c, err)
 		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
@@ -99,7 +99,7 @@ getImagesList - получение всех образов указанного 
 func (h *Handler) getImagesList(c *gin.Context) {
 	cloud := c.Param("cloud")
 	repo := c.Param("repository")
-	list, err := services.GetImagesList(cloud, repo, h.STORAGE)
+	list, err := services.GetImagesList(cloud, repo, h.TAGS)
 	if err != nil {
 		addRequestError(c, err)
 		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
@@ -122,14 +122,14 @@ func (h *Handler) deleteRepositoryOrImage(c *gin.Context) {
 	repo := c.Param("repository")
 	tag := c.Query("tag")
 	if tag != "" {
-		if err := services.DeleteImage(cloud, repo, tag, h.STORAGE); err != nil {
+		if err := services.DeleteImage(cloud, repo, tag, h.TAGS); err != nil {
 			addRequestError(c, err)
 			c.JSON(http.StatusBadRequest, gin.H{"err": "Ошибка при удалении образа"})
 			return
 		}
 		c.JSON(http.StatusNoContent, gin.H{"msg": "Образ успешно удален"})
 	} else {
-		if err := services.DeleteRepository(cloud, repo, h.STORAGE); err != nil {
+		if err := services.DeleteRepository(cloud, repo, h.REPOSITORIES); err != nil {
 			addRequestError(c, err)
 			c.JSON(http.StatusBadRequest, gin.H{"err": "репозиторий не найден"})
 			return
@@ -218,7 +218,7 @@ func (h *Handler) login(c *gin.Context) {
 }
 
 func (h *Handler) garbageCollection(c *gin.Context) {
-	if err := services.GarbageCollection(h.STORAGE); err != nil {
+	if err := services.GarbageCollection(h.GARBAGE_COLLECTOR); err != nil {
 		addRequestError(c, err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -253,7 +253,7 @@ func (h *Handler) settings(c *gin.Context) {
 }
 
 func (h *Handler) deleteOlderTags(c *gin.Context) {
-	if err := services.DeleteOlderTags(h.DB.Sql, h.STORAGE); err != nil {
+	if err := services.DeleteOlderTags(h.DB.Sql, h.TAG_PRUNER); err != nil {
 		addRequestError(c, err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

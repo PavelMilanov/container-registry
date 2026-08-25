@@ -36,19 +36,17 @@ var serveCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		store, err := storage.NewStorage(env)
+		backend, err := storage.NewStorage(env)
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		uploadStore, ok := store.(storage.BlobUploadStore)
-		if !ok {
+		if backend.Uploads == nil {
 			logrus.Fatalf(
 				"storage %q не поддерживает загрузку blob",
 				env.Storage.Type,
 			)
 		}
-		uploadCleaner, ok := store.(storage.UploadCleaner)
-		if !ok {
+		if backend.UploadCleaner == nil {
 			logrus.Fatalf(
 				"storage %q не поддерживает очистку незавершённых uploads",
 				env.Storage.Type,
@@ -92,8 +90,9 @@ var serveCmd = &cobra.Command{
 		if err := registerCronTasks(
 			scheduler,
 			&sqlite,
-			store,
-			uploadCleaner,
+			backend.TagPruner,
+			backend.GarbageCollector,
+			backend.UploadCleaner,
 		); err != nil {
 			logrus.Fatal(err)
 		}
@@ -103,8 +102,17 @@ var serveCmd = &cobra.Command{
 			Info("Задачи планировщика запущены")
 
 		handler := handlers.NewHandler(
-			store,
-			uploadStore,
+			handlers.StorageDependencies{
+				Blobs:            backend.Blobs,
+				Uploads:          backend.Uploads,
+				Manifests:        backend.Manifests,
+				Namespaces:       backend.Namespaces,
+				Clouds:           backend.Clouds,
+				Repositories:     backend.Repositories,
+				Tags:             backend.Tags,
+				GarbageCollector: backend.GarbageCollector,
+				TagPruner:        backend.TagPruner,
+			},
 			authService,
 			&sqlite,
 			env,

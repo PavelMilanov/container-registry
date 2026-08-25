@@ -27,6 +27,13 @@ type S3Storage struct {
 }
 
 var _ NamespaceStore = (*S3Storage)(nil)
+var _ BlobStore = (*S3Storage)(nil)
+var _ ManifestStore = (*S3Storage)(nil)
+var _ CloudStore = (*S3Storage)(nil)
+var _ RepositoryStore = (*S3Storage)(nil)
+var _ TagStore = (*S3Storage)(nil)
+var _ GarbageCollector = (*S3Storage)(nil)
+var _ TagPruner = (*S3Storage)(nil)
 
 /*
 newS3Storage создает новый экземпляр S3Storage.
