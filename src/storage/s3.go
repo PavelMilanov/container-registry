@@ -72,34 +72,6 @@ func (s *S3Storage) CheckBlob(uuid string) error {
 }
 
 /*
-SaveBlob сохраняет Blob в хранилище.
-
-	tmpPath - путь к временному файлу Blob.
-	digest - хэш Blob.
-*/
-func (s *S3Storage) SaveBlob(tmpPath, digest string) error {
-	finalPath, err := blobKeyFromDigest(digest)
-	if err != nil {
-		return err
-	}
-
-	file, err := os.Open(tmpPath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	fileStat, err := file.Stat()
-	if err != nil {
-		return err
-	}
-	if _, err := s.S3.PutObject(context.Background(), config.BACKET_NAME, finalPath, file, fileStat.Size(), minio.PutObjectOptions{ContentType: "application/octet-stream"}); err != nil {
-		return err
-	}
-	return os.Remove(tmpPath)
-}
-
-/*
 GetBlob возвращает Blob из хранилища в двоичном виде.
 
 	digest - хэш Blob.

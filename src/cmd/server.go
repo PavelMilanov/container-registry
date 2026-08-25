@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,9 +13,7 @@ import (
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/handlers"
-	"github.com/PavelMilanov/container-registry/services"
 	"github.com/PavelMilanov/container-registry/storage"
-	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -41,20 +38,20 @@ var serveCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		location, _ := time.LoadLocation(os.Getenv("TZ"))
-		cronLogger := cron.PrintfLogger(log.New(
-			logrus.StandardLogger().WriterLevel(logrus.DebugLevel),
-			"cron: ",
-			log.LstdFlags,
-		))
-		c := cron.New(
-			cron.WithLocation(location),
-			cron.WithLogger(cronLogger),
-			cron.WithChain(
-				cron.Recover(cronLogger),
-				cron.SkipIfStillRunning(cronLogger),
-			),
-		)
+		uploadStore, ok := store.(storage.BlobUploadStore)
+		if !ok {
+			logrus.Fatalf(
+				"storage %q не поддерживает загрузку blob",
+				env.Storage.Type,
+			)
+		}
+		uploadCleaner, ok := store.(storage.UploadCleaner)
+		if !ok {
+			logrus.Fatalf(
+				"storage %q не поддерживает очистку незавершённых uploads",
+				env.Storage.Type,
+			)
+		}
 
 		sqliteFIle := fmt.Sprintf("%s/registry.db", config.DATA_PATH)
 		sqlite, err := db.NewDatabase(sqliteFIle, env)
@@ -63,30 +60,24 @@ var serveCmd = &cobra.Command{
 		}
 		defer db.CloseDatabase(sqlite.Sql)
 
-		_, err = c.AddFunc("0 0 * * 0", func() {
-			logrus.WithField("Garbage Collection", "start").Info("Запуск задания по удалению старых тегов")
-			if err := services.DeleteOlderTags(sqlite.Sql, store); err != nil {
-				logrus.WithError(err).Error("Ошибка при удалении старых тегов")
-			}
-			logrus.WithField("Garbage Collection", "end").Info("Завершение задания по удалению старых тегов")
-		}) // каждое воскресенье в 00:00
+		scheduler, err := newCronScheduler(os.Getenv("TZ"))
 		if err != nil {
-			logrus.WithError(err).Error("Не удалось добавить cron-задачу удаления старых тегов")
+			logrus.Fatal(err)
 		}
-		_, err = c.AddFunc("0 1 * * 0", func() {
-			logrus.WithField("Garbage Collection", "start").Info("Запуск задания по сборке мусора")
-			if err := services.GarbageCollection(store); err != nil {
-				logrus.WithError(err).Error("Ошибка при сборке мусора")
-			}
-			logrus.WithField("Garbage Collection", "end").Info("Завершение задания по сборке мусора")
-		}) // каждое воскресенье в 01:00
-		if err != nil {
-			logrus.WithError(err).Error("Не удалось добавить cron-задачу сборки мусора")
+		if err := registerCronTasks(
+			scheduler,
+			&sqlite,
+			store,
+			uploadCleaner,
+		); err != nil {
+			logrus.Fatal(err)
 		}
-		c.Start()
-		logrus.WithField("task", "Garbage Collection").Infof("Запущено %d заданий планировщика", len(c.Entries()))
 
-		handler := handlers.NewHandler(store, &sqlite, env)
+		scheduler.Start()
+		logrus.WithField("tasks", len(scheduler.Entries())).
+			Info("Задачи планировщика запущены")
+
+		handler := handlers.NewHandler(store, uploadStore, &sqlite, env)
 		srv := new(config.Server)
 		go func() {
 			if err := srv.Run(handler.InitRouters()); err != nil {
@@ -95,7 +86,7 @@ var serveCmd = &cobra.Command{
 		}()
 
 		defer func() {
-			cronCtx := c.Stop()
+			cronCtx := scheduler.Stop()
 			<-cronCtx.Done()
 		}()
 

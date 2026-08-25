@@ -15,13 +15,33 @@ import (
 
 // Handler основная сущность взаимодействия с API.
 type Handler struct {
-	DB      *db.SQLite
 	STORAGE storage.Storage
-	ENV     *config.Env
+	UPLOADS storage.BlobUploadStore
+
+	DB  *db.SQLite
+	ENV *config.Env
 }
 
-func NewHandler(storage storage.Storage, db *db.SQLite, env *config.Env) *Handler {
-	return &Handler{STORAGE: storage, DB: db, ENV: env}
+/*
+NewHandler инициализирует обработчик API.
+
+	store - основное хранилище данных registry.
+	uploads - хранилище незавершённых загрузок Blob.
+	db - подключение к базе данных.
+	env - конфигурация приложения.
+*/
+func NewHandler(
+	store storage.Storage,
+	uploads storage.BlobUploadStore,
+	db *db.SQLite,
+	env *config.Env,
+) *Handler {
+	return &Handler{
+		STORAGE: store,
+		UPLOADS: uploads,
+		DB:      db,
+		ENV:     env,
+	}
 }
 
 func (h *Handler) InitRouters() *gin.Engine {
@@ -60,6 +80,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 		v2.POST("/:repository/:name/blobs/uploads/", h.startBlobUpload)
 		v2.PATCH("/:repository/:name/blobs/uploads/:uuid", h.uploadBlobPart)
 		v2.PUT("/:repository/:name/blobs/uploads/:uuid", h.finalizeBlobUpload)
+		v2.DELETE("/:repository/:name/blobs/uploads/:uuid", h.abortBlobUpload)
 	}
 
 	api := router.Group("/api/", baseApiMiddleware([]byte(h.ENV.Server.Jwt)))

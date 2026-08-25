@@ -2,7 +2,10 @@
 package storage
 
 import (
+	"context"
 	"errors"
+	"io"
+	"time"
 
 	"github.com/PavelMilanov/container-registry/config"
 )
@@ -14,9 +17,7 @@ Storage абстракция хранилища.
 	s3 - S3-хранилище.
 */
 type Storage interface {
-	CheckBlob(uuid string) error
-	SaveBlob(tmpPath, digest string) error
-	GetBlob(digest string) (config.Blob, error)
+	BlobStore
 	SaveManifest(meta config.Meta, body []byte, link string) error
 	GetManifest(repository, image, reference string) ([]byte, error)
 	GetManifestList(cloud, repository string) ([]string, error)
@@ -28,6 +29,50 @@ type Storage interface {
 	DeleteRepository(cloud, repository string) error
 	GarbageCollection() error
 	DeleteOlderTags(count int) error
+}
+
+type BlobStore interface {
+	CheckBlob(digest string) error
+	GetBlob(digest string) (config.Blob, error)
+}
+
+/*
+BlobUploadStore контракт для загрузки blob.
+*/
+type BlobUploadStore interface {
+	StartBlobUpload(
+		ctx context.Context,
+		uuid string,
+	) error
+
+	AppendBlobUpload(
+		ctx context.Context,
+		uuid string,
+		expectedOffset int64,
+		body io.Reader,
+	) (newOffset int64, err error)
+
+	CompleteBlobUpload(
+		ctx context.Context,
+		uuid string,
+		expectedDigest string,
+		finalBody io.Reader,
+	) (config.Blob, error)
+
+	AbortBlobUpload(
+		ctx context.Context,
+		uuid string,
+	) error
+}
+
+/*
+UploadCleaner контракт для очистки незавершённых загрузок Blob.
+*/
+type UploadCleaner interface {
+	CleanupUploads(
+		ctx context.Context,
+		olderThan time.Duration,
+	) (deleted int, err error)
 }
 
 /*
