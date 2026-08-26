@@ -18,7 +18,7 @@ server:
 storage:
   type: local
 
-user:
+default_user:
   login: admin
   password: admin
 `)
@@ -39,8 +39,8 @@ user:
 	if env.Server.TokenTTL != 3*time.Hour {
 		t.Fatalf("unexpected token TTL: %s", env.Server.TokenTTL)
 	}
-	if env.User.Login != "admin" {
-		t.Fatalf("unexpected user login: %s", env.User.Login)
+	if env.DefaultUser.Login != "admin" {
+		t.Fatalf("unexpected user login: %s", env.DefaultUser.Login)
 	}
 }
 
@@ -54,7 +54,7 @@ server:
 storage:
   type: local
 
-user:
+default_user:
   login: admin
   password: admin
 `)

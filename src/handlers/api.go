@@ -229,7 +229,10 @@ func (h *Handler) garbageCollection(c *gin.Context) {
 func (h *Handler) settings(c *gin.Context) {
 	switch c.Request.Method {
 	case http.MethodGet:
-		count, err := services.GetCountTag(h.DB.Sql)
+		count, err := services.GetCountTag(
+			c.Request.Context(),
+			h.SETTINGS,
+		)
 		if err != nil {
 			addRequestError(c, err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -239,7 +242,11 @@ func (h *Handler) settings(c *gin.Context) {
 	case http.MethodPost:
 		tag := c.Query("tag")
 		if tag != "" {
-			if err := services.SetCountTag(h.DB.Sql, tag); err != nil {
+			if err := services.SetCountTag(
+				c.Request.Context(),
+				h.SETTINGS,
+				tag,
+			); err != nil {
 				addRequestError(c, err)
 				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 				return
@@ -253,7 +260,11 @@ func (h *Handler) settings(c *gin.Context) {
 }
 
 func (h *Handler) deleteOlderTags(c *gin.Context) {
-	if err := services.DeleteOlderTags(h.DB.Sql, h.TAG_PRUNER); err != nil {
+	if err := services.DeleteOlderTags(
+		c.Request.Context(),
+		h.SETTINGS,
+		h.TAG_PRUNER,
+	); err != nil {
 		addRequestError(c, err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

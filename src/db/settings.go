@@ -1,24 +1,80 @@
 package db
 
 import (
-	"gorm.io/gorm"
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
 )
 
-type Settings struct {
-	ID       int `gorm:"primaryKey"`
-	TagCount int
+const getTagCountQuery = `
+SELECT tag_count
+FROM settings
+WHERE id = 1;`
+
+const setTagCountQuery = `
+UPDATE settings
+SET tag_count = ?
+WHERE id = 1;`
+
+var ErrSettingsNotFound = errors.New("settings not found")
+
+// SettingsRepository предоставляет операции с настройками в SQLite.
+type SettingsRepository struct {
+	connection *sql.DB
 }
 
-func GetCountTag(sql *gorm.DB) (int, error) {
-	var settings Settings
-	if err := sql.First(&settings).Error; err != nil {
-		return 0, err
+/*
+NewSettingsRepository создаёт repository настроек.
+
+	database - подключение к SQLite.
+*/
+func NewSettingsRepository(database *SQLite) *SettingsRepository {
+	return &SettingsRepository{connection: database.connection}
+}
+
+/*
+GetTagCount возвращает количество сохраняемых тегов.
+
+	ctx - контекст выполнения операции.
+*/
+func (r *SettingsRepository) GetTagCount(
+	ctx context.Context,
+) (int, error) {
+	var count int
+	if err := r.connection.QueryRowContext(
+		ctx,
+		getTagCountQuery,
+	).Scan(&count); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, ErrSettingsNotFound
+		}
+		return 0, fmt.Errorf("не удалось получить настройки: %w", err)
 	}
-	return settings.TagCount, nil
+	return count, nil
 }
 
-func SetCountTag(sql *gorm.DB, count int) error {
-	// В таблице настроек хранится одна активная запись.
-	// Обновляем её явно, чтобы избежать массового UPDATE без WHERE.
-	return sql.Model(&Settings{}).Where("id = ?", 1).Update("tag_count", count).Error
+/*
+SetTagCount обновляет количество сохраняемых тегов.
+
+	ctx - контекст выполнения операции.
+	count - новое количество сохраняемых тегов.
+*/
+func (r *SettingsRepository) SetTagCount(
+	ctx context.Context,
+	count int,
+) error {
+	result, err := r.connection.ExecContext(ctx, setTagCountQuery, count)
+	if err != nil {
+		return fmt.Errorf("не удалось обновить настройки: %w", err)
+	}
+
+	updated, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("не удалось проверить обновление настроек: %w", err)
+	}
+	if updated == 0 {
+		return ErrSettingsNotFound
+	}
+	return nil
 }

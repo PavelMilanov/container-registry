@@ -17,9 +17,9 @@ const (
 Env описывает конфигурацию приложения.
 */
 type Env struct {
-	Server  server
-	Storage storage
-	User    user
+	Server      server
+	Storage     storage
+	DefaultUser defaultUser `mapstructure:"default_user"`
 }
 
 /*
@@ -50,9 +50,9 @@ type credentials struct {
 }
 
 /*
-user описывает параметры для суперпользователя.
+defaultUser описывает параметры пользователя, создаваемого при первом запуске.
 */
-type user struct {
+type defaultUser struct {
 	Login    string `mapstructure:"login"`
 	Password string `mapstructure:"password"`
 }
@@ -89,8 +89,8 @@ func NewEnv(path, file string) (*Env, error) {
 			return &env, errors.New("не указан конфиг для подключения к S3 storage")
 		}
 	}
-	if env.User.Login == "" || env.User.Password == "" {
-		return &env, errors.New("не указаны логин или пароль для суперпользователя")
+	if env.DefaultUser.Login == "" || env.DefaultUser.Password == "" {
+		return &env, errors.New("не указаны login или password для default_user")
 	}
 	return &env, nil
 }

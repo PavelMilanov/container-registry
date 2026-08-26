@@ -6,7 +6,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/services"
 	"github.com/PavelMilanov/container-registry/storage"
 	"github.com/robfig/cron/v3"
@@ -60,14 +59,14 @@ func newCronScheduler(timezone string) (*cron.Cron, error) {
 registerCronTasks регистрирует фоновые задания приложения.
 
 	scheduler - планировщик cron.
-	database - подключение к базе данных.
+	settings - repository настроек приложения.
 	tagPruner - хранилище с поддержкой удаления старых тегов.
 	garbageCollector - хранилище с поддержкой сборки мусора.
 	uploadCleaner - хранилище с поддержкой очистки незавершённых uploads.
 */
 func registerCronTasks(
 	scheduler *cron.Cron,
-	database *db.SQLite,
+	settings services.SettingsStore,
 	tagPruner storage.TagPruner,
 	garbageCollector storage.GarbageCollector,
 	uploadCleaner storage.UploadCleaner,
@@ -76,8 +75,12 @@ func registerCronTasks(
 		{
 			name:     "delete_older_tags",
 			schedule: deleteOlderTagsSchedule,
-			run: func(context.Context) (logrus.Fields, error) {
-				return nil, services.DeleteOlderTags(database.Sql, tagPruner)
+			run: func(ctx context.Context) (logrus.Fields, error) {
+				return nil, services.DeleteOlderTags(
+					ctx,
+					settings,
+					tagPruner,
+				)
 			},
 		},
 		{

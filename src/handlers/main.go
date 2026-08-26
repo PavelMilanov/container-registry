@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/PavelMilanov/container-registry/config"
-	"github.com/PavelMilanov/container-registry/db"
 	registryauth "github.com/PavelMilanov/container-registry/internal/auth"
 	"github.com/PavelMilanov/container-registry/middleware"
 	"github.com/PavelMilanov/container-registry/storage"
@@ -32,8 +31,8 @@ type Handler struct {
 
 	AUTH Authenticator
 
-	DB  *db.SQLite
-	ENV *config.Env
+	SETTINGS SettingsStore
+	ENV      *config.Env
 }
 
 // StorageDependencies содержит storage-возможности HTTP-обработчиков.
@@ -62,18 +61,24 @@ type Authenticator interface {
 	ValidateToken(rawToken string) (registryauth.Claims, error)
 }
 
+// SettingsStore предоставляет обработчикам операции с настройками приложения.
+type SettingsStore interface {
+	GetTagCount(ctx context.Context) (int, error)
+	SetTagCount(ctx context.Context, count int) error
+}
+
 /*
 NewHandler инициализирует обработчик API.
 
 	stores - отдельные storage-возможности обработчиков.
 	authService - сервис регистрации, входа и проверки JWT.
-	db - подключение к базе данных.
+	settings - repository настроек приложения.
 	env - конфигурация приложения.
 */
 func NewHandler(
 	stores StorageDependencies,
 	authService Authenticator,
-	db *db.SQLite,
+	settings SettingsStore,
 	env *config.Env,
 ) *Handler {
 	return &Handler{
@@ -87,7 +92,7 @@ func NewHandler(
 		GARBAGE_COLLECTOR: stores.GarbageCollector,
 		TAG_PRUNER:        stores.TagPruner,
 		AUTH:              authService,
-		DB:                db,
+		SETTINGS:          settings,
 		ENV:               env,
 	}
 }

@@ -54,11 +54,17 @@ var serveCmd = &cobra.Command{
 		}
 
 		sqliteFIle := fmt.Sprintf("%s/registry.db", config.DATA_PATH)
-		sqlite, err := db.NewDatabase(sqliteFIle)
+		database, err := db.NewDatabase(cmd.Context(), sqliteFIle)
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		defer db.CloseDatabase(sqlite.Sql)
+		defer func() {
+			if err := database.Close(); err != nil {
+				logrus.WithError(err).Error("Не удалось закрыть SQLite")
+			}
+		}()
+		users := db.NewUserRepository(database)
+		settings := db.NewSettingsRepository(database)
 
 		passwords := registryauth.NewPasswordHasher()
 		tokens, err := registryauth.NewTokenManager(registryauth.TokenConfig{
@@ -71,14 +77,14 @@ var serveCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		authService := services.NewAuthService(
-			db.NewUserRepository(sqlite.Sql),
+			users,
 			passwords,
 			tokens,
 		)
 		if err := authService.EnsureUser(
 			cmd.Context(),
-			env.User.Login,
-			env.User.Password,
+			env.DefaultUser.Login,
+			env.DefaultUser.Password,
 		); err != nil {
 			logrus.Fatal(err)
 		}
@@ -89,7 +95,7 @@ var serveCmd = &cobra.Command{
 		}
 		if err := registerCronTasks(
 			scheduler,
-			&sqlite,
+			settings,
 			backend.TagPruner,
 			backend.GarbageCollector,
 			backend.UploadCleaner,
@@ -114,7 +120,7 @@ var serveCmd = &cobra.Command{
 				TagPruner:        backend.TagPruner,
 			},
 			authService,
-			&sqlite,
+			settings,
 			env,
 		)
 		srv := new(config.Server)

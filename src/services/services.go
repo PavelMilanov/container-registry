@@ -3,17 +3,22 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"path/filepath"
 	"strconv"
 
 	"github.com/PavelMilanov/container-registry/config"
-	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/storage"
 
 	"github.com/sirupsen/logrus"
-	"gorm.io/gorm"
 )
+
+// SettingsStore предоставляет сервисам операции с настройками приложения.
+type SettingsStore interface {
+	GetTagCount(ctx context.Context) (int, error)
+	SetTagCount(ctx context.Context, count int) error
+}
 
 func AddCloud(name string, store storage.CloudStore) error {
 	if err := store.AddCloud(name); err != nil {
@@ -95,7 +100,11 @@ func DeleteRepository(cloud, repository string, store storage.RepositoryStore) e
 	return nil
 }
 
-func SetCountTag(sql *gorm.DB, count string) error {
+func SetCountTag(
+	ctx context.Context,
+	settings SettingsStore,
+	count string,
+) error {
 	newCount, err := strconv.Atoi(count)
 	if err != nil {
 		logrus.Error(err)
@@ -105,15 +114,18 @@ func SetCountTag(sql *gorm.DB, count string) error {
 		logrus.Error("значение tag должно быть больше 0")
 		return errors.New("значение tag должно быть больше 0")
 	}
-	if err := db.SetCountTag(sql, newCount); err != nil {
+	if err := settings.SetTagCount(ctx, newCount); err != nil {
 		logrus.Error(err)
 		return err
 	}
 	return nil
 }
 
-func GetCountTag(sql *gorm.DB) (int, error) {
-	count, err := db.GetCountTag(sql)
+func GetCountTag(
+	ctx context.Context,
+	settings SettingsStore,
+) (int, error) {
+	count, err := settings.GetTagCount(ctx)
 	if err != nil {
 		logrus.Error(err)
 		return 0, err
@@ -121,8 +133,12 @@ func GetCountTag(sql *gorm.DB) (int, error) {
 	return count, nil
 }
 
-func DeleteOlderTags(sql *gorm.DB, pruner storage.TagPruner) error {
-	tagCount, err := db.GetCountTag(sql)
+func DeleteOlderTags(
+	ctx context.Context,
+	settings SettingsStore,
+	pruner storage.TagPruner,
+) error {
+	tagCount, err := settings.GetTagCount(ctx)
 	if err != nil {
 		return err
 	}

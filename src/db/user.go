@@ -2,36 +2,52 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
-
-	"gorm.io/gorm"
 )
+
+const createUserQuery = `
+INSERT INTO users (name, password)
+VALUES (?, ?)
+ON CONFLICT (name) DO NOTHING
+RETURNING id;`
+
+const findUserByNameQuery = `
+SELECT id, name, password
+FROM users
+WHERE name = ?
+LIMIT 1;`
+
+const updatePasswordQuery = `
+UPDATE users
+SET password = ?
+WHERE id = ?;`
 
 var (
 	ErrUserExists   = errors.New("user already exists")
 	ErrUserNotFound = errors.New("user not found")
 )
 
-// User абстракция таблицы users.
+// User описывает пользователя приложения.
 type User struct {
-	ID       int    `gorm:"primaryKey"`
-	Name     string `gorm:"not null;unique"`
-	Password string `gorm:"not null"`
+	ID       int
+	Name     string
+	Password string
 }
 
-// UserRepository предоставляет операции с пользователями в базе данных.
+// UserRepository предоставляет операции с пользователями в SQLite.
 type UserRepository struct {
-	sql *gorm.DB
+	connection *sql.DB
 }
 
 /*
 NewUserRepository создаёт repository пользователей.
 
-	sql - подключение к базе данных.
+	database - подключение к SQLite.
 */
-func NewUserRepository(sql *gorm.DB) *UserRepository {
-	return &UserRepository{sql: sql}
+func NewUserRepository(database *SQLite) *UserRepository {
+	return &UserRepository{connection: database.connection}
 }
 
 /*
@@ -44,20 +60,25 @@ func (r *UserRepository) Create(
 	ctx context.Context,
 	user *User,
 ) error {
-	var count int64
-	if err := r.sql.WithContext(ctx).
-		Model(&User{}).
-		Where("name = ?", user.Name).
-		Count(&count).Error; err != nil {
-		return err
-	}
-	if count > 0 {
+	var userID int64
+	err := r.connection.QueryRowContext(
+		ctx,
+		createUserQuery,
+		user.Name,
+		user.Password,
+	).Scan(&userID)
+	if errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("%w: %s", ErrUserExists, user.Name)
 	}
-
-	if err := r.sql.WithContext(ctx).Create(user).Error; err != nil {
-		return fmt.Errorf("не удалось создать пользователя %s: %w", user.Name, err)
+	if err != nil {
+		return fmt.Errorf(
+			"не удалось создать пользователя %s: %w",
+			user.Name,
+			err,
+		)
 	}
+
+	user.ID = int(userID)
 	return nil
 }
 
@@ -72,15 +93,28 @@ func (r *UserRepository) FindByName(
 	name string,
 ) (User, error) {
 	var user User
-	err := r.sql.WithContext(ctx).
-		Where("name = ?", name).
-		First(&user).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	var userID int64
+	err := r.connection.QueryRowContext(
+		ctx,
+		findUserByNameQuery,
+		name,
+	).Scan(
+		&userID,
+		&user.Name,
+		&user.Password,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
 		return User{}, ErrUserNotFound
 	}
 	if err != nil {
-		return User{}, err
+		return User{}, fmt.Errorf(
+			"не удалось получить пользователя %s: %w",
+			name,
+			err,
+		)
 	}
+
+	user.ID = int(userID)
 	return user, nil
 }
 
@@ -96,14 +130,21 @@ func (r *UserRepository) UpdatePassword(
 	userID int,
 	passwordHash string,
 ) error {
-	result := r.sql.WithContext(ctx).
-		Model(&User{}).
-		Where("id = ?", userID).
-		Update("password", passwordHash)
-	if result.Error != nil {
-		return result.Error
+	result, err := r.connection.ExecContext(
+		ctx,
+		updatePasswordQuery,
+		passwordHash,
+		userID,
+	)
+	if err != nil {
+		return fmt.Errorf("не удалось обновить пароль: %w", err)
 	}
-	if result.RowsAffected == 0 {
+
+	updated, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("не удалось проверить обновление пароля: %w", err)
+	}
+	if updated == 0 {
 		return ErrUserNotFound
 	}
 	return nil

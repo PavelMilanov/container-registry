@@ -2,63 +2,103 @@
 package db
 
 import (
-	"sync"
+	"context"
+	"database/sql"
+	"fmt"
 
 	"github.com/PavelMilanov/container-registry/config"
-	"github.com/sirupsen/logrus"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	_ "github.com/mattn/go-sqlite3"
 )
 
-// SQlite абстракция над *gorm.DB.
+const schema = `
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS settings (
+    id INTEGER PRIMARY KEY,
+    tag_count INTEGER NOT NULL DEFAULT 0
+);`
+
+const ensureDefaultSettingsQuery = `
+INSERT INTO settings (id, tag_count)
+VALUES (1, ?)
+ON CONFLICT (id) DO NOTHING;`
+
+// SQLite управляет соединением с SQLite.
 type SQLite struct {
-	Sql   *gorm.DB
-	Mutex *sync.Mutex
+	connection *sql.DB
 }
 
-func NewDatabase(sql string) (SQLite, error) {
-	conn, err := gorm.Open(sqlite.Open(sql+"?_foreign_keys=on"), &gorm.Config{
-		PrepareStmt: true,
-		Logger:      logger.Default.LogMode(logger.Silent)})
+/*
+NewDatabase открывает SQLite и подготавливает схему приложения.
+
+	ctx - контекст инициализации.
+	path - путь к файлу SQLite.
+*/
+func NewDatabase(
+	ctx context.Context,
+	path string,
+) (*SQLite, error) {
+	connection, err := sql.Open(
+		"sqlite3",
+		path+"?_foreign_keys=on&_busy_timeout=5000",
+	)
 	if err != nil {
-		return SQLite{}, err
+		return nil, fmt.Errorf("не удалось открыть SQLite: %w", err)
 	}
-	var mutex sync.Mutex
-	db := SQLite{Sql: conn, Mutex: &mutex}
-	if err := automigrate(db.Sql); err != nil {
-		return db, err
+
+	connection.SetMaxOpenConns(1)
+	connection.SetMaxIdleConns(1)
+
+	if err := connection.PingContext(ctx); err != nil {
+		_ = connection.Close()
+		return nil, fmt.Errorf("не удалось подключиться к SQLite: %w", err)
 	}
-	if err := setDefaultSettings(db.Sql); err != nil {
-		return db, err
+
+	database := &SQLite{connection: connection}
+	if err := database.migrate(ctx); err != nil {
+		_ = connection.Close()
+		return nil, err
 	}
-	return db, nil
+
+	return database, nil
 }
 
-func CloseDatabase(db *gorm.DB) {
-	sqlDB, _ := db.DB()
-	if err := sqlDB.Close(); err != nil {
-		logrus.Fatal(err)
-	}
+/*
+Close закрывает соединение с SQLite.
+*/
+func (d *SQLite) Close() error {
+	return d.connection.Close()
 }
 
-func setDefaultSettings(db *gorm.DB) error {
-	err := db.Transaction(func(tx *gorm.DB) error {
-		var settings Settings
-		if err := tx.FirstOrCreate(&settings, Settings{TagCount: config.DEFAULT_TAG_EXPIRED_DAYS}).Error; err != nil {
-			return err
-		}
-		return nil
-	})
+/*
+migrate создаёт таблицы и начальную запись настроек.
+
+	ctx - контекст выполнения миграции.
+*/
+func (d *SQLite) migrate(ctx context.Context) error {
+	transaction, err := d.connection.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("не удалось начать миграцию SQLite: %w", err)
 	}
-	return nil
-}
+	defer transaction.Rollback()
 
-func automigrate(db *gorm.DB) error {
-	if err := db.AutoMigrate(&User{}, &Settings{}); err != nil {
-		return err
+	if _, err := transaction.ExecContext(ctx, schema); err != nil {
+		return fmt.Errorf("не удалось создать схему SQLite: %w", err)
+	}
+	if _, err := transaction.ExecContext(
+		ctx,
+		ensureDefaultSettingsQuery,
+		config.DEFAULT_TAG_EXPIRED_DAYS,
+	); err != nil {
+		return fmt.Errorf("не удалось создать настройки SQLite: %w", err)
+	}
+
+	if err := transaction.Commit(); err != nil {
+		return fmt.Errorf("не удалось завершить миграцию SQLite: %w", err)
 	}
 	return nil
 }

@@ -3,37 +3,30 @@ package services
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/PavelMilanov/container-registry/db"
 	registryauth "github.com/PavelMilanov/container-registry/internal/auth"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 func newTestAuthService(
 	t *testing.T,
-) (*AuthService, *gorm.DB) {
+) (*AuthService, *db.UserRepository) {
 	t.Helper()
-	sql, err := gorm.Open(
-		sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"),
-		&gorm.Config{Logger: logger.Default.LogMode(logger.Silent)},
+	database, err := db.NewDatabase(
+		context.Background(),
+		filepath.Join(t.TempDir(), "registry.db"),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := sql.AutoMigrate(&db.User{}); err != nil {
-		t.Fatal(err)
-	}
 	t.Cleanup(func() {
-		database, err := sql.DB()
-		if err == nil {
-			_ = database.Close()
-		}
+		_ = database.Close()
 	})
+	users := db.NewUserRepository(database)
 
 	tokens, err := registryauth.NewTokenManager(registryauth.TokenConfig{
 		Secret:   []byte("test-token-secret-with-at-least-32-bytes"),
@@ -45,20 +38,20 @@ func newTestAuthService(
 		t.Fatal(err)
 	}
 	return NewAuthService(
-		db.NewUserRepository(sql),
+		users,
 		registryauth.NewPasswordHasher(),
 		tokens,
-	), sql
+	), users
 }
 
 func TestAuthServiceRegisterAndLogin(t *testing.T) {
-	service, sql := newTestAuthService(t)
+	service, users := newTestAuthService(t)
 	ctx := context.Background()
 	if err := service.Register(ctx, "pavel", "secure-password"); err != nil {
 		t.Fatal(err)
 	}
 
-	user, err := db.NewUserRepository(sql).FindByName(ctx, "pavel")
+	user, err := users.FindByName(ctx, "pavel")
 	if err != nil {
 		t.Fatal(err)
 	}
