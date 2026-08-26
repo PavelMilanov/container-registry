@@ -63,8 +63,8 @@ var serveCmd = &cobra.Command{
 		passwords := registryauth.NewPasswordHasher()
 		tokens, err := registryauth.NewTokenManager(registryauth.TokenConfig{
 			Secret:   []byte(env.Server.Jwt),
-			Issuer:   env.Server.Issuer,
-			Audience: env.Server.Service,
+			Issuer:   config.DefaultTokenIssuer,
+			Audience: config.DefaultTokenService,
 			TTL:      env.Server.TokenTTL,
 		})
 		if err != nil {

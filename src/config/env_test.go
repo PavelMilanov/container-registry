@@ -12,8 +12,6 @@ func TestNewEnv(t *testing.T) {
 	configBody := []byte(`
 server:
   realm: http://127.0.0.1:5050
-  service: 127.0.0.1:5050
-  issuer: test-registry
   jwt: test-secret-with-at-least-32-bytes
   token_ttl: 3h
 
@@ -51,8 +49,6 @@ func TestNewEnvUsesDefaultTokenTTL(t *testing.T) {
 	configBody := []byte(`
 server:
   realm: http://127.0.0.1:5050
-  service: 127.0.0.1:5050
-  issuer: test-registry
   jwt: test-secret-with-at-least-32-bytes
 
 storage:

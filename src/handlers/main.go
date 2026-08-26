@@ -138,7 +138,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 		"/v2/",
 		middleware.RequireRegistryAuth(
 			h.ENV.Server.Realm,
-			h.ENV.Server.Service,
+			config.DefaultTokenService,
 			validateToken,
 		),
 	)

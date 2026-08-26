@@ -7,7 +7,11 @@ import (
 	"github.com/spf13/viper"
 )
 
-const DefaultTokenTTL = 2 * time.Hour
+const (
+	DefaultTokenIssuer  = "container-registry"
+	DefaultTokenService = "container-registry"
+	DefaultTokenTTL     = 2 * time.Hour
+)
 
 /*
 Env описывает конфигурацию приложения.
@@ -23,8 +27,6 @@ server описывает конфигурацию сервера.
 */
 type server struct {
 	Realm    string        `mapstructure:"realm"`
-	Service  string        `mapstructure:"service"`
-	Issuer   string        `mapstructure:"issuer"`
 	Jwt      string        `mapstructure:"jwt"`
 	TokenTTL time.Duration `mapstructure:"token_ttl"`
 }
