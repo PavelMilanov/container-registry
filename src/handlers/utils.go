@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/PavelMilanov/container-registry/storage"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v5"
 )
 
 type contentRange struct {
@@ -107,13 +107,13 @@ func (r *exactLengthReader) Read(p []byte) (int, error) {
 /*
 respondBlobUploadError преобразует ошибку BlobUploadStore в HTTP-ответ.
 
-	c - контекст HTTP-запроса Gin.
+	c - контекст HTTP-запроса Echo.
 	err - ошибка операции загрузки Blob.
 
 Типизированные ошибки storage преобразуются в соответствующие HTTP-статусы
 и коды ошибок Docker Registry API. Неизвестная ошибка возвращает статус 500.
 */
-func respondBlobUploadError(c *gin.Context, err error) {
+func respondBlobUploadError(c *echo.Context, err error) error {
 	addRequestError(c, err)
 
 	status := http.StatusInternalServerError
@@ -140,8 +140,8 @@ func respondBlobUploadError(c *gin.Context, err error) {
 		message = "invalid blob digest"
 	}
 
-	c.JSON(status, gin.H{
-		"errors": []gin.H{
+	return c.JSON(status, map[string]any{
+		"errors": []map[string]any{
 			{
 				"code":    code,
 				"message": message,

@@ -12,7 +12,8 @@ import (
 	registryauth "github.com/PavelMilanov/container-registry/internal/auth"
 	"github.com/PavelMilanov/container-registry/middleware"
 	"github.com/PavelMilanov/container-registry/storage"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v5"
+	echomiddleware "github.com/labstack/echo/v5/middleware"
 	"github.com/sirupsen/logrus"
 )
 
@@ -97,8 +98,13 @@ func NewHandler(
 	}
 }
 
-func (h *Handler) InitRouters() *gin.Engine {
-	router := gin.New()
+/*
+InitRouters создаёт HTTP-router и регистрирует маршруты приложения.
+*/
+func (h *Handler) InitRouters() *echo.Echo {
+	router := echo.NewWithConfig(echo.Config{
+		NoGroupAutoRegister404Routes: true,
+	})
 	validateToken := middleware.TokenValidator(func(
 		token string,
 	) (middleware.Identity, error) {
@@ -121,7 +127,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 	})
 	router.Use(
 		middleware.RequestLogger(logrus.StandardLogger()),
-		gin.Recovery(),
+		echomiddleware.Recover(),
 	)
 	// router.Use(cors.New(cors.Config{
 	// 	AllowOrigins:     []string{"http://localhost:5050"},
@@ -132,15 +138,15 @@ func (h *Handler) InitRouters() *gin.Engine {
 	// 	MaxAge:           24 * time.Hour,
 	// }))
 	router.POST("/login", h.login)
-	router.GET("/check", func(c *gin.Context) {
-		c.Status(http.StatusOK)
+	router.GET("/check", func(c *echo.Context) error {
+		return c.NoContent(http.StatusOK)
 	})
 	router.POST("/registration", h.registration)
 	router.GET("/v2/auth", h.authHandler)
 	router.POST("/v2/auth", h.authHandler)
 
 	v2 := router.Group(
-		"/v2/",
+		"/v2",
 		middleware.RequireRegistryAuth(
 			h.ENV.Server.Realm,
 			config.DefaultTokenService,
@@ -149,10 +155,12 @@ func (h *Handler) InitRouters() *gin.Engine {
 	)
 	{
 		// Пинг для проверки
-		v2.GET("/", func(c *gin.Context) {
-			c.Header("Docker-Distribution-Api-Version", "registry/2.0")
-			c.JSON(http.StatusOK, gin.H{"message": "Docker Registry API"})
-		})
+		registryPing := func(c *echo.Context) error {
+			c.Response().Header().Set("Docker-Distribution-Api-Version", "registry/2.0")
+			return c.JSON(http.StatusOK, map[string]any{"message": "Docker Registry API"})
+		}
+		v2.GET("", registryPing)
+		v2.GET("/", registryPing)
 
 		repository := v2.Group(
 			"/:repository/:name",
@@ -171,9 +179,9 @@ func (h *Handler) InitRouters() *gin.Engine {
 		repository.DELETE("/blobs/uploads/:uuid", h.abortBlobUpload)
 	}
 
-	api := router.Group("/api/", middleware.RequireAPIAuth(validateToken))
+	api := router.Group("/api", middleware.RequireAPIAuth(validateToken))
 	{
-		cloud := api.Group("/cloud/")
+		cloud := api.Group("/cloud")
 		{
 			cloud.GET("/:cloud/:repository", h.getImagesList)
 			cloud.GET("/:cloud", h.getRepoList)
@@ -182,7 +190,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 			cloud.DELETE("/delete", h.deleteCloud)
 			cloud.DELETE("/:cloud/:repository", h.deleteRepositoryOrImage)
 		}
-		garbage := api.Group("/garbage/")
+		garbage := api.Group("/garbage")
 		{
 			garbage.POST("/collection", h.garbageCollection)
 			garbage.POST("/tags", h.deleteOlderTags)
@@ -191,13 +199,12 @@ func (h *Handler) InitRouters() *gin.Engine {
 		api.GET("/settings", h.settings)
 		api.POST("/settings", h.settings)
 	}
-	router.NoRoute(func(c *gin.Context) {
-		if strings.HasPrefix(c.Request.URL.Path, "/v2/") {
+	router.RouteNotFound("/*", func(c *echo.Context) error {
+		if strings.HasPrefix(c.Request().URL.Path, "/v2/") {
 			addRequestErrorMessage(c, "route not found")
-			c.Status(http.StatusNotFound)
-			return
+			return c.NoContent(http.StatusNotFound)
 		}
-		c.String(http.StatusOK, "is OK.")
+		return c.String(http.StatusOK, "is OK.")
 	})
 	return router
 }

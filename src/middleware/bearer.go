@@ -2,7 +2,7 @@ package middleware
 
 import "strings"
 
-// AuthenticatedSubjectKey ключ пользователя в gin.Context.
+// AuthenticatedSubjectKey ключ пользователя в echo.Context.
 const AuthenticatedSubjectKey = "authenticated_subject"
 
 // ResourceAccess описывает разрешённые операции с ресурсом Registry.

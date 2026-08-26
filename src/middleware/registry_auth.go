@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v5"
 )
 
 /*
@@ -19,25 +19,25 @@ func RequireRegistryAuth(
 	realm string,
 	service string,
 	validate TokenValidator,
-) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		token, ok := bearerToken(c.GetHeader("Authorization"))
-		if !ok || validate == nil {
-			writeRegistryChallenge(c, realm, service)
-			return
-		}
-		identity, err := validate(token)
-		if err != nil {
-			writeRegistryChallenge(c, realm, service)
-			return
-		}
-		if !registryAccessAllowed(c, identity.Access) {
-			writeRegistryChallenge(c, realm, service)
-			return
-		}
-		c.Set(AuthenticatedSubjectKey, identity.Subject)
+) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c *echo.Context) error {
+			token, ok := bearerToken(c.Request().Header.Get("Authorization"))
+			if !ok || validate == nil {
+				return writeRegistryChallenge(c, realm, service)
+			}
+			identity, err := validate(token)
+			if err != nil {
+				AddRequestError(c, err)
+				return writeRegistryChallenge(c, realm, service)
+			}
+			if !registryAccessAllowed(c, identity.Access) {
+				return writeRegistryChallenge(c, realm, service)
+			}
+			c.Set(AuthenticatedSubjectKey, identity.Subject)
 
-		c.Next()
+			return next(c)
+		}
 	}
 }
 
@@ -47,7 +47,7 @@ registryAccessAllowed проверяет доступ JWT к ресурсу те
 	access - разрешения из проверенного JWT.
 */
 func registryAccessAllowed(
-	c *gin.Context,
+	c *echo.Context,
 	access []ResourceAccess,
 ) bool {
 	repository := c.Param("repository")
@@ -57,8 +57,8 @@ func registryAccessAllowed(
 	}
 
 	requiredAction := "push"
-	if c.Request.Method == http.MethodGet ||
-		c.Request.Method == http.MethodHead {
+	if c.Request().Method == http.MethodGet ||
+		c.Request().Method == http.MethodHead {
 		requiredAction = "pull"
 	}
 	resourceName := repository + "/" + name
@@ -82,10 +82,10 @@ writeRegistryChallenge возвращает Docker Registry Bearer challenge.
 	service - имя сервиса Docker Registry.
 */
 func writeRegistryChallenge(
-	c *gin.Context,
+	c *echo.Context,
 	realm string,
 	service string,
-) {
+) error {
 	challenge := fmt.Sprintf(
 		"Bearer realm=%q",
 		strings.TrimRight(realm, "/")+"/v2/auth",
@@ -93,7 +93,7 @@ func writeRegistryChallenge(
 	if service != "" {
 		challenge += fmt.Sprintf(",service=%q", service)
 	}
-	scope := c.Query("scope")
+	scope := c.QueryParam("scope")
 	if scope == "" {
 		scope = requiredRegistryScope(c)
 	}
@@ -101,15 +101,15 @@ func writeRegistryChallenge(
 		challenge += fmt.Sprintf(",scope=%q", scope)
 	}
 
-	c.Header("WWW-Authenticate", challenge)
-	addRequestError(c, errAuthorizationRequired)
-	c.AbortWithStatus(http.StatusUnauthorized)
+	c.Response().Header().Set("WWW-Authenticate", challenge)
+	AddRequestError(c, errAuthorizationRequired)
+	return c.NoContent(http.StatusUnauthorized)
 }
 
 /*
 requiredRegistryScope формирует scope для текущего Registry-запроса.
 */
-func requiredRegistryScope(c *gin.Context) string {
+func requiredRegistryScope(c *echo.Context) string {
 	repository := c.Param("repository")
 	name := c.Param("name")
 	if repository == "" || name == "" {
@@ -117,8 +117,8 @@ func requiredRegistryScope(c *gin.Context) string {
 	}
 
 	actions := "pull,push"
-	if c.Request.Method == http.MethodGet ||
-		c.Request.Method == http.MethodHead {
+	if c.Request().Method == http.MethodGet ||
+		c.Request().Method == http.MethodHead {
 		actions = "pull"
 	}
 	return fmt.Sprintf(

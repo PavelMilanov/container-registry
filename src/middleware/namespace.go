@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v5"
 )
 
 // NamespaceChecker проверяет наличие пространства имён registry.
@@ -22,44 +22,43 @@ RequireNamespace проверяет существование простран�
 
 	checker - реализация проверки пространства в текущем хранилище.
 */
-func RequireNamespace(checker NamespaceChecker) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if checker == nil {
-			addRequestError(c, errors.New("namespace checker is not configured"))
-			writeNamespaceError(
-				c,
-				http.StatusInternalServerError,
-				"UNKNOWN",
-				"registry lookup failed",
-			)
-			return
-		}
+func RequireNamespace(checker NamespaceChecker) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c *echo.Context) error {
+			if checker == nil {
+				AddRequestError(c, errors.New("namespace checker is not configured"))
+				return writeNamespaceError(
+					c,
+					http.StatusInternalServerError,
+					"UNKNOWN",
+					"registry lookup failed",
+				)
+			}
 
-		name := c.Param("repository")
-		exists, err := checker.NamespaceExists(c.Request.Context(), name)
-		if err != nil {
-			addRequestError(c, err)
-			writeNamespaceError(
-				c,
-				http.StatusInternalServerError,
-				"UNKNOWN",
-				"registry lookup failed",
-			)
-			return
-		}
-		if !exists {
-			err := fmt.Errorf("%w: %s", errNamespaceNotFound, name)
-			addRequestError(c, err)
-			writeNamespaceError(
-				c,
-				http.StatusNotFound,
-				"NAME_UNKNOWN",
-				errNamespaceNotFound.Error(),
-			)
-			return
-		}
+			name := c.Param("repository")
+			exists, err := checker.NamespaceExists(c.Request().Context(), name)
+			if err != nil {
+				AddRequestError(c, err)
+				return writeNamespaceError(
+					c,
+					http.StatusInternalServerError,
+					"UNKNOWN",
+					"registry lookup failed",
+				)
+			}
+			if !exists {
+				err := fmt.Errorf("%w: %s", errNamespaceNotFound, name)
+				AddRequestError(c, err)
+				return writeNamespaceError(
+					c,
+					http.StatusNotFound,
+					"NAME_UNKNOWN",
+					errNamespaceNotFound.Error(),
+				)
+			}
 
-		c.Next()
+			return next(c)
+		}
 	}
 }
 
@@ -71,13 +70,13 @@ writeNamespaceError возвращает ошибку Docker Registry API.
 	message - описание ошибки.
 */
 func writeNamespaceError(
-	c *gin.Context,
+	c *echo.Context,
 	status int,
 	code string,
 	message string,
-) {
-	c.AbortWithStatusJSON(status, gin.H{
-		"errors": []gin.H{
+) error {
+	return c.JSON(status, map[string]any{
+		"errors": []map[string]any{
 			{
 				"code":    code,
 				"message": message,

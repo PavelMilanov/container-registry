@@ -15,7 +15,7 @@ import (
 
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/storage"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v5"
 )
 
 type fakeUploadStore struct {
@@ -110,10 +110,9 @@ func testDigest(body []byte) string {
 	return fmt.Sprintf("sha256:%x", sha256.Sum256(body))
 }
 
-func newUploadRouter(uploadStore storage.BlobUploadStore) *gin.Engine {
-	gin.SetMode(gin.TestMode)
+func newUploadRouter(uploadStore storage.BlobUploadStore) *echo.Echo {
 	handler := &Handler{UPLOADS: uploadStore}
-	router := gin.New()
+	router := echo.New()
 	router.POST("/v2/:repository/:name/blobs/uploads/", handler.startBlobUpload)
 	router.PATCH("/v2/:repository/:name/blobs/uploads/:uuid", handler.uploadBlobPart)
 	router.PUT("/v2/:repository/:name/blobs/uploads/:uuid", handler.finalizeBlobUpload)

@@ -7,7 +7,7 @@ import (
 	"uuid"
 
 	"github.com/PavelMilanov/container-registry/storage"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v5"
 )
 
 /*
@@ -15,28 +15,26 @@ checkBlob реализация.
 
 	https://distribution.github.io/distribution/spec/api/#existing-layers
 */
-func (h *Handler) checkBlob(c *gin.Context) {
+func (h *Handler) checkBlob(c *echo.Context) error {
 	digest := c.Param("uuid")
 	// Проверяем, существует ли слой
 	if err := h.BLOBS.CheckBlob(digest); err != nil {
 		addRequestError(c, err)
 		if errors.Is(err, storage.ErrBlobNotFound) ||
 			errors.Is(err, storage.ErrInvalidDigest) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"errors": []gin.H{
+			return c.JSON(http.StatusNotFound, map[string]any{
+				"errors": []map[string]any{
 					{
 						"code":    "BLOB_UNKNOWN",
 						"message": "blob not found",
 					},
 				},
 			})
-			return
 		}
 
-		c.Status(http.StatusInternalServerError)
-		return
+		return c.NoContent(http.StatusInternalServerError)
 	}
-	c.JSON(http.StatusOK, gin.H{})
+	return c.JSON(http.StatusOK, map[string]any{})
 }
 
 /*
@@ -44,31 +42,30 @@ startBlobUpload реализация.
 
 	https://distribution.github.io/distribution/spec/api/#starting-an-upload
 */
-func (h *Handler) startBlobUpload(c *gin.Context) {
+func (h *Handler) startBlobUpload(c *echo.Context) error {
 
 	uploadID := uuid.NewV4().String()
 
 	if err := h.UPLOADS.StartBlobUpload(
-		c.Request.Context(),
+		c.Request().Context(),
 		uploadID,
 	); err != nil {
-		_ = c.Error(err)
-		c.Status(http.StatusInternalServerError)
-		return
+		addRequestError(c, err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	repository := c.Param("repository")
 	imageName := c.Param("name")
 
-	c.Header("Location", fmt.Sprintf(
+	c.Response().Header().Set("Location", fmt.Sprintf(
 		"/v2/%s/%s/blobs/uploads/%s",
 		repository,
 		imageName,
 		uploadID,
 	))
-	c.Header("Docker-Upload-UUID", uploadID)
-	c.Header("Range", "0-0")
-	c.Status(http.StatusAccepted)
+	c.Response().Header().Set("Docker-Upload-UUID", uploadID)
+	c.Response().Header().Set("Range", "0-0")
+	return c.NoContent(http.StatusAccepted)
 }
 
 /*
@@ -76,34 +73,32 @@ uploadBlobPart реализация.
 
 	https://distribution.github.io/distribution/spec/api/#chunked-upload
 */
-func (h *Handler) uploadBlobPart(c *gin.Context) {
+func (h *Handler) uploadBlobPart(c *echo.Context) error {
 	uploadID := c.Param("uuid")
 
 	uploadRange, err := parseContentRange(
-		c.GetHeader("Content-Range"),
+		c.Request().Header.Get("Content-Range"),
 	)
 	if err != nil {
 		addRequestError(c, err)
-		c.JSON(http.StatusRequestedRangeNotSatisfiable, gin.H{
-			"errors": []gin.H{
+		return c.JSON(http.StatusRequestedRangeNotSatisfiable, map[string]any{
+			"errors": []map[string]any{
 				{
 					"code":    "RANGE_INVALID",
 					"message": "invalid Content-Range",
 				},
 			},
 		})
-		return
 	}
 
 	newOffset, err := h.UPLOADS.AppendBlobUpload(
-		c.Request.Context(),
+		c.Request().Context(),
 		uploadID,
 		uploadRange.start,
-		newExactLengthReader(c.Request.Body, uploadRange.size()),
+		newExactLengthReader(c.Request().Body, uploadRange.size()),
 	)
 	if err != nil {
-		respondBlobUploadError(c, err)
-		return
+		return respondBlobUploadError(c, err)
 	}
 
 	lastByte := newOffset - 1
@@ -111,9 +106,9 @@ func (h *Handler) uploadBlobPart(c *gin.Context) {
 		lastByte = 0
 	}
 
-	c.Header("Docker-Upload-UUID", uploadID)
-	c.Header("Range", fmt.Sprintf("0-%d", lastByte))
-	c.Status(http.StatusNoContent)
+	c.Response().Header().Set("Docker-Upload-UUID", uploadID)
+	c.Response().Header().Set("Range", fmt.Sprintf("0-%d", lastByte))
+	return c.NoContent(http.StatusNoContent)
 }
 
 /*
@@ -122,41 +117,39 @@ finalizeBlobUpload реализация.
 	https://distribution.github.io/distribution/spec/api/#completed-upload - при загрузке чанками.
 	https://distribution.github.io/distribution/spec/api/#monolithic-upload - при монолитной загрузке.
 */
-func (h *Handler) finalizeBlobUpload(c *gin.Context) {
+func (h *Handler) finalizeBlobUpload(c *echo.Context) error {
 	uploadID := c.Param("uuid")
-	expectedDigest := c.Query("digest")
+	expectedDigest := c.QueryParam("digest")
 
 	if expectedDigest == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"errors": []gin.H{
+		return c.JSON(http.StatusBadRequest, map[string]any{
+			"errors": []map[string]any{
 				{
 					"code":    "DIGEST_INVALID",
 					"message": "digest not specified",
 				},
 			},
 		})
-		return
 	}
 
 	blob, err := h.UPLOADS.CompleteBlobUpload(
-		c.Request.Context(),
+		c.Request().Context(),
 		uploadID,
 		expectedDigest,
-		c.Request.Body,
+		c.Request().Body,
 	)
 	if err != nil {
-		respondBlobUploadError(c, err)
-		return
+		return respondBlobUploadError(c, err)
 	}
 
-	c.Header("Docker-Content-Digest", blob.Digest)
-	c.Header("Location", fmt.Sprintf(
+	c.Response().Header().Set("Docker-Content-Digest", blob.Digest)
+	c.Response().Header().Set("Location", fmt.Sprintf(
 		"/v2/%s/%s/blobs/%s",
 		c.Param("repository"),
 		c.Param("name"),
 		blob.Digest,
 	))
-	c.Status(http.StatusCreated)
+	return c.NoContent(http.StatusCreated)
 }
 
 /*
@@ -164,7 +157,7 @@ getBlob реализация.
 
 	https://distribution.github.io/distribution/spec/api/#pulling-a-layer
 */
-func (h *Handler) getBlob(c *gin.Context) {
+func (h *Handler) getBlob(c *echo.Context) error {
 	digest := c.Param("uuid")
 	// Определяем путь к блобу
 	info, err := h.BLOBS.GetBlob(digest)
@@ -172,25 +165,24 @@ func (h *Handler) getBlob(c *gin.Context) {
 		addRequestError(c, err)
 		if errors.Is(err, storage.ErrBlobNotFound) ||
 			errors.Is(err, storage.ErrInvalidDigest) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"errors": []gin.H{
+			return c.JSON(http.StatusNotFound, map[string]any{
+				"errors": []map[string]any{
 					{
 						"code":    "BLOB_UNKNOWN",
 						"message": "blob not found",
 					},
 				},
 			})
-			return
 		}
 
-		c.Status(http.StatusInternalServerError)
-		return
+		return c.NoContent(http.StatusInternalServerError)
 	}
 	// Возвращаем блоб клиенту
-	c.Header("Content-Type", "application/octet-stream")
-	c.Header("Content-Length", fmt.Sprintf("%d", info.Size))
-	c.Header("Docker-Content-Digest", info.Digest)
-	c.File(info.Path)
+	c.Response().Header().Set("Content-Type", "application/octet-stream")
+	c.Response().Header().Set("Content-Length", fmt.Sprintf("%d", info.Size))
+	c.Response().Header().Set("Docker-Content-Digest", info.Digest)
+	http.ServeFile(c.Response(), c.Request(), info.Path)
+	return nil
 }
 
 /*
@@ -198,17 +190,16 @@ abortBlobUpload реализация.
 
 	https://distribution.github.io/distribution/spec/api/#canceling-an-upload
 */
-func (h *Handler) abortBlobUpload(c *gin.Context) {
+func (h *Handler) abortBlobUpload(c *echo.Context) error {
 	uploadID := c.Param("uuid")
 
 	if err := h.UPLOADS.AbortBlobUpload(
-		c.Request.Context(),
+		c.Request().Context(),
 		uploadID,
 	); err != nil {
-		respondBlobUploadError(c, err)
-		return
+		return respondBlobUploadError(c, err)
 	}
 
-	c.Header("Docker-Upload-UUID", uploadID)
-	c.Status(http.StatusNoContent)
+	c.Response().Header().Set("Docker-Upload-UUID", uploadID)
+	return c.NoContent(http.StatusNoContent)
 }

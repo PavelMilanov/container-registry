@@ -3,7 +3,8 @@ package handlers
 import (
 	"errors"
 
-	"github.com/gin-gonic/gin"
+	"github.com/PavelMilanov/container-registry/middleware"
+	"github.com/labstack/echo/v5"
 )
 
 /*
@@ -11,11 +12,8 @@ addRequestError добавляет ошибку в контекст HTTP-зап�
 
 	err - ошибка обработки запроса.
 */
-func addRequestError(c *gin.Context, err error) {
-	if err == nil {
-		return
-	}
-	_ = c.Error(err)
+func addRequestError(c *echo.Context, err error) {
+	middleware.AddRequestError(c, err)
 }
 
 /*
@@ -23,6 +21,6 @@ addRequestErrorMessage добавляет текстовую ошибку в к�
 
 	msg - текст ошибки.
 */
-func addRequestErrorMessage(c *gin.Context, msg string) {
+func addRequestErrorMessage(c *echo.Context, msg string) {
 	addRequestError(c, errors.New(msg))
 }

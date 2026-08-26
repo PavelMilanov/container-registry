@@ -13,8 +13,6 @@ import (
 	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/handlers"
-	registryauth "github.com/PavelMilanov/container-registry/internal/auth"
-	"github.com/PavelMilanov/container-registry/services"
 	"github.com/PavelMilanov/container-registry/storage"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -63,29 +61,14 @@ var serveCmd = &cobra.Command{
 				logrus.WithError(err).Error("Не удалось закрыть SQLite")
 			}
 		}()
-		users := db.NewUserRepository(database)
 		settings := db.NewSettingsRepository(database)
 
-		passwords := registryauth.NewPasswordHasher()
-		tokens, err := registryauth.NewTokenManager(registryauth.TokenConfig{
-			Secret:   []byte(env.Server.Jwt),
-			Issuer:   config.DefaultTokenIssuer,
-			Audience: config.DefaultTokenService,
-			TTL:      env.Server.TokenTTL,
-		})
-		if err != nil {
-			logrus.Fatal(err)
-		}
-		authService := services.NewAuthService(
-			users,
-			passwords,
-			tokens,
-		)
-		if err := authService.EnsureUser(
+		authService, err := newAuthService(
 			cmd.Context(),
-			env.DefaultUser.Login,
-			env.DefaultUser.Password,
-		); err != nil {
+			database,
+			env,
+		)
+		if err != nil {
 			logrus.Fatal(err)
 		}
 

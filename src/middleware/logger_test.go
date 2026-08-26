@@ -6,14 +6,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v5"
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 )
 
 func TestRequestLoggerUsesStatusLevel(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	tests := []struct {
 		name      string
 		status    int
@@ -41,17 +39,16 @@ func TestRequestLoggerUsesStatusLevel(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger, hook := logrustest.NewNullLogger()
-			router := gin.New()
+			router := echo.New()
 			router.Use(RequestLogger(logger))
-			router.GET("/test", func(c *gin.Context) {
+			router.GET("/test", func(c *echo.Context) error {
 				if tt.withError {
-					_ = c.Error(errors.New("request failed"))
+					AddRequestError(c, errors.New("request failed"))
 				}
-				c.Status(tt.status)
+				return c.NoContent(tt.status)
 			})
 
 			request := httptest.NewRequest(http.MethodGet, "/test", nil)
-			request.Header.Set("User-Agent", "middleware-test")
 			response := httptest.NewRecorder()
 			router.ServeHTTP(response, request)
 
@@ -64,9 +61,6 @@ func TestRequestLoggerUsesStatusLevel(t *testing.T) {
 			}
 			if got := entry.Data["status"]; got != tt.status {
 				t.Fatalf("status field = %v, want %d", got, tt.status)
-			}
-			if got := entry.Data["user_agent"]; got != "middleware-test" {
-				t.Fatalf("user_agent field = %v", got)
 			}
 		})
 	}

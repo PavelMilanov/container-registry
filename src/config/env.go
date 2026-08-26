@@ -2,7 +2,6 @@ package config
 
 import (
 	"errors"
-	"time"
 
 	"github.com/spf13/viper"
 )
@@ -10,7 +9,6 @@ import (
 const (
 	DefaultTokenIssuer  = "container-registry"
 	DefaultTokenService = "container-registry"
-	DefaultTokenTTL     = 2 * time.Hour
 )
 
 /*
@@ -26,9 +24,8 @@ type Env struct {
 server описывает конфигурацию сервера.
 */
 type server struct {
-	Realm    string        `mapstructure:"realm"`
-	Jwt      string        `mapstructure:"jwt"`
-	TokenTTL time.Duration `mapstructure:"token_ttl"`
+	Realm string `mapstructure:"realm"`
+	Jwt   string `mapstructure:"jwt"`
 }
 
 /*
@@ -71,8 +68,6 @@ func NewEnv(path, file string) (*Env, error) {
 	reader.SetConfigName(file) // имя файла без расширения
 	reader.SetConfigType("yaml")
 	reader.AddConfigPath(path)
-	reader.SetDefault("server.token_ttl", DefaultTokenTTL)
-
 	err := reader.ReadInConfig()
 	if err != nil {
 		return &env, err

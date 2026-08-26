@@ -3,8 +3,10 @@ package middleware
 import (
 	"errors"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v5"
 )
+
+const requestErrorsKey = "request_errors"
 
 var (
 	errInvalidToken          = errors.New("token is not valid")
@@ -13,13 +15,23 @@ var (
 )
 
 /*
-addRequestError добавляет ошибку в контекст HTTP-запроса.
+AddRequestError добавляет ошибку в контекст HTTP-запроса.
 
 	err - ошибка обработки запроса.
 */
-func addRequestError(c *gin.Context, err error) {
+func AddRequestError(c *echo.Context, err error) {
 	if err == nil {
 		return
 	}
-	_ = c.Error(err)
+
+	errors, _ := c.Get(requestErrorsKey).([]error)
+	c.Set(requestErrorsKey, append(errors, err))
+}
+
+/*
+requestErrors возвращает ошибки, зарегистрированные при обработке HTTP-запроса.
+*/
+func requestErrors(c *echo.Context) []error {
+	errors, _ := c.Get(requestErrorsKey).([]error)
+	return errors
 }

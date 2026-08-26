@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v5"
 )
 
 type namespaceCheckerFunc func(
@@ -23,8 +23,6 @@ func (f namespaceCheckerFunc) NamespaceExists(
 }
 
 func TestRequireNamespace(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	tests := []struct {
 		name        string
 		check       namespaceCheckerFunc
@@ -58,11 +56,11 @@ func TestRequireNamespace(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			handled := false
-			router := gin.New()
+			router := echo.New()
 			router.Use(RequireNamespace(tt.check))
-			router.GET("/v2/:repository/:name", func(c *gin.Context) {
+			router.GET("/v2/:repository/:name", func(c *echo.Context) error {
 				handled = true
-				c.Status(http.StatusNoContent)
+				return c.NoContent(http.StatusNoContent)
 			})
 
 			request := httptest.NewRequest(http.MethodGet, "/v2/dev/image", nil)
@@ -80,14 +78,12 @@ func TestRequireNamespace(t *testing.T) {
 }
 
 func TestRequireNamespaceWithoutChecker(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	handled := false
-	router := gin.New()
+	router := echo.New()
 	router.Use(RequireNamespace(nil))
-	router.GET("/v2/:repository/:name", func(c *gin.Context) {
+	router.GET("/v2/:repository/:name", func(c *echo.Context) error {
 		handled = true
-		c.Status(http.StatusNoContent)
+		return c.NoContent(http.StatusNoContent)
 	})
 
 	request := httptest.NewRequest(http.MethodGet, "/v2/dev/image", nil)

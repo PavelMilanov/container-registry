@@ -7,12 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v5"
 )
 
 func TestRequireAPIAuth(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	tests := []struct {
 		name          string
 		authorization string
@@ -44,16 +42,16 @@ func TestRequireAPIAuth(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			handled := false
-			router := gin.New()
+			router := echo.New()
 			router.Use(RequireAPIAuth(func(token string) (Identity, error) {
 				if token != "valid-token" {
 					return Identity{}, errors.New("invalid token")
 				}
 				return Identity{Subject: "pavel"}, nil
 			}))
-			router.GET("/api/check", func(c *gin.Context) {
+			router.GET("/api/check", func(c *echo.Context) error {
 				handled = true
-				c.Status(http.StatusNoContent)
+				return c.NoContent(http.StatusNoContent)
 			})
 
 			request := httptest.NewRequest(http.MethodGet, "/api/check", nil)
@@ -74,11 +72,9 @@ func TestRequireAPIAuth(t *testing.T) {
 }
 
 func TestRequireRegistryAuthChallenge(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	validationCalls := 0
 	handled := false
-	router := gin.New()
+	router := echo.New()
 	router.Use(RequireRegistryAuth(
 		"https://registry.example.com/",
 		"container-registry",
@@ -87,9 +83,9 @@ func TestRequireRegistryAuthChallenge(t *testing.T) {
 			return Identity{}, errors.New("invalid token")
 		},
 	))
-	router.GET("/v2/", func(c *gin.Context) {
+	router.GET("/v2/", func(c *echo.Context) error {
 		handled = true
-		c.Status(http.StatusOK)
+		return c.NoContent(http.StatusOK)
 	})
 
 	request := httptest.NewRequest(
@@ -116,19 +112,17 @@ func TestRequireRegistryAuthChallenge(t *testing.T) {
 }
 
 func TestRequireRegistryAuthAllowsValidToken(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	handled := false
-	router := gin.New()
+	router := echo.New()
 	router.Use(RequireRegistryAuth("https://registry.example.com", "", func(token string) (Identity, error) {
 		if token != "valid-token" {
 			return Identity{}, errors.New("invalid token")
 		}
 		return Identity{Subject: "pavel"}, nil
 	}))
-	router.GET("/v2/", func(c *gin.Context) {
+	router.GET("/v2/", func(c *echo.Context) error {
 		handled = true
-		c.Status(http.StatusOK)
+		return c.NoContent(http.StatusOK)
 	})
 
 	request := httptest.NewRequest(http.MethodGet, "/v2/", nil)
@@ -145,8 +139,6 @@ func TestRequireRegistryAuthAllowsValidToken(t *testing.T) {
 }
 
 func TestRequireRegistryAuthEnforcesRepositoryAccess(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	tests := []struct {
 		name       string
 		method     string
@@ -189,7 +181,7 @@ func TestRequireRegistryAuthEnforcesRepositoryAccess(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			router := gin.New()
+			router := echo.New()
 			router.Use(RequireRegistryAuth(
 				"https://registry.example.com",
 				"registry.example.com",
@@ -200,11 +192,11 @@ func TestRequireRegistryAuthEnforcesRepositoryAccess(t *testing.T) {
 					}, nil
 				},
 			))
-			router.Handle(
+			router.Add(
 				tt.method,
 				"/v2/:repository/:name/manifests/:reference",
-				func(c *gin.Context) {
-					c.Status(http.StatusNoContent)
+				func(c *echo.Context) error {
+					return c.NoContent(http.StatusNoContent)
 				},
 			)
 

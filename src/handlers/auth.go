@@ -8,7 +8,7 @@ import (
 
 	registryauth "github.com/PavelMilanov/container-registry/internal/auth"
 	"github.com/PavelMilanov/container-registry/services"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v5"
 )
 
 /*
@@ -16,16 +16,15 @@ authHandler аутентифицирует Docker client и выдаёт Registr
 
 	/v2/auth
 */
-func (h *Handler) authHandler(c *gin.Context) {
-	username, password, ok := c.Request.BasicAuth()
+func (h *Handler) authHandler(c *echo.Context) error {
+	username, password, ok := c.Request().BasicAuth()
 	if !ok {
-		writeInvalidRegistryCredentials(c)
-		return
+		return writeInvalidRegistryCredentials(c)
 	}
 
-	access := requestedRegistryAccess(c.QueryArray("scope"))
+	access := requestedRegistryAccess(c.QueryParams()["scope"])
 	token, err := h.AUTH.Login(
-		c.Request.Context(),
+		c.Request().Context(),
 		username,
 		password,
 		access,
@@ -33,14 +32,12 @@ func (h *Handler) authHandler(c *gin.Context) {
 	if err != nil {
 		addRequestError(c, err)
 		if errors.Is(err, services.ErrInvalidCredentials) {
-			writeInvalidRegistryCredentials(c)
-			return
+			return writeInvalidRegistryCredentials(c)
 		}
-		writeRegistryAuthError(c)
-		return
+		return writeRegistryAuthError(c)
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	return c.JSON(http.StatusOK, map[string]any{
 		"access_token": token.Value,
 		"scope":        access,
 		"expires_in": int64(
@@ -83,10 +80,10 @@ func requestedRegistryAccess(
 /*
 writeInvalidRegistryCredentials возвращает ошибку аутентификации Registry API.
 */
-func writeInvalidRegistryCredentials(c *gin.Context) {
-	c.Header("WWW-Authenticate", `Basic realm="registry"`)
-	c.JSON(http.StatusUnauthorized, gin.H{
-		"errors": []gin.H{
+func writeInvalidRegistryCredentials(c *echo.Context) error {
+	c.Response().Header().Set("WWW-Authenticate", `Basic realm="registry"`)
+	return c.JSON(http.StatusUnauthorized, map[string]any{
+		"errors": []map[string]any{
 			{
 				"code":    "UNAUTHORIZED",
 				"message": "invalid username or password",
@@ -98,9 +95,9 @@ func writeInvalidRegistryCredentials(c *gin.Context) {
 /*
 writeRegistryAuthError возвращает внутреннюю ошибку Registry token service.
 */
-func writeRegistryAuthError(c *gin.Context) {
-	c.JSON(http.StatusInternalServerError, gin.H{
-		"errors": []gin.H{
+func writeRegistryAuthError(c *echo.Context) error {
+	return c.JSON(http.StatusInternalServerError, map[string]any{
+		"errors": []map[string]any{
 			{
 				"code":    "UNKNOWN",
 				"message": "token service failed",

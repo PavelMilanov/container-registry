@@ -58,7 +58,6 @@ storage:
 server:
   realm: http://192.168.1.38:5050
   jwt: replace-with-random-secret-at-least-32-bytes
-  token_ttl: 2h
 
 storage:
   type: local
@@ -74,14 +73,14 @@ default_user:
 |---|---|
 | `realm` | Внешний URL сервера, используемый в Bearer challenge |
 | `jwt` | Ключ подписи HS256; минимум 32 байта |
-| `token_ttl` | Срок действия JWT; по умолчанию `2h` |
 
 `realm` должен быть доступен Docker-клиенту и соответствовать адресу, по
 которому клиент обращается к registry.
 
 JWT issuer и Docker Registry service не настраиваются пользователем. Проект
 использует внутреннее значение `container-registry` одновременно как `iss` и
-`aud`, а также передаёт его в параметре `service` Bearer challenge.
+`aud`, а также передаёт его в параметре `service` Bearer challenge. Срок жизни
+JWT зафиксирован в коде и составляет 2 часа.
 
 ### Bootstrap-пользователь
 

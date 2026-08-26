@@ -12,7 +12,7 @@ import (
 
 	registryauth "github.com/PavelMilanov/container-registry/internal/auth"
 	"github.com/PavelMilanov/container-registry/services"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v5"
 )
 
 type fakeAuthenticator struct {
@@ -69,7 +69,6 @@ func TestRequestedRegistryAccess(t *testing.T) {
 }
 
 func TestRegistryAuthHandlerIssuesOneTokenWithActualTTL(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	issuedAt := time.Date(2026, 8, 25, 10, 0, 0, 0, time.UTC)
 	authenticator := &fakeAuthenticator{
 		issued: registryauth.IssuedToken{
@@ -79,7 +78,7 @@ func TestRegistryAuthHandlerIssuesOneTokenWithActualTTL(t *testing.T) {
 		},
 	}
 	handler := &Handler{AUTH: authenticator}
-	router := gin.New()
+	router := echo.New()
 	router.GET("/v2/auth", handler.authHandler)
 
 	request := httptest.NewRequest(
@@ -122,10 +121,9 @@ func TestRegistryAuthHandlerIssuesOneTokenWithActualTTL(t *testing.T) {
 }
 
 func TestLoginHandlerReturnsUnauthorizedForInvalidCredentials(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	authenticator := &fakeAuthenticator{loginErr: services.ErrInvalidCredentials}
 	handler := &Handler{AUTH: authenticator}
-	router := gin.New()
+	router := echo.New()
 	router.POST("/login", handler.login)
 
 	request := httptest.NewRequest(
@@ -147,10 +145,9 @@ func TestLoginHandlerReturnsUnauthorizedForInvalidCredentials(t *testing.T) {
 }
 
 func TestRegistryAuthHandlerReturnsInternalError(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	authenticator := &fakeAuthenticator{loginErr: errors.New("database unavailable")}
 	handler := &Handler{AUTH: authenticator}
-	router := gin.New()
+	router := echo.New()
 	router.GET("/v2/auth", handler.authHandler)
 
 	request := httptest.NewRequest(http.MethodGet, "/v2/auth", nil)
