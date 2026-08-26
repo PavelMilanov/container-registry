@@ -6,23 +6,26 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	DefaultTokenIssuer  = "container-registry"
+	DefaultTokenService = "container-registry"
+)
+
 /*
 Env описывает конфигурацию приложения.
 */
 type Env struct {
-	Server  server
-	Storage storage
-	User    user
+	Server      server
+	Storage     storage
+	DefaultUser defaultUser `mapstructure:"default_user"`
 }
 
 /*
 server описывает конфигурацию сервера.
 */
 type server struct {
-	Realm   string `mapstructure:"realm"`
-	Service string `mapstructure:"service"`
-	Issuer  string `mapstructure:"issuer"`
-	Jwt     string `mapstructure:"jwt"`
+	Realm string `mapstructure:"realm"`
+	Jwt   string `mapstructure:"jwt"`
 }
 
 /*
@@ -44,9 +47,9 @@ type credentials struct {
 }
 
 /*
-user описывает параметры для суперпользователя.
+defaultUser описывает параметры пользователя, создаваемого при первом запуске.
 */
-type user struct {
+type defaultUser struct {
 	Login    string `mapstructure:"login"`
 	Password string `mapstructure:"password"`
 }
@@ -61,17 +64,17 @@ NewEnv инициализирует переменные из файла кон�
 */
 func NewEnv(path, file string) (*Env, error) {
 	var env Env
-	viper.SetConfigName(file) // имя файла без расширения
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath(path)
-
-	err := viper.ReadInConfig()
+	reader := viper.New()
+	reader.SetConfigName(file) // имя файла без расширения
+	reader.SetConfigType("yaml")
+	reader.AddConfigPath(path)
+	err := reader.ReadInConfig()
 	if err != nil {
 		return &env, err
 
 	}
 
-	err = viper.Unmarshal(&env)
+	err = reader.Unmarshal(&env)
 	if err != nil {
 		return &env, err
 	}
@@ -81,8 +84,8 @@ func NewEnv(path, file string) (*Env, error) {
 			return &env, errors.New("не указан конфиг для подключения к S3 storage")
 		}
 	}
-	if env.User.Login == "" || env.User.Password == "" {
-		return &env, errors.New("не указаны логин или пароль для суперпользователя")
+	if env.DefaultUser.Login == "" || env.DefaultUser.Password == "" {
+		return &env, errors.New("не указаны login или password для default_user")
 	}
 	return &env, nil
 }

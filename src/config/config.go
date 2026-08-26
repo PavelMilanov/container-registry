@@ -15,5 +15,5 @@ var (
 	TMP_PATH      = filepath.Join(DATA_PATH, "tmp")
 
 	BACKET_NAME              = "registry"
-	DEFAULT_TAG_EXPIRED_DAYS = 0
+	DEFAULT_TAG_EXPIRED_DAYS = 3
 )

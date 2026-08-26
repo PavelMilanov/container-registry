@@ -3,20 +3,25 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"path/filepath"
 	"strconv"
 
 	"github.com/PavelMilanov/container-registry/config"
-	"github.com/PavelMilanov/container-registry/db"
 	"github.com/PavelMilanov/container-registry/storage"
 
 	"github.com/sirupsen/logrus"
-	"gorm.io/gorm"
 )
 
-func AddCloud(name string, storage storage.Storage) error {
-	if err := storage.AddCloud(name); err != nil {
+// SettingsStore предоставляет сервисам операции с настройками приложения.
+type SettingsStore interface {
+	GetTagCount(ctx context.Context) (int, error)
+	SetTagCount(ctx context.Context, count int) error
+}
+
+func AddCloud(name string, store storage.CloudStore) error {
+	if err := store.AddCloud(name); err != nil {
 		logrus.WithField("name", name).Error(err)
 		return errors.New("Ошибка при создании реестра")
 	}
@@ -24,8 +29,8 @@ func AddCloud(name string, storage storage.Storage) error {
 	return nil
 }
 
-func GetCloudList(storage storage.Storage) ([]string, error) {
-	data, err := storage.GetCloudList()
+func GetCloudList(store storage.CloudStore) ([]string, error) {
+	data, err := store.GetCloudList()
 	if err != nil {
 		logrus.WithField("task", "clouds").Error(err)
 		return data, err
@@ -33,8 +38,8 @@ func GetCloudList(storage storage.Storage) ([]string, error) {
 	return data, nil
 }
 
-func GetRepositoriesList(cloud string, storage storage.Storage) ([]string, error) {
-	data, err := storage.GetRepositoriesList(cloud)
+func GetRepositoriesList(cloud string, store storage.RepositoryStore) ([]string, error) {
+	data, err := store.GetRepositoriesList(cloud)
 	if err != nil {
 		logrus.WithField("task", "repositories").Error(err)
 		return data, err
@@ -42,8 +47,8 @@ func GetRepositoriesList(cloud string, storage storage.Storage) ([]string, error
 	return data, nil
 }
 
-func GetImagesList(cloud, repo string, storage storage.Storage) ([]string, error) {
-	data, err := storage.GetManifestList(cloud, repo)
+func GetImagesList(cloud, repo string, store storage.TagStore) ([]string, error) {
+	data, err := store.GetManifestList(cloud, repo)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"cloud":      cloud,
@@ -54,8 +59,8 @@ func GetImagesList(cloud, repo string, storage storage.Storage) ([]string, error
 	return data, nil
 }
 
-func DeleteCloud(name string, storage storage.Storage) error {
-	if err := storage.DeleteCloud(name); err != nil {
+func DeleteCloud(name string, store storage.CloudStore) error {
+	if err := store.DeleteCloud(name); err != nil {
 		logrus.WithField("name", name).Error(err)
 		return err
 	}
@@ -63,8 +68,8 @@ func DeleteCloud(name string, storage storage.Storage) error {
 	return nil
 }
 
-func DeleteImage(cloud, repository, tag string, storage storage.Storage) error {
-	if err := storage.DeleteManifest(cloud, repository, tag); err != nil {
+func DeleteImage(cloud, repository, tag string, store storage.TagStore) error {
+	if err := store.DeleteManifest(cloud, repository, tag); err != nil {
 		logrus.WithFields(logrus.Fields{
 			"cloud":      cloud,
 			"repository": repository,
@@ -80,8 +85,8 @@ func DeleteImage(cloud, repository, tag string, storage storage.Storage) error {
 	return nil
 }
 
-func DeleteRepository(cloud, repository string, storage storage.Storage) error {
-	if err := storage.DeleteRepository(cloud, repository); err != nil {
+func DeleteRepository(cloud, repository string, store storage.RepositoryStore) error {
+	if err := store.DeleteRepository(cloud, repository); err != nil {
 		logrus.WithFields(logrus.Fields{
 			"cloud":      cloud,
 			"repository": repository,
@@ -95,36 +100,11 @@ func DeleteRepository(cloud, repository string, storage storage.Storage) error {
 	return nil
 }
 
-/*
-Registration- реализация регистрации пользователя.
-
-	При успешной регистрации ничего не возвращает.
-*/
-func Registration(sql *gorm.DB, username, password string) error {
-	user := db.User{Name: username, Password: password}
-	if err := user.Add(sql); err != nil {
-		logrus.Error(err)
-		return err
-	}
-	return nil
-}
-
-/*
-Login - реализация авторизации пользователя.
-
-	При успешной авторизации возвращает токен пользователя.
-*/
-func Login(sql *gorm.DB, cred *config.Env, username, password string) (string, error) {
-	user := db.User{Name: username, Password: password}
-	if err := user.Login(sql, cred); err != nil {
-		logrus.WithField("username", username).Error(err)
-		return user.Token, err
-	}
-	logrus.WithField("username", username).Info("Успешная авторизация")
-	return user.Token, nil
-}
-
-func SetCountTag(sql *gorm.DB, count string) error {
+func SetCountTag(
+	ctx context.Context,
+	settings SettingsStore,
+	count string,
+) error {
 	newCount, err := strconv.Atoi(count)
 	if err != nil {
 		logrus.Error(err)
@@ -134,15 +114,18 @@ func SetCountTag(sql *gorm.DB, count string) error {
 		logrus.Error("значение tag должно быть больше 0")
 		return errors.New("значение tag должно быть больше 0")
 	}
-	if err := db.SetCountTag(sql, newCount); err != nil {
+	if err := settings.SetTagCount(ctx, newCount); err != nil {
 		logrus.Error(err)
 		return err
 	}
 	return nil
 }
 
-func GetCountTag(sql *gorm.DB) (int, error) {
-	count, err := db.GetCountTag(sql)
+func GetCountTag(
+	ctx context.Context,
+	settings SettingsStore,
+) (int, error) {
+	count, err := settings.GetTagCount(ctx)
 	if err != nil {
 		logrus.Error(err)
 		return 0, err
@@ -150,23 +133,27 @@ func GetCountTag(sql *gorm.DB) (int, error) {
 	return count, nil
 }
 
-func DeleteOlderTags(sql *gorm.DB, st storage.Storage) error {
-	tagCount, err := db.GetCountTag(sql)
+func DeleteOlderTags(
+	ctx context.Context,
+	settings SettingsStore,
+	pruner storage.TagPruner,
+) error {
+	tagCount, err := settings.GetTagCount(ctx)
 	if err != nil {
 		return err
 	}
 	if tagCount <= 0 {
 		return errors.New("значение tag_count должно быть больше 0")
 	}
-	return st.DeleteOlderTags(tagCount)
+	return pruner.DeleteOlderTags(tagCount)
 }
 
 /*
 SaveManifest - логика сохранения манифеста в хранилище.
 */
-func SaveManifest(storage storage.Storage, meta config.Meta, body []byte) error {
+func SaveManifest(store storage.ManifestStore, meta config.Meta, body []byte) error {
 	manifestPath := filepath.Join(config.MANIFEST_PATH, meta.Repository, meta.Image, meta.Digest)
-	if err := storage.SaveManifest(meta, body, manifestPath); err != nil {
+	if err := store.SaveManifest(meta, body, manifestPath); err != nil {
 		logrus.WithField("digest", meta.Digest).Error(err)
 		return err
 	}
@@ -174,6 +161,6 @@ func SaveManifest(storage storage.Storage, meta config.Meta, body []byte) error 
 	return nil
 }
 
-func GarbageCollection(storage storage.Storage) error {
-	return storage.GarbageCollection()
+func GarbageCollection(collector storage.GarbageCollector) error {
+	return collector.GarbageCollection()
 }

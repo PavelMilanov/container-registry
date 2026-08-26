@@ -43,59 +43,6 @@ func inventoryBlobsStrict() ([]string, error) {
 	return buffer, nil
 }
 
-/*
-inventoryManifests сканирует директории и удаляет неиспользуемые файлы манифестов.
-
-Returns:
-  - []string: ссылки на используемые манифесты.
-*/
-func inventoryManifests() []string {
-	var buffer []string
-	path := config.MANIFEST_PATH
-	clouds, err := os.ReadDir(path)
-	if err != nil {
-		logrus.WithField("GarbageCollection", "error").
-			WithError(err).
-			Errorf("не удалось прочитать директорию манифестов: %s", path)
-		return buffer
-	}
-	for _, cloud := range clouds {
-		cloudPath := filepath.Join(path, cloud.Name())
-		repositories, err := os.ReadDir(cloudPath)
-		if err != nil {
-			logrus.WithField("GarbageCollection", "error").
-				WithError(err).
-				Errorf("не удалось прочитать директорию: %s", cloudPath)
-			continue
-		}
-		for _, repo := range repositories {
-			repoPath := filepath.Join(cloudPath, repo.Name())
-			logrus.WithField("GarbageCollection", "scan").
-				Debugf("чтение директории: %s", repoPath)
-			activeTags := parseActiveTags(repoPath)
-			activeTagSet := make(map[string]struct{}, len(activeTags))
-			for _, tag := range activeTags {
-				activeTagSet[tag] = struct{}{}
-			}
-			manifests := parseManifests(repoPath)
-			for _, manifest := range manifests {
-				fileLink := filepath.Join(repoPath, manifest)
-				if _, found := activeTagSet[manifest]; !found {
-					if err := os.Remove(fileLink); err != nil {
-						logrus.WithField("GarbageCollection", "error").
-							WithError(err).
-							Errorf("не удалось удалить файл: %s", fileLink)
-					}
-					continue
-				}
-				buffer = append(buffer, fileLink)
-			}
-		}
-	}
-	logrus.WithField("GarbageCollection", "manifests").Infof("Количество манифестов: %d", len(buffer))
-	return buffer
-}
-
 func inventoryManifestsStrict() ([]string, error) {
 	var buffer []string
 	path := config.MANIFEST_PATH
@@ -285,55 +232,6 @@ func parseManifestsStrict(path string) ([]string, error) {
 		}
 	}
 	return manifests, nil
-}
-
-/*
-parseUsageBlobs сканирует список ссылок на файлы и возвращает список используемых слоев.
-
-Returns:
-  - []string: ссылки на используемые слои.
-*/
-func parseUsageBlobs(links []string) []string {
-	var buffer []string
-	var manifest config.Manifest
-	// var index config.Index
-	body := struct {
-		MediaType string `json:"mediaType"`
-	}{}
-	for _, link := range links {
-		file, err := os.ReadFile(link)
-		if err != nil {
-			logrus.WithField("GarbageCollection", "scan").WithError(err).Warn("Ошибка чтения файла: ", link)
-			continue
-		}
-		json.Unmarshal(file, &body)
-		switch body.MediaType {
-		case config.MANIFEST_TYPE["manifest"]:
-			json.Unmarshal(file, &manifest)
-			configBlob := strings.Split(manifest.Config.Digest, ":")[1]
-			buffer = append(buffer, filepath.Join(config.BLOBS_PATH, configBlob))
-			for _, layer := range manifest.Layers {
-				layerBlob := strings.Split(layer.Digest, ":")[1]
-				buffer = append(buffer, filepath.Join(config.BLOBS_PATH, layerBlob))
-			}
-		case config.MANIFEST_TYPE["index"]:
-			continue
-		// здесь ссылки на манифесты типа manifest
-		// никак не обрабатываются???
-		default:
-			logrus.WithField("GarbageCollection", "scan").Warn("Неизвестный тип файла: ", link)
-		}
-	}
-	uniqueBlobs := make(map[string]struct{}, len(buffer))
-	for _, blob := range buffer {
-		uniqueBlobs[blob] = struct{}{}
-	}
-	result := make([]string, 0, len(uniqueBlobs))
-	for blob := range uniqueBlobs {
-		result = append(result, blob)
-	}
-	logrus.WithField("GarbageCollection", "blobs").Infof("Количество используемых слоев: %d", len(result))
-	return result
 }
 
 func parseUsageBlobsStrict(links []string) ([]string, error) {

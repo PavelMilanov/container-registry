@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 )
 
@@ -52,10 +51,12 @@ func setupCloudTestServer(t *testing.T) *httptest.Server {
 
 func setupAuthToken(t *testing.T, cr *Client) {
 	t.Helper()
-	cr.tokenPath = filepath.Join(t.TempDir(), "auth")
 	if err := cr.SetToken("test-token"); err != nil {
 		t.Fatalf("failed to prepare auth token: %v", err)
 	}
+	t.Cleanup(func() {
+		_ = cr.removeToken()
+	})
 }
 
 func TestGetCloudList(t *testing.T) {

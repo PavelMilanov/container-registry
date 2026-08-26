@@ -11,14 +11,12 @@ func TestNewEnv(t *testing.T) {
 	configBody := []byte(`
 server:
   realm: http://127.0.0.1:5050
-  service: 127.0.0.1:5050
-  issuer: test-registry
-  jwt: test-secret
+  jwt: test-secret-with-at-least-32-bytes
 
 storage:
   type: local
 
-user:
+default_user:
   login: admin
   password: admin
 `)
@@ -36,7 +34,7 @@ user:
 	if env.Storage.Type != "local" {
 		t.Fatalf("unexpected storage type: %s", env.Storage.Type)
 	}
-	if env.User.Login != "admin" {
-		t.Fatalf("unexpected user login: %s", env.User.Login)
+	if env.DefaultUser.Login != "admin" {
+		t.Fatalf("unexpected user login: %s", env.DefaultUser.Login)
 	}
 }

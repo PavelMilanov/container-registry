@@ -1,61 +1,107 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/PavelMilanov/container-registry/db"
-	"github.com/PavelMilanov/container-registry/system"
-	"github.com/gin-gonic/gin"
+	registryauth "github.com/PavelMilanov/container-registry/internal/auth"
+	"github.com/PavelMilanov/container-registry/services"
+	"github.com/labstack/echo/v5"
 )
 
 /*
-authHandler аутентификация на уровне docker client и api.
+authHandler аутентифицирует Docker client и выдаёт Registry JWT.
 
 	/v2/auth
 */
-func (h *Handler) authHandler(c *gin.Context) {
-	username, password, _ := c.Request.BasicAuth()
-	c.Header("Content-Type", "application/json")
-	user := db.User{Name: username, Password: password}
-	if err := user.Login(h.DB.Sql, h.ENV); err != nil {
-		addRequestError(c, err)
-		c.Header("WWW-Authenticate", `Basic realm="registry"`)
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"errors": []gin.H{
-				{
-					"code":    "UNAUTHORIZED",
-					"message": "invalid username or password",
-				},
-			},
-		})
-		return
+func (h *Handler) authHandler(c *echo.Context) error {
+	username, password, ok := c.Request().BasicAuth()
+	if !ok {
+		return writeInvalidRegistryCredentials(c)
 	}
-	// Генерируем JWT-токен (срок действия 24 часа)
-	tokenString, err := system.GenerateJWT(username, h.ENV)
+
+	access := requestedRegistryAccess(c.QueryParams()["scope"])
+	token, err := h.AUTH.Login(
+		c.Request().Context(),
+		username,
+		password,
+		access,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{})
-		return
+		addRequestError(c, err)
+		if errors.Is(err, services.ErrInvalidCredentials) {
+			return writeInvalidRegistryCredentials(c)
+		}
+		return writeRegistryAuthError(c)
 	}
-	scope := c.Query("scope")
-	var access []map[string]interface{}
-	if scope != "" {
-		parts := strings.Split(scope, ":")
-		if len(parts) == 3 {
-			access = []map[string]interface{}{
-				{
-					"type":    parts[0],                     // repository
-					"name":    parts[1],                     // dev/registry
-					"actions": strings.Split(parts[2], ","), // push,pull
-				},
+
+	return c.JSON(http.StatusOK, map[string]any{
+		"access_token": token.Value,
+		"scope":        access,
+		"expires_in": int64(
+			token.ExpiresAt.Sub(token.IssuedAt).Seconds(),
+		),
+		"issued_at": token.IssuedAt.Format(time.RFC3339),
+	})
+}
+
+/*
+requestedRegistryAccess преобразует scope-запросы Docker Registry в JWT access.
+
+	scopes - значения query-параметра scope.
+*/
+func requestedRegistryAccess(
+	scopes []string,
+) []registryauth.ResourceAction {
+	access := make([]registryauth.ResourceAction, 0, len(scopes))
+	for _, scope := range scopes {
+		parts := strings.SplitN(scope, ":", 3)
+		if len(parts) != 3 || parts[0] == "" || parts[1] == "" {
+			continue
+		}
+		actions := strings.Split(parts[2], ",")
+		filteredActions := actions[:0]
+		for _, action := range actions {
+			if action != "" {
+				filteredActions = append(filteredActions, action)
 			}
 		}
+		access = append(access, registryauth.ResourceAction{
+			Type:    parts[0],
+			Name:    parts[1],
+			Actions: filteredActions,
+		})
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"access_token": tokenString,
-		"scope":        access,
-		"expires_in":   86400,
-		"issued_at":    time.Now().UTC().Format(time.RFC3339),
+	return access
+}
+
+/*
+writeInvalidRegistryCredentials возвращает ошибку аутентификации Registry API.
+*/
+func writeInvalidRegistryCredentials(c *echo.Context) error {
+	c.Response().Header().Set("WWW-Authenticate", `Basic realm="registry"`)
+	return c.JSON(http.StatusUnauthorized, map[string]any{
+		"errors": []map[string]any{
+			{
+				"code":    "UNAUTHORIZED",
+				"message": "invalid username or password",
+			},
+		},
+	})
+}
+
+/*
+writeRegistryAuthError возвращает внутреннюю ошибку Registry token service.
+*/
+func writeRegistryAuthError(c *echo.Context) error {
+	return c.JSON(http.StatusInternalServerError, map[string]any{
+		"errors": []map[string]any{
+			{
+				"code":    "UNKNOWN",
+				"message": "token service failed",
+			},
+		},
 	})
 }

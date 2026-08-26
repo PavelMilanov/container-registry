@@ -38,7 +38,7 @@ func TestCheckBlob(t *testing.T) {
 		t.Fatal(err)
 	}
 	blob := "test_blob"
-	err = testS3.CheckBlob(blob)
+	err = testS3.Blobs.CheckBlob(blob)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -2,86 +2,289 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
-	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/PavelMilanov/container-registry/config"
-	"github.com/gin-gonic/gin"
+	"github.com/PavelMilanov/container-registry/storage"
+	"github.com/labstack/echo/v5"
 )
 
-type fakeStorage struct {
-	savedBlobDigest string
-	savedBlobBody   []byte
-
-	savedManifestMeta config.Meta
-	savedManifestBody []byte
-	savedManifestPath string
+type fakeUploadStore struct {
+	uploads map[string][]byte
+	blobs   map[string][]byte
 }
 
-func (f *fakeStorage) CheckBlob(uuid string) error { return nil }
+func newFakeUploadStore() *fakeUploadStore {
+	return &fakeUploadStore{
+		uploads: make(map[string][]byte),
+		blobs:   make(map[string][]byte),
+	}
+}
 
-func (f *fakeStorage) SaveBlob(tmpPath, digest string) error {
-	body, err := os.ReadFile(tmpPath)
-	if err != nil {
+func (f *fakeUploadStore) StartBlobUpload(
+	ctx context.Context,
+	uploadID string,
+) error {
+	if err := ctx.Err(); err != nil {
 		return err
 	}
-	f.savedBlobDigest = digest
-	f.savedBlobBody = body
+	f.uploads[uploadID] = nil
 	return nil
 }
 
-func (f *fakeStorage) GetBlob(digest string) (config.Blob, error) {
-	return config.Blob{}, errors.New("not implemented")
+func (f *fakeUploadStore) AppendBlobUpload(
+	ctx context.Context,
+	uploadID string,
+	expectedOffset int64,
+	body io.Reader,
+) (int64, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	current, ok := f.uploads[uploadID]
+	if !ok {
+		return 0, storage.ErrUploadNotFound
+	}
+	if int64(len(current)) != expectedOffset {
+		return int64(len(current)), storage.ErrInvalidOffset
+	}
+
+	part, err := io.ReadAll(body)
+	if err != nil {
+		return int64(len(current)), err
+	}
+	f.uploads[uploadID] = append(current, part...)
+	return int64(len(f.uploads[uploadID])), nil
 }
 
-func (f *fakeStorage) SaveManifest(meta config.Meta, body []byte, link string) error {
-	f.savedManifestMeta = meta
-	f.savedManifestBody = append([]byte(nil), body...)
-	f.savedManifestPath = link
+func (f *fakeUploadStore) CompleteBlobUpload(
+	ctx context.Context,
+	uploadID string,
+	expectedDigest string,
+	finalBody io.Reader,
+) (config.Blob, error) {
+	var result config.Blob
+
+	current, ok := f.uploads[uploadID]
+	if !ok {
+		return result, storage.ErrUploadNotFound
+	}
+	finalPart, err := io.ReadAll(finalBody)
+	if err != nil {
+		return result, err
+	}
+	body := append(append([]byte(nil), current...), finalPart...)
+	if testDigest(body) != expectedDigest {
+		return result, storage.ErrDigestMismatch
+	}
+
+	delete(f.uploads, uploadID)
+	f.blobs[expectedDigest] = body
+	return config.Blob{
+		Digest: expectedDigest,
+		Size:   int64(len(body)),
+	}, nil
+}
+
+func (f *fakeUploadStore) AbortBlobUpload(
+	ctx context.Context,
+	uploadID string,
+) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	delete(f.uploads, uploadID)
 	return nil
 }
 
-func (f *fakeStorage) GetManifest(repository, image, reference string) ([]byte, error) {
-	return nil, errors.New("not implemented")
+func testDigest(body []byte) string {
+	return fmt.Sprintf("sha256:%x", sha256.Sum256(body))
 }
 
-func (f *fakeStorage) GetManifestList(cloud, repository string) ([]string, error) {
-	return nil, errors.New("not implemented")
+func newUploadRouter(uploadStore storage.BlobUploadStore) *echo.Echo {
+	handler := &Handler{UPLOADS: uploadStore}
+	router := echo.New()
+	router.POST("/v2/:repository/:name/blobs/uploads/", handler.startBlobUpload)
+	router.PATCH("/v2/:repository/:name/blobs/uploads/:uuid", handler.uploadBlobPart)
+	router.PUT("/v2/:repository/:name/blobs/uploads/:uuid", handler.finalizeBlobUpload)
+	router.DELETE("/v2/:repository/:name/blobs/uploads/:uuid", handler.abortBlobUpload)
+	return router
 }
 
-func (f *fakeStorage) DeleteManifest(cloud, repository, tag string) error { return nil }
-func (f *fakeStorage) AddCloud(cloud string) error                        { return nil }
-func (f *fakeStorage) DeleteCloud(cloud string) error                     { return nil }
-func (f *fakeStorage) GetCloudList() ([]string, error)                    { return nil, nil }
-func (f *fakeStorage) GetRepositoriesList(cloud string) ([]string, error) { return nil, nil }
-func (f *fakeStorage) DeleteRepository(cloud, repository string) error    { return nil }
-func (f *fakeStorage) GarbageCollection() error                           { return nil }
-func (f *fakeStorage) DeleteOlderTags(count int) error                    { return nil }
-
-func testHandler(storage *fakeStorage) *Handler {
-	return &Handler{STORAGE: storage}
-}
-
-func request(router http.Handler, method, path string, body []byte) *httptest.ResponseRecorder {
+func uploadRequest(
+	router http.Handler,
+	method string,
+	path string,
+	body []byte,
+	headers map[string]string,
+) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(method, path, bytes.NewReader(body))
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-	return rec
+	for name, value := range headers {
+		req.Header.Set(name, value)
+	}
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, req)
+	return recorder
 }
 
-func digestOf(data []byte) string {
-	return fmt.Sprintf("sha256:%x", sha256.Sum256(data))
-}
-
-func withTempRegistryPaths(t *testing.T) {
+func startTestUpload(t *testing.T, router http.Handler) string {
 	t.Helper()
 
+	recorder := uploadRequest(
+		router,
+		http.MethodPost,
+		"/v2/dev/image/blobs/uploads/",
+		nil,
+		nil,
+	)
+	if recorder.Code != http.StatusAccepted {
+		t.Fatalf("POST status = %d, want %d", recorder.Code, http.StatusAccepted)
+	}
+	uploadID := recorder.Header().Get("Docker-Upload-UUID")
+	if uploadID == "" {
+		t.Fatal("Docker-Upload-UUID is empty")
+	}
+	return uploadID
+}
+
+func TestChunkedBlobUploadHTTPPipeline(t *testing.T) {
+	store := newFakeUploadStore()
+	router := newUploadRouter(store)
+	uploadID := startTestUpload(t, router)
+
+	firstPart := []byte("first-")
+	secondPart := []byte("second")
+	wantBody := append(append([]byte(nil), firstPart...), secondPart...)
+
+	firstPatch := uploadRequest(
+		router,
+		http.MethodPatch,
+		"/v2/dev/image/blobs/uploads/"+uploadID,
+		firstPart,
+		map[string]string{"Content-Range": "0-5"},
+	)
+	if firstPatch.Code != http.StatusNoContent {
+		t.Fatalf("first PATCH status = %d, want %d", firstPatch.Code, http.StatusNoContent)
+	}
+
+	secondPatch := uploadRequest(
+		router,
+		http.MethodPatch,
+		"/v2/dev/image/blobs/uploads/"+uploadID,
+		secondPart,
+		map[string]string{"Content-Range": "bytes 6-11"},
+	)
+	if secondPatch.Code != http.StatusNoContent {
+		t.Fatalf("second PATCH status = %d, want %d", secondPatch.Code, http.StatusNoContent)
+	}
+	if got := secondPatch.Header().Get("Range"); got != "0-11" {
+		t.Fatalf("Range = %q, want %q", got, "0-11")
+	}
+
+	digest := testDigest(wantBody)
+	put := uploadRequest(
+		router,
+		http.MethodPut,
+		"/v2/dev/image/blobs/uploads/"+uploadID+"?digest="+digest,
+		nil,
+		nil,
+	)
+	if put.Code != http.StatusCreated {
+		t.Fatalf("PUT status = %d, want %d; body: %s", put.Code, http.StatusCreated, put.Body.String())
+	}
+	if got := put.Header().Get("Docker-Content-Digest"); got != digest {
+		t.Fatalf("Docker-Content-Digest = %q, want %q", got, digest)
+	}
+	if got := string(store.blobs[digest]); got != string(wantBody) {
+		t.Fatalf("stored body = %q, want %q", got, wantBody)
+	}
+}
+
+func TestMonolithicBlobUploadHTTPPipeline(t *testing.T) {
+	store := newFakeUploadStore()
+	router := newUploadRouter(store)
+	uploadID := startTestUpload(t, router)
+	body := []byte("monolithic")
+	digest := testDigest(body)
+
+	put := uploadRequest(
+		router,
+		http.MethodPut,
+		"/v2/dev/image/blobs/uploads/"+uploadID+"?digest="+digest,
+		body,
+		nil,
+	)
+	if put.Code != http.StatusCreated {
+		t.Fatalf("PUT status = %d, want %d; body: %s", put.Code, http.StatusCreated, put.Body.String())
+	}
+	if got := string(store.blobs[digest]); got != string(body) {
+		t.Fatalf("stored body = %q, want %q", got, body)
+	}
+}
+
+func TestBlobUploadPatchRejectsInvalidBodyLength(t *testing.T) {
+	tests := []struct {
+		name        string
+		rangeHeader string
+		body        []byte
+	}{
+		{name: "short", rangeHeader: "0-4", body: []byte("four")},
+		{name: "long", rangeHeader: "0-2", body: []byte("four")},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			store := newFakeUploadStore()
+			router := newUploadRouter(store)
+			uploadID := startTestUpload(t, router)
+
+			patch := uploadRequest(
+				router,
+				http.MethodPatch,
+				"/v2/dev/image/blobs/uploads/"+uploadID,
+				test.body,
+				map[string]string{"Content-Range": test.rangeHeader},
+			)
+			if patch.Code != http.StatusRequestedRangeNotSatisfiable {
+				t.Fatalf("PATCH status = %d, want %d", patch.Code, http.StatusRequestedRangeNotSatisfiable)
+			}
+			if len(store.uploads[uploadID]) != 0 {
+				t.Fatal("invalid PATCH changed upload")
+			}
+		})
+	}
+}
+
+func TestAbortBlobUploadHTTPPipeline(t *testing.T) {
+	store := newFakeUploadStore()
+	router := newUploadRouter(store)
+	uploadID := startTestUpload(t, router)
+
+	response := uploadRequest(
+		router,
+		http.MethodDelete,
+		"/v2/dev/image/blobs/uploads/"+uploadID,
+		nil,
+		nil,
+	)
+	if response.Code != http.StatusNoContent {
+		t.Fatalf("DELETE status = %d, want %d", response.Code, http.StatusNoContent)
+	}
+	if _, ok := store.uploads[uploadID]; ok {
+		t.Fatal("upload still exists after DELETE")
+	}
+}
+
+func TestLocalStorageBlobUploadHTTPEndToEnd(t *testing.T) {
 	oldDataPath := config.DATA_PATH
 	oldManifestPath := config.MANIFEST_PATH
 	oldBlobsPath := config.BLOBS_PATH
@@ -91,148 +294,86 @@ func withTempRegistryPaths(t *testing.T) {
 	config.MANIFEST_PATH = filepath.Join(config.DATA_PATH, "manifests")
 	config.BLOBS_PATH = filepath.Join(config.DATA_PATH, "blobs")
 	config.TMP_PATH = filepath.Join(config.DATA_PATH, "tmp")
-
-	if err := os.MkdirAll(config.TMP_PATH, 0755); err != nil {
-		t.Fatal(err)
+	for _, path := range []string{
+		config.MANIFEST_PATH,
+		config.BLOBS_PATH,
+		config.TMP_PATH,
+	} {
+		if err := os.MkdirAll(path, 0755); err != nil {
+			t.Fatal(err)
+		}
 	}
-
 	t.Cleanup(func() {
 		config.DATA_PATH = oldDataPath
 		config.MANIFEST_PATH = oldManifestPath
 		config.BLOBS_PATH = oldBlobsPath
 		config.TMP_PATH = oldTmpPath
 	})
-}
 
-func TestUploadManifestSavesManifest(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	withTempRegistryPaths(t)
+	localStore := &storage.LocalStorage{}
+	router := newUploadRouter(localStore)
+	uploadID := startTestUpload(t, router)
+	body := []byte("real local storage blob")
 
-	storage := &fakeStorage{}
-	handler := testHandler(storage)
-	router := gin.New()
-	router.PUT("/v2/:repository/:name/manifests/:reference", handler.uploadManifest)
-
-	body := []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","size":1},"layers":[]}`)
-	req := httptest.NewRequest(http.MethodPut, "/v2/dev/postgres/manifests/latest", bytes.NewReader(body))
-	req.Header.Set("Content-Type", config.MANIFEST_TYPE["manifest"])
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusCreated {
-		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusCreated, rec.Body.String())
-	}
-	if storage.savedManifestMeta.Repository != "dev" {
-		t.Fatalf("repository = %q, want dev", storage.savedManifestMeta.Repository)
-	}
-	if storage.savedManifestMeta.Image != "postgres" {
-		t.Fatalf("image = %q, want postgres", storage.savedManifestMeta.Image)
-	}
-	if storage.savedManifestMeta.Tag != "latest" {
-		t.Fatalf("tag = %q, want latest", storage.savedManifestMeta.Tag)
-	}
-	if storage.savedManifestMeta.MediaType != config.MANIFEST_TYPE["manifest"] {
-		t.Fatalf("media type = %q, want %q", storage.savedManifestMeta.MediaType, config.MANIFEST_TYPE["manifest"])
-	}
-	if storage.savedManifestMeta.Digest != digestOf(body) {
-		t.Fatalf("digest = %q, want %q", storage.savedManifestMeta.Digest, digestOf(body))
-	}
-	if !bytes.Equal(storage.savedManifestBody, body) {
-		t.Fatal("manifest body was not saved unchanged")
-	}
-}
-
-func TestUploadManifestRejectsDigestMismatch(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	withTempRegistryPaths(t)
-
-	storage := &fakeStorage{}
-	handler := testHandler(storage)
-	router := gin.New()
-	router.PUT("/v2/:repository/:name/manifests/:reference", handler.uploadManifest)
-
-	body := []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json"}`)
-	rec := request(router, http.MethodPut, "/v2/dev/postgres/manifests/sha256:bad", body)
-
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
-	}
-	if storage.savedManifestBody != nil {
-		t.Fatal("manifest was saved despite digest mismatch")
-	}
-}
-
-func TestChunkedBlobUploadFinalizesSavedBlob(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	withTempRegistryPaths(t)
-
-	storage := &fakeStorage{}
-	handler := testHandler(storage)
-	router := gin.New()
-	router.PATCH("/v2/:repository/:name/blobs/uploads/:uuid", handler.uploadBlobPart)
-	router.PUT("/v2/:repository/:name/blobs/uploads/:uuid", handler.finalizeBlobUpload)
-
-	body := []byte("chunked blob body")
-	patchRec := request(router, http.MethodPatch, "/v2/dev/postgres/blobs/uploads/upload-1", body)
-	if patchRec.Code != http.StatusNoContent {
-		t.Fatalf("PATCH status = %d, want %d; body: %s", patchRec.Code, http.StatusNoContent, patchRec.Body.String())
-	}
-	if patchRec.Header().Get("Range") != "0-16" {
-		t.Fatalf("range = %q, want 0-16", patchRec.Header().Get("Range"))
+	patch := uploadRequest(
+		router,
+		http.MethodPatch,
+		"/v2/dev/image/blobs/uploads/"+uploadID,
+		body,
+		map[string]string{
+			"Content-Range": fmt.Sprintf("0-%d", len(body)-1),
+		},
+	)
+	if patch.Code != http.StatusNoContent {
+		t.Fatalf("PATCH status = %d, want %d; body: %s", patch.Code, http.StatusNoContent, patch.Body.String())
 	}
 
-	digest := digestOf(body)
-	putRec := request(router, http.MethodPut, "/v2/dev/postgres/blobs/uploads/upload-1?digest="+digest, nil)
-	if putRec.Code != http.StatusCreated {
-		t.Fatalf("PUT status = %d, want %d; body: %s", putRec.Code, http.StatusCreated, putRec.Body.String())
+	digest := testDigest(body)
+	put := uploadRequest(
+		router,
+		http.MethodPut,
+		"/v2/dev/image/blobs/uploads/"+uploadID+"?digest="+digest,
+		nil,
+		nil,
+	)
+	if put.Code != http.StatusCreated {
+		t.Fatalf("PUT status = %d, want %d; body: %s", put.Code, http.StatusCreated, put.Body.String())
 	}
-	if storage.savedBlobDigest != digest {
-		t.Fatalf("saved digest = %q, want %q", storage.savedBlobDigest, digest)
+
+	storedBody, err := os.ReadFile(filepath.Join(
+		config.BLOBS_PATH,
+		strings.TrimPrefix(digest, "sha256:"),
+	))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !bytes.Equal(storage.savedBlobBody, body) {
-		t.Fatalf("saved body = %q, want %q", storage.savedBlobBody, body)
+	if !bytes.Equal(storedBody, body) {
+		t.Fatalf("stored body = %q, want %q", storedBody, body)
 	}
-}
-
-func TestMonolithicBlobUploadFinalizesSavedBlob(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	withTempRegistryPaths(t)
-
-	storage := &fakeStorage{}
-	handler := testHandler(storage)
-	router := gin.New()
-	router.PUT("/v2/:repository/:name/blobs/uploads/:uuid", handler.finalizeBlobUpload)
-
-	body := []byte("monolithic blob body")
-	digest := digestOf(body)
-	rec := request(router, http.MethodPut, "/v2/dev/postgres/blobs/uploads/upload-2?digest="+digest, body)
-
-	if rec.Code != http.StatusCreated {
-		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusCreated, rec.Body.String())
+	if _, err := os.Stat(filepath.Join(config.TMP_PATH, uploadID)); !os.IsNotExist(err) {
+		t.Fatalf("staging upload still exists: %v", err)
 	}
-	if storage.savedBlobDigest != digest {
-		t.Fatalf("saved digest = %q, want %q", storage.savedBlobDigest, digest)
+
+	invalidUploadID := startTestUpload(t, router)
+	invalidPatch := uploadRequest(
+		router,
+		http.MethodPatch,
+		"/v2/dev/image/blobs/uploads/"+invalidUploadID,
+		[]byte("four"),
+		map[string]string{"Content-Range": "0-4"},
+	)
+	if invalidPatch.Code != http.StatusRequestedRangeNotSatisfiable {
+		t.Fatalf(
+			"invalid PATCH status = %d, want %d",
+			invalidPatch.Code,
+			http.StatusRequestedRangeNotSatisfiable,
+		)
 	}
-	if !bytes.Equal(storage.savedBlobBody, body) {
-		t.Fatalf("saved body = %q, want %q", storage.savedBlobBody, body)
+	info, err := os.Stat(filepath.Join(config.TMP_PATH, invalidUploadID))
+	if err != nil {
+		t.Fatal(err)
 	}
-}
-
-func TestFinalizeBlobUploadRejectsDigestMismatch(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	withTempRegistryPaths(t)
-
-	storage := &fakeStorage{}
-	handler := testHandler(storage)
-	router := gin.New()
-	router.PUT("/v2/:repository/:name/blobs/uploads/:uuid", handler.finalizeBlobUpload)
-
-	rec := request(router, http.MethodPut, "/v2/dev/postgres/blobs/uploads/upload-3?digest=sha256:bad", []byte("blob body"))
-
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
-	}
-	if storage.savedBlobBody != nil {
-		t.Fatal("blob was saved despite digest mismatch")
+	if info.Size() != 0 {
+		t.Fatalf("invalid PATCH changed upload size to %d", info.Size())
 	}
 }
