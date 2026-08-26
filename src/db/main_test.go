@@ -5,6 +5,8 @@ import (
 	"errors"
 	"path/filepath"
 	"testing"
+
+	"github.com/PavelMilanov/container-registry/config"
 )
 
 /*
@@ -36,8 +38,12 @@ func TestNewDatabaseCreatesDefaultSettings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if count != 0 {
-		t.Fatalf("tag count = %d, want 0", count)
+	if count != config.DEFAULT_TAG_EXPIRED_DAYS {
+		t.Fatalf(
+			"tag count = %d, want %d",
+			count,
+			config.DEFAULT_TAG_EXPIRED_DAYS,
+		)
 	}
 }
 

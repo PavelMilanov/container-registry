@@ -33,6 +33,8 @@ func (c *Client) Login(ctx context.Context, login, password string) (string, err
 		return "", err
 	}
 	defer cancel()
+	req.Header.Set("Content-Type", "application/json")
+
 	resp, err := c.do(req)
 	if err != nil {
 		return "", err
