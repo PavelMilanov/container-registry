@@ -21,6 +21,7 @@ import (
 LocalStorage представляет хранилище на основе локальной файловой системы.
 */
 type LocalStorage struct {
+	uploadLocks uploadLockManager
 }
 
 var _ BlobUploadStore = (*LocalStorage)(nil)
@@ -451,6 +452,12 @@ func (s *LocalStorage) StartBlobUpload(
 	if err != nil {
 		return err
 	}
+	unlock := s.uploadLocks.Lock(uploadID)
+	defer unlock()
+
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 
 	file, err := os.OpenFile(
 		path,
@@ -480,6 +487,40 @@ func (s *LocalStorage) AppendBlobUpload(
 	expectedOffset int64,
 	body io.Reader,
 ) (newOffset int64, resultErr error) {
+	if _, err := localUploadPath(uploadID); err != nil {
+		return 0, err
+	}
+	unlock := s.uploadLocks.Lock(uploadID)
+	defer unlock()
+
+	return s.appendBlobUpload(
+		ctx,
+		uploadID,
+		expectedOffset,
+		body,
+	)
+}
+
+/*
+appendBlobUpload дописывает часть Blob без получения mutex загрузки.
+
+	ctx - контекст выполнения операции.
+	uploadID - идентификатор загрузки.
+	expectedOffset - ожидаемая позиция начала записи в байтах.
+	body - поток с очередной частью Blob.
+
+Вызывающий код обязан удерживать mutex соответствующего uploadID.
+*/
+func (s *LocalStorage) appendBlobUpload(
+	ctx context.Context,
+	uploadID string,
+	expectedOffset int64,
+	body io.Reader,
+) (newOffset int64, resultErr error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+
 	path, err := localUploadPath(uploadID)
 	if err != nil {
 		return 0, err
@@ -554,6 +595,12 @@ func (s *LocalStorage) CompleteBlobUpload(
 	if err != nil {
 		return result, err
 	}
+	unlock := s.uploadLocks.Lock(uploadID)
+	defer unlock()
+
+	if err := ctx.Err(); err != nil {
+		return result, err
+	}
 
 	info, err := os.Stat(uploadPath)
 	if err != nil {
@@ -563,7 +610,7 @@ func (s *LocalStorage) CompleteBlobUpload(
 		return result, err
 	}
 
-	finalSize, err := s.AppendBlobUpload(
+	finalSize, err := s.appendBlobUpload(
 		ctx,
 		uploadID,
 		info.Size(),
@@ -651,6 +698,12 @@ func (s *LocalStorage) AbortBlobUpload(
 	if err != nil {
 		return err
 	}
+	unlock := s.uploadLocks.Lock(uploadID)
+	defer unlock()
+
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 
 	err = os.Remove(path)
 	if os.IsNotExist(err) {
@@ -699,33 +752,66 @@ func (s *LocalStorage) CleanupUploads(
 			continue
 		}
 
-		path := filepath.Join(config.TMP_PATH, entry.Name())
-		info, err := os.Stat(path)
-		if os.IsNotExist(err) {
-			continue
-		}
+		removed, err := s.cleanupUpload(ctx, entry.Name(), deadline)
 		if err != nil {
-			return deleted, fmt.Errorf(
-				"не удалось прочитать upload %s: %w",
-				entry.Name(),
-				err,
-			)
+			return deleted, err
 		}
-
-		if info.ModTime().Before(deadline) {
-			if err := os.Remove(path); err != nil {
-				if os.IsNotExist(err) {
-					continue
-				}
-				return deleted, fmt.Errorf(
-					"не удалось удалить upload %s: %w",
-					entry.Name(),
-					err,
-				)
-			}
+		if removed {
 			deleted++
 		}
 	}
 
 	return deleted, nil
+}
+
+/*
+cleanupUpload удаляет одну устаревшую загрузку под mutex её uploadID.
+
+	ctx - контекст выполнения операции.
+	uploadID - идентификатор загрузки.
+	deadline - предельное время изменения удаляемого файла.
+
+Возраст файла проверяется после получения mutex, чтобы не удалить загрузку,
+которая была обновлена во время ожидания блокировки.
+*/
+func (s *LocalStorage) cleanupUpload(
+	ctx context.Context,
+	uploadID string,
+	deadline time.Time,
+) (bool, error) {
+	unlock := s.uploadLocks.Lock(uploadID)
+	defer unlock()
+
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+
+	path := filepath.Join(config.TMP_PATH, uploadID)
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf(
+			"не удалось прочитать upload %s: %w",
+			uploadID,
+			err,
+		)
+	}
+	if !info.ModTime().Before(deadline) {
+		return false, nil
+	}
+
+	if err := os.Remove(path); err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf(
+			"не удалось удалить upload %s: %w",
+			uploadID,
+			err,
+		)
+	}
+
+	return true, nil
 }

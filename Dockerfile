@@ -27,7 +27,6 @@ RUN go build -trimpath -o /out/cr -ldflags="-s -w \
 FROM alpine:3.23
 
 ENV TZ=Europe/Moscow
-ENV GIN_MODE=release
 ENV USER=registry
 ENV UID=10000
 

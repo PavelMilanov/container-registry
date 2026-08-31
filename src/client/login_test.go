@@ -16,6 +16,10 @@ func TestLogin(t *testing.T) {
 			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
 			return
 		}
+		if r.Header.Get("Content-Type") != "application/json" {
+			http.Error(w, `{"error":"unsupported media type"}`, http.StatusUnsupportedMediaType)
+			return
+		}
 		var req struct {
 			Username string `json:"username"`
 			Password string `json:"password"`
