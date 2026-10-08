@@ -161,6 +161,9 @@ func SaveManifest(store storage.ManifestStore, meta config.Meta, body []byte) er
 	return nil
 }
 
-func GarbageCollection(collector storage.GarbageCollector) error {
-	return collector.GarbageCollection()
+/*
+GarbageCollection запускает сборку мусора с context запроса или фонового задания.
+*/
+func GarbageCollection(ctx context.Context, collector storage.GarbageCollector) error {
+	return collector.GarbageCollection(ctx)
 }

@@ -57,8 +57,7 @@ func registryAccessAllowed(
 	}
 
 	requiredAction := "push"
-	if c.Request().Method == http.MethodGet ||
-		c.Request().Method == http.MethodHead {
+	if registryReadRequest(c) {
 		requiredAction = "pull"
 	}
 	resourceName := repository + "/" + name
@@ -117,8 +116,7 @@ func requiredRegistryScope(c *echo.Context) string {
 	}
 
 	actions := "pull,push"
-	if c.Request().Method == http.MethodGet ||
-		c.Request().Method == http.MethodHead {
+	if registryReadRequest(c) {
 		actions = "pull"
 	}
 	return fmt.Sprintf(
@@ -127,4 +125,18 @@ func requiredRegistryScope(c *echo.Context) string {
 		name,
 		actions,
 	)
+}
+
+/*
+registryReadRequest отличает pull от чтения состояния push-сессии.
+
+GET uploads требует push-права, как PATCH, PUT и DELETE этой загрузки.
+*/
+func registryReadRequest(c *echo.Context) bool {
+	method := c.Request().Method
+	if method != http.MethodGet && method != http.MethodHead {
+		return false
+	}
+	id := c.Param("uuid")
+	return id == "" || !strings.HasSuffix(c.Request().URL.Path, "/blobs/uploads/"+id)
 }

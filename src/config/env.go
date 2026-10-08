@@ -33,6 +33,8 @@ storage описывает конфигурацию хранилища.
 */
 type storage struct {
 	Type        string      `mapstructure:"type"`
+	Bucket      string      `mapstructure:"bucket"`
+	Prefix      string      `mapstructure:"prefix"`
 	Credentials credentials `mapstructure:"credentials,omitzero"`
 }
 

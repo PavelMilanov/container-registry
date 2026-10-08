@@ -4,12 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
-	"syscall"
 	"time"
 	"uuid"
 
@@ -22,6 +20,7 @@ LocalStorage представляет хранилище на основе ло�
 */
 type LocalStorage struct {
 	uploadLocks uploadLockManager
+	maintenance maintenanceGate
 }
 
 var _ BlobUploadStore = (*LocalStorage)(nil)
@@ -150,6 +149,11 @@ SaveManifest сохраняет манифест в хранилище.
 	calculatedDigest - хэш манифеста.
 */
 func (lc *LocalStorage) SaveManifest(meta config.Meta, body []byte, manifestPath string) error {
+	unlock, gateErr := lc.maintenance.lock(context.Background(), false)
+	if gateErr != nil {
+		return gateErr
+	}
+	defer unlock()
 	tagPath := filepath.Join(config.MANIFEST_PATH, meta.Repository, meta.Image, "tags", meta.Tag)
 	if err := os.MkdirAll(filepath.Dir(manifestPath), 0755); err != nil {
 		return err
@@ -206,6 +210,11 @@ AddRegistry добавляет новый реестр в хранилище.
 	registry - имя реестра.
 */
 func (lc *LocalStorage) AddCloud(name string) error {
+	unlock, gateErr := lc.maintenance.lock(context.Background(), false)
+	if gateErr != nil {
+		return gateErr
+	}
+	defer unlock()
 	if err := os.MkdirAll(filepath.Join(config.MANIFEST_PATH, name), 0755); err != nil {
 		return err
 	}
@@ -218,6 +227,11 @@ DeleteRegistry удаляет реестр из хранилища.
 	registry - имя реестра.
 */
 func (lc *LocalStorage) DeleteCloud(name string) error {
+	unlock, gateErr := lc.maintenance.lock(context.Background(), false)
+	if gateErr != nil {
+		return gateErr
+	}
+	defer unlock()
 	if err := os.RemoveAll(filepath.Join(config.MANIFEST_PATH, name)); err != nil {
 		return err
 	}
@@ -225,48 +239,20 @@ func (lc *LocalStorage) DeleteCloud(name string) error {
 }
 
 /*
-DeleteImage удаляет образ из хранилища.
+DeleteManifest удаляет тег, сохраняя manifest до безопасной сборки мусора.
 
+	cloud - пространство registry.
 	repository - имя репозитория.
-	imageName - имя образа.
-	imageTag - тег образа.
-	imageHash - хеш образа.
+	tag - удаляемый тег.
 */
 func (lc *LocalStorage) DeleteManifest(cloud, repository, tag string) error {
-	tagPath := filepath.Join(config.MANIFEST_PATH, cloud, repository, "tags", tag)
-	data, err := os.ReadFile(tagPath)
+	unlock, err := lc.maintenance.lock(context.Background(), false)
 	if err != nil {
 		return err
 	}
-	manifestDigest := string(data)
-	manifestPath := filepath.Join(config.MANIFEST_PATH, cloud, repository, manifestDigest)
-	if err := os.Remove(tagPath); err != nil {
-		return err
-	}
-
-	// Если оставшиеся теги указывают на этот же digest, файл манифеста удалять нельзя.
-	tagsPath := filepath.Join(config.MANIFEST_PATH, cloud, repository, "tags")
-	tags, err := os.ReadDir(tagsPath)
-	if err == nil {
-		for _, item := range tags {
-			if item.IsDir() {
-				continue
-			}
-			otherTagPath := filepath.Join(tagsPath, item.Name())
-			otherDigest, err := os.ReadFile(otherTagPath)
-			if err != nil {
-				continue
-			}
-			if string(otherDigest) == manifestDigest {
-				return nil
-			}
-		}
-	}
-
-	if err := os.Remove(manifestPath); err != nil && !os.IsNotExist(err) {
-		return err
-	}
-	return nil
+	defer unlock()
+	// Граф ссылок OCI index проверяет GC; удаление тега не удаляет manifest.
+	return os.Remove(filepath.Join(config.MANIFEST_PATH, cloud, repository, "tags", tag))
 }
 
 /*
@@ -276,6 +262,11 @@ DeleteRepository удаляет репозиторий из хранилища.
 	repository - название репозитория.
 */
 func (lc *LocalStorage) DeleteRepository(cloud, repository string) error {
+	unlock, gateErr := lc.maintenance.lock(context.Background(), false)
+	if gateErr != nil {
+		return gateErr
+	}
+	defer unlock()
 	if err := os.RemoveAll(filepath.Join(config.MANIFEST_PATH, cloud, repository)); err != nil {
 		return err
 	}
@@ -285,41 +276,11 @@ func (lc *LocalStorage) DeleteRepository(cloud, repository string) error {
 /*
 GarbageCollection выполняет сборку мусора в хранилище.
 
-	Удаляет все образы и слои, которые не используются ни одним реестром.
+	Проверяет граф тегов и свежих manifests; удаляет недостижимые объекты старше 24 часов.
+	Запуск ограничен context и timeout; мутации хранилища на время GC блокируются.
 */
-func (lc *LocalStorage) GarbageCollection() error {
-	manifests, err := inventoryManifestsStrict()
-	if err != nil {
-		return err
-	}
-	usedBlobs, err := parseUsageBlobsStrict(manifests)
-	if err != nil {
-		return err
-	}
-	usedBlobsMap := make(map[string]struct{}, len(usedBlobs))
-	for _, b := range usedBlobs {
-		usedBlobsMap[b] = struct{}{}
-	}
-	deleted := 0
-
-	blobs, err := inventoryBlobsStrict()
-	if err != nil {
-		return err
-	}
-	for _, blob := range blobs {
-		if _, ok := usedBlobsMap[blob]; ok {
-			continue
-		}
-
-		if err := os.Remove(blob); err != nil {
-			logrus.WithField("GarbageCollection", "error").WithError(err).Error()
-			continue
-		}
-
-		deleted++
-	}
-	logrus.WithField("GarbageCollection", "deleted").Infof("Удалено %d файлов", deleted)
-	return nil
+func (lc *LocalStorage) GarbageCollection(ctx context.Context) error {
+	return runGC(ctx, &lc.maintenance, lc)
 }
 
 func (*LocalStorage) GetManifestList(cloud, repository string) ([]string, error) {
@@ -435,291 +396,12 @@ func (lc *LocalStorage) DeleteOlderTags(count int) error {
 }
 
 /*
-StartBlobUpload создаёт пустой временный файл для последующей загрузки Blob.
-
-	ctx - контекст выполнения операции.
-	uploadID - идентификатор загрузки.
-*/
-func (s *LocalStorage) StartBlobUpload(
-	ctx context.Context,
-	uploadID string,
-) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
-	path, err := localUploadPath(uploadID)
-	if err != nil {
-		return err
-	}
-	unlock := s.uploadLocks.Lock(uploadID)
-	defer unlock()
-
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
-	file, err := os.OpenFile(
-		path,
-		os.O_CREATE|os.O_EXCL|os.O_WRONLY,
-		0600,
-	)
-	if err != nil {
-		return err
-	}
-
-	return file.Close()
-}
-
-/*
-AppendBlobUpload дописывает очередную часть Blob во временный файл.
-
-	ctx - контекст выполнения операции.
-	uploadID - идентификатор загрузки.
-	expectedOffset - ожидаемая позиция начала записи в байтах.
-	body - поток с очередной частью Blob.
-
-Возвращает размер временного файла после успешной записи.
-*/
-func (s *LocalStorage) AppendBlobUpload(
-	ctx context.Context,
-	uploadID string,
-	expectedOffset int64,
-	body io.Reader,
-) (newOffset int64, resultErr error) {
-	if _, err := localUploadPath(uploadID); err != nil {
-		return 0, err
-	}
-	unlock := s.uploadLocks.Lock(uploadID)
-	defer unlock()
-
-	return s.appendBlobUpload(
-		ctx,
-		uploadID,
-		expectedOffset,
-		body,
-	)
-}
-
-/*
-appendBlobUpload дописывает часть Blob без получения mutex загрузки.
-
-	ctx - контекст выполнения операции.
-	uploadID - идентификатор загрузки.
-	expectedOffset - ожидаемая позиция начала записи в байтах.
-	body - поток с очередной частью Blob.
-
-Вызывающий код обязан удерживать mutex соответствующего uploadID.
-*/
-func (s *LocalStorage) appendBlobUpload(
-	ctx context.Context,
-	uploadID string,
-	expectedOffset int64,
-	body io.Reader,
-) (newOffset int64, resultErr error) {
-	if err := ctx.Err(); err != nil {
-		return 0, err
-	}
-
-	path, err := localUploadPath(uploadID)
-	if err != nil {
-		return 0, err
-	}
-
-	file, err := os.OpenFile(path, os.O_WRONLY, 0600)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return 0, ErrUploadNotFound
-		}
-		return 0, err
-	}
-
-	oldSize := int64(0)
-	defer func() {
-		if err := file.Close(); resultErr == nil && err != nil {
-			_ = os.Truncate(path, oldSize)
-			newOffset = oldSize
-			resultErr = fmt.Errorf("не удалось закрыть upload %s: %w", uploadID, err)
-		}
-	}()
-
-	info, err := file.Stat()
-	if err != nil {
-		return 0, err
-	}
-
-	oldSize = info.Size()
-	if oldSize != expectedOffset {
-		return oldSize, ErrInvalidOffset
-	}
-
-	if _, err := file.Seek(expectedOffset, io.SeekStart); err != nil {
-		return oldSize, err
-	}
-
-	written, err := copyWithContext(ctx, file, body)
-	if err != nil {
-		_ = file.Truncate(oldSize)
-		return oldSize, err
-	}
-
-	return oldSize + written, nil
-}
-
-/*
-CompleteBlobUpload завершает загрузку Blob и перемещает его в постоянное хранилище.
-
-	ctx - контекст выполнения операции.
-	uploadID - идентификатор загрузки.
-	expectedDigest - ожидаемая контрольная сумма Blob в формате sha256:<hex>.
-	finalBody - поток с заключительной частью Blob.
-
-Метод дописывает заключительную часть, проверяет SHA-256 и после успешной
-проверки перемещает временный файл из TMP_PATH в BLOBS_PATH.
-Возвращает метаданные сохранённого Blob.
-*/
-func (s *LocalStorage) CompleteBlobUpload(
-	ctx context.Context,
-	uploadID string,
-	expectedDigest string,
-	finalBody io.Reader,
-) (config.Blob, error) {
-	var result config.Blob
-
-	encodedDigest, err := parseSHA256Digest(expectedDigest)
-	if err != nil {
-		return result, err
-	}
-
-	uploadPath, err := localUploadPath(uploadID)
-	if err != nil {
-		return result, err
-	}
-	unlock := s.uploadLocks.Lock(uploadID)
-	defer unlock()
-
-	if err := ctx.Err(); err != nil {
-		return result, err
-	}
-
-	info, err := os.Stat(uploadPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return result, ErrUploadNotFound
-		}
-		return result, err
-	}
-
-	finalSize, err := s.appendBlobUpload(
-		ctx,
-		uploadID,
-		info.Size(),
-		finalBody,
-	)
-	if err != nil {
-		return result, err
-	}
-
-	calculatedDigest, err := calculateFileDigest(ctx, uploadPath)
-	if err != nil {
-		return result, err
-	}
-
-	if calculatedDigest != expectedDigest {
-		_ = os.Remove(uploadPath)
-		return result, ErrDigestMismatch
-	}
-
-	finalPath := filepath.Join(config.BLOBS_PATH, encodedDigest)
-
-	if existing, err := os.Stat(finalPath); err == nil {
-		if !existing.Mode().IsRegular() {
-			return result, ErrBlobCorrupted
-		}
-		if existing.Size() != finalSize {
-			return result, ErrBlobCorrupted
-		}
-
-		existingDigest, err := calculateFileDigest(ctx, finalPath)
-		if err != nil {
-			return result, err
-		}
-		if existingDigest != expectedDigest {
-			return result, ErrBlobCorrupted
-		}
-
-		if err := os.Remove(uploadPath); err != nil {
-			return result, err
-		}
-
-		return config.Blob{
-			Digest: expectedDigest,
-			Path:   finalPath,
-			Size:   existing.Size(),
-		}, nil
-	} else if !os.IsNotExist(err) {
-		return result, err
-	}
-
-	if err := os.Rename(uploadPath, finalPath); err != nil {
-		if errors.Is(err, syscall.EXDEV) {
-			return result, fmt.Errorf(
-				"%w: TMP_PATH=%s, BLOBS_PATH=%s",
-				ErrCrossDevice,
-				config.TMP_PATH,
-				config.BLOBS_PATH,
-			)
-		}
-		return result, err
-	}
-
-	return config.Blob{
-		Digest: expectedDigest,
-		Path:   finalPath,
-		Size:   finalSize,
-	}, nil
-}
-
-/*
-AbortBlobUpload отменяет загрузку Blob и удаляет её временный файл.
-
-	ctx - контекст выполнения операции.
-	uploadID - идентификатор загрузки.
-*/
-func (s *LocalStorage) AbortBlobUpload(
-	ctx context.Context,
-	uploadID string,
-) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
-	path, err := localUploadPath(uploadID)
-	if err != nil {
-		return err
-	}
-	unlock := s.uploadLocks.Lock(uploadID)
-	defer unlock()
-
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
-	err = os.Remove(path)
-	if os.IsNotExist(err) {
-		return nil
-	}
-
-	return err
-}
-
-/*
 CleanupUploads удаляет устаревшие незавершённые загрузки Blob.
 
 	ctx - контекст выполнения операции.
 	olderThan - минимальный возраст удаляемого временного файла.
 
-Возвращает количество удалённых временных файлов.
+Возвращает количество удалённых сессий, включая данные и JSON-состояние.
 */
 func (s *LocalStorage) CleanupUploads(
 	ctx context.Context,
@@ -739,6 +421,7 @@ func (s *LocalStorage) CleanupUploads(
 
 	deadline := time.Now().Add(-olderThan)
 	deleted := 0
+	seen := make(map[string]bool)
 
 	for _, entry := range entries {
 		if err := ctx.Err(); err != nil {
@@ -748,11 +431,13 @@ func (s *LocalStorage) CleanupUploads(
 		if entry.IsDir() {
 			continue
 		}
-		if _, err := uuid.Parse(entry.Name()); err != nil {
+		id := strings.SplitN(entry.Name(), ".json", 2)[0]
+		if _, err := uuid.Parse(id); err != nil || seen[id] {
 			continue
 		}
+		seen[id] = true
 
-		removed, err := s.cleanupUpload(ctx, entry.Name(), deadline)
+		removed, err := s.cleanupUpload(ctx, id, deadline)
 		if err != nil {
 			return deleted, err
 		}
@@ -761,7 +446,7 @@ func (s *LocalStorage) CleanupUploads(
 		}
 	}
 
-	return deleted, nil
+	return deleted, ctx.Err()
 }
 
 /*
@@ -771,15 +456,18 @@ cleanupUpload удаляет одну устаревшую загрузку по
 	uploadID - идентификатор загрузки.
 	deadline - предельное время изменения удаляемого файла.
 
-Возраст файла проверяется после получения mutex, чтобы не удалить загрузку,
-которая была обновлена во время ожидания блокировки.
+Активная сессия пропускается без ожидания. Возраст данных и JSON повторно
+проверяется под mutex; свежий файл запрещает удаление всей сессии.
 */
 func (s *LocalStorage) cleanupUpload(
 	ctx context.Context,
 	uploadID string,
 	deadline time.Time,
 ) (bool, error) {
-	unlock := s.uploadLocks.Lock(uploadID)
+	unlock, ok := s.uploadLocks.TryLock(uploadID)
+	if !ok {
+		return false, nil
+	}
 	defer unlock()
 
 	if err := ctx.Err(); err != nil {
@@ -787,31 +475,27 @@ func (s *LocalStorage) cleanupUpload(
 	}
 
 	path := filepath.Join(config.TMP_PATH, uploadID)
-	info, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		return false, nil
-	}
+	files, err := filepath.Glob(path + ".json-*")
 	if err != nil {
-		return false, fmt.Errorf(
-			"не удалось прочитать upload %s: %w",
-			uploadID,
-			err,
-		)
+		return false, err
 	}
-	if !info.ModTime().Before(deadline) {
-		return false, nil
-	}
-
-	if err := os.Remove(path); err != nil {
+	files = append(files, path, path+".json")
+	found := false
+	for _, file := range files {
+		info, err := os.Stat(file)
 		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return false, err
+		}
+		found = true
+		if !info.ModTime().Before(deadline) {
 			return false, nil
 		}
-		return false, fmt.Errorf(
-			"не удалось удалить upload %s: %w",
-			uploadID,
-			err,
-		)
 	}
-
-	return true, nil
+	if !found {
+		return false, nil
+	}
+	return true, s.removeUpload(ctx, uploadID)
 }

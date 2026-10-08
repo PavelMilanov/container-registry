@@ -204,11 +204,11 @@ func (h *Handler) login(c *echo.Context) error {
 }
 
 func (h *Handler) garbageCollection(c *echo.Context) error {
-	if err := services.GarbageCollection(h.GARBAGE_COLLECTOR); err != nil {
+	if err := services.GarbageCollection(c.Request().Context(), h.GARBAGE_COLLECTOR); err != nil {
 		addRequestError(c, err)
-		return c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
+		return c.JSON(http.StatusInternalServerError, map[string]any{"error": "Ошибка сборки мусора"})
 	}
-	return c.JSON(http.StatusAccepted, map[string]any{"msg": "Очистка завершена"})
+	return c.JSON(http.StatusOK, map[string]any{"msg": "Очистка завершена"})
 }
 
 func (h *Handler) settings(c *echo.Context) error {

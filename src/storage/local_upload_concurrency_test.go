@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -331,75 +330,33 @@ func TestLocalStorageAbortWaitsForAppend(t *testing.T) {
 	}
 }
 
-func TestCleanupUploadsWaitsForActiveAppend(t *testing.T) {
+func TestCleanupUploadsSkipsActiveAppend(t *testing.T) {
 	withTempStoragePaths(t)
-
 	store := &LocalStorage{}
-	uploadID := uuid.NewV4().String()
-	if err := store.StartBlobUpload(context.Background(), uploadID); err != nil {
+	id := uuid.NewV4().String()
+	if err := store.StartBlobUpload(context.Background(), id); err != nil {
 		t.Fatal(err)
 	}
-	uploadPath := filepath.Join(config.TMP_PATH, uploadID)
-	oldTime := time.Now().Add(-25 * time.Hour)
-	if err := os.Chtimes(uploadPath, oldTime, oldTime); err != nil {
-		t.Fatal(err)
-	}
-
-	releaseAppend := make(chan struct{})
-	appendStarted := make(chan struct{})
-	appendDone := make(chan appendResult, 1)
+	release := make(chan struct{})
+	started := make(chan struct{})
+	done := make(chan appendResult, 1)
 	go func() {
-		offset, err := store.AppendBlobUpload(
-			context.Background(),
-			uploadID,
-			0,
-			&blockingReader{
-				started: appendStarted,
-				release: releaseAppend,
-				body:    []byte("body"),
-			},
-		)
-		appendDone <- appendResult{offset: offset, err: err}
+		offset, err := store.AppendBlobUpload(context.Background(), id, 0, &blockingReader{started: started, release: release, body: []byte("body")})
+		done <- appendResult{offset: offset, err: err}
 	}()
-	waitSignal(t, appendStarted, "append")
-
-	type cleanupResult struct {
-		deleted int
-		err     error
+	waitSignal(t, started, "append")
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	deleted, err := store.CleanupUploads(ctx, time.Nanosecond)
+	close(release)
+	result := waitAppendResult(t, done, "append")
+	if err != nil || deleted != 0 {
+		t.Fatalf("cleanup=(%d,%v)", deleted, err)
 	}
-	cleanupDone := make(chan cleanupResult, 1)
-	go func() {
-		deleted, err := store.CleanupUploads(
-			context.Background(),
-			24*time.Hour,
-		)
-		cleanupDone <- cleanupResult{deleted: deleted, err: err}
-	}()
-
-	select {
-	case result := <-cleanupDone:
-		close(releaseAppend)
-		_ = waitAppendResult(t, appendDone, "append result")
-		t.Fatalf("cleanup finished during append: (%d, %v)", result.deleted, result.err)
-	case <-time.After(50 * time.Millisecond):
-	}
-
-	close(releaseAppend)
-	if result := waitAppendResult(t, appendDone, "append result"); result.err != nil {
+	if result.err != nil {
 		t.Fatal(result.err)
 	}
-	select {
-	case result := <-cleanupDone:
-		if result.err != nil {
-			t.Fatal(result.err)
-		}
-		if result.deleted != 0 {
-			t.Fatalf("deleted = %d, want 0", result.deleted)
-		}
-	case <-time.After(time.Second):
-		t.Fatal("timeout waiting for cleanup")
-	}
-	if !fileExists(uploadPath) {
+	if !fileExists(filepath.Join(config.TMP_PATH, id)) {
 		t.Fatal("cleanup removed active upload")
 	}
 }

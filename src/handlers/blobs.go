@@ -3,9 +3,12 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"time"
 	"uuid"
 
+	"github.com/PavelMilanov/container-registry/config"
 	"github.com/PavelMilanov/container-registry/storage"
 	"github.com/labstack/echo/v5"
 )
@@ -65,7 +68,36 @@ func (h *Handler) startBlobUpload(c *echo.Context) error {
 	))
 	c.Response().Header().Set("Docker-Upload-UUID", uploadID)
 	c.Response().Header().Set("Range", "0-0")
+	c.Response().Header().Set("X-Upload-Offset", "0")
+	c.Response().Header().Set("X-Upload-State", "uploading")
 	return c.NoContent(http.StatusAccepted)
+}
+
+/*
+getBlobUpload возвращает подтверждённый offset после ошибок и перезапуска.
+
+Range содержит последний записанный байт; X-Upload-Offset — точный размер,
+включая нулевой, X-Upload-State — uploading, finalizing или ready.
+*/
+func (h *Handler) getBlobUpload(c *echo.Context) error {
+	id := c.Param("uuid")
+	status, err := h.UPLOADS.GetBlobUpload(c.Request().Context(), id)
+	if err != nil {
+		return respondBlobUploadError(c, err)
+	}
+	last := status.Offset - 1
+	if last < 0 {
+		last = 0
+	}
+	c.Response().Header().Set("Docker-Upload-UUID", id)
+	c.Response().Header().Set("Location", c.Request().URL.Path)
+	c.Response().Header().Set("Range", fmt.Sprintf("0-%d", last))
+	c.Response().Header().Set("X-Upload-Offset", fmt.Sprint(status.Offset))
+	c.Response().Header().Set("X-Upload-State", status.Phase)
+	if status.Digest != "" {
+		c.Response().Header().Set("X-Upload-Digest", status.Digest)
+	}
+	return c.NoContent(http.StatusNoContent)
 }
 
 /*
@@ -98,6 +130,14 @@ func (h *Handler) uploadBlobPart(c *echo.Context) error {
 		newExactLengthReader(c.Request().Body, uploadRange.size()),
 	)
 	if err != nil {
+		if errors.Is(err, storage.ErrInvalidOffset) {
+			last := newOffset - 1
+			if last < 0 {
+				last = 0
+			}
+			c.Response().Header().Set("Range", fmt.Sprintf("0-%d", last))
+			c.Response().Header().Set("X-Upload-Offset", fmt.Sprint(newOffset))
+		}
 		return respondBlobUploadError(c, err)
 	}
 
@@ -108,6 +148,8 @@ func (h *Handler) uploadBlobPart(c *echo.Context) error {
 
 	c.Response().Header().Set("Docker-Upload-UUID", uploadID)
 	c.Response().Header().Set("Range", fmt.Sprintf("0-%d", lastByte))
+	c.Response().Header().Set("Location", c.Request().URL.Path)
+	c.Response().Header().Set("X-Upload-Offset", fmt.Sprint(newOffset))
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -159,8 +201,14 @@ getBlob реализация.
 */
 func (h *Handler) getBlob(c *echo.Context) error {
 	digest := c.Param("uuid")
-	// Определяем путь к блобу
-	info, err := h.BLOBS.GetBlob(digest)
+	var stream io.ReadSeekCloser
+	var info config.Blob
+	var err error
+	if reader, ok := h.BLOBS.(storage.BlobReader); ok {
+		stream, info, err = reader.OpenBlob(c.Request().Context(), digest)
+	} else {
+		info, err = h.BLOBS.GetBlob(digest)
+	}
 	if err != nil {
 		addRequestError(c, err)
 		if errors.Is(err, storage.ErrBlobNotFound) ||
@@ -181,6 +229,11 @@ func (h *Handler) getBlob(c *echo.Context) error {
 	c.Response().Header().Set("Content-Type", "application/octet-stream")
 	c.Response().Header().Set("Content-Length", fmt.Sprintf("%d", info.Size))
 	c.Response().Header().Set("Docker-Content-Digest", info.Digest)
+	if stream != nil {
+		defer stream.Close()
+		http.ServeContent(c.Response(), c.Request(), info.Digest, time.Time{}, stream)
+		return nil
+	}
 	http.ServeFile(c.Response(), c.Request(), info.Path)
 	return nil
 }

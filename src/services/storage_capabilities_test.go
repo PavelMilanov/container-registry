@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"testing"
 )
@@ -31,7 +32,7 @@ type fakeGarbageCollector struct {
 	err    error
 }
 
-func (f *fakeGarbageCollector) GarbageCollection() error {
+func (f *fakeGarbageCollector) GarbageCollection(ctx context.Context) error {
 	f.called = true
 	return f.err
 }
@@ -58,7 +59,7 @@ func TestGarbageCollectionUsesDedicatedCapability(t *testing.T) {
 	expectedErr := errors.New("collection failed")
 	collector := &fakeGarbageCollector{err: expectedErr}
 
-	err := GarbageCollection(collector)
+	err := GarbageCollection(context.Background(), collector)
 	if !errors.Is(err, expectedErr) {
 		t.Fatalf("error = %v, want %v", err, expectedErr)
 	}
