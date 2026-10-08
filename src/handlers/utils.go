@@ -121,6 +121,10 @@ func respondBlobUploadError(c *echo.Context, err error) error {
 	message := "internal server error"
 
 	switch {
+	case errors.Is(err, storage.ErrUploadFinalizing), errors.Is(err, storage.ErrUploadExists):
+		status = http.StatusConflict
+		code = "BLOB_UPLOAD_INVALID"
+		message = "upload is not writable"
 	case errors.Is(err, storage.ErrUploadNotFound):
 		status = http.StatusNotFound
 		code = "BLOB_UPLOAD_UNKNOWN"

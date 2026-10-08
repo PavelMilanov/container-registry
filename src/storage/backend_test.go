@@ -24,15 +24,15 @@ func TestNewStorageBuildsLocalBackend(t *testing.T) {
 	}
 }
 
-func TestBackendFromS3LeavesUnsupportedCapabilitiesEmpty(t *testing.T) {
+func TestBackendFromS3ProvidesAllCapabilities(t *testing.T) {
 	backend := backendFromS3(&S3Storage{})
 
 	assertPersistentCapabilities(t, backend)
-	if backend.Uploads != nil {
-		t.Fatal("S3 backend unexpectedly provides BlobUploadStore")
+	if backend.Uploads == nil {
+		t.Fatal("S3 backend does not provide BlobUploadStore")
 	}
-	if backend.UploadCleaner != nil {
-		t.Fatal("S3 backend unexpectedly provides UploadCleaner")
+	if backend.UploadCleaner == nil {
+		t.Fatal("S3 backend does not provide UploadCleaner")
 	}
 }
 

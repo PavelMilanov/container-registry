@@ -23,6 +23,17 @@ type fakeUploadStore struct {
 	blobs   map[string][]byte
 }
 
+func (f *fakeUploadStore) GetBlobUpload(ctx context.Context, id string) (storage.BlobUploadStatus, error) {
+	if err := ctx.Err(); err != nil {
+		return storage.BlobUploadStatus{}, err
+	}
+	data, ok := f.uploads[id]
+	if !ok {
+		return storage.BlobUploadStatus{}, storage.ErrUploadNotFound
+	}
+	return storage.BlobUploadStatus{Offset: int64(len(data)), Phase: "uploading"}, nil
+}
+
 func newFakeUploadStore() *fakeUploadStore {
 	return &fakeUploadStore{
 		uploads: make(map[string][]byte),
@@ -114,6 +125,7 @@ func newUploadRouter(uploadStore storage.BlobUploadStore) *echo.Echo {
 	handler := &Handler{UPLOADS: uploadStore}
 	router := echo.New()
 	router.POST("/v2/:repository/:name/blobs/uploads/", handler.startBlobUpload)
+	router.GET("/v2/:repository/:name/blobs/uploads/:uuid", handler.getBlobUpload)
 	router.PATCH("/v2/:repository/:name/blobs/uploads/:uuid", handler.uploadBlobPart)
 	router.PUT("/v2/:repository/:name/blobs/uploads/:uuid", handler.finalizeBlobUpload)
 	router.DELETE("/v2/:repository/:name/blobs/uploads/:uuid", handler.abortBlobUpload)

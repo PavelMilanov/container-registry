@@ -3,11 +3,9 @@ package storage
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -23,7 +21,11 @@ import (
 S3Storage представляет хранилище на основе облачной системы S3.
 */
 type S3Storage struct {
-	S3 *minio.Client
+	S3          *minio.Client
+	Bucket      string
+	Prefix      string
+	uploadLocks uploadLockManager
+	maintenance maintenanceGate
 }
 
 var _ NamespaceStore = (*S3Storage)(nil)
@@ -34,6 +36,9 @@ var _ RepositoryStore = (*S3Storage)(nil)
 var _ TagStore = (*S3Storage)(nil)
 var _ GarbageCollector = (*S3Storage)(nil)
 var _ TagPruner = (*S3Storage)(nil)
+var _ BlobUploadStore = (*S3Storage)(nil)
+var _ UploadCleaner = (*S3Storage)(nil)
+var _ BlobReader = (*S3Storage)(nil)
 
 /*
 newS3Storage создает новый экземпляр S3Storage.
@@ -48,17 +53,40 @@ func newS3Storage(env *config.Env) (*S3Storage, error) {
 	if err != nil {
 		return &S3Storage{}, err
 	}
-	bucketExists, err := s3Client.BucketExists(context.Background(), config.BACKET_NAME)
+	store := &S3Storage{S3: s3Client, Bucket: env.Storage.Bucket, Prefix: env.Storage.Prefix}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	bucketExists, err := s3Client.BucketExists(ctx, store.bucketName())
 	if err != nil {
 		return &S3Storage{}, err
 	}
 	if !bucketExists {
-		return &S3Storage{}, errors.New("Backet не создан")
-
+		return nil, fmt.Errorf("S3 bucket %q не создан", store.bucketName())
 	}
-	return &S3Storage{
-		S3: s3Client,
-	}, nil
+	return store, nil
+}
+
+/*
+bucketName возвращает настроенный bucket или имя по умолчанию.
+*/
+func (s *S3Storage) bucketName() string {
+	if s.Bucket != "" {
+		return s.Bucket
+	}
+	return config.BACKET_NAME
+}
+
+/*
+objectPrefix возвращает стабильный S3-префикс независимо от локального DATA_PATH.
+
+По умолчанию используется var для совместимости с существующими ключами.
+*/
+func (s *S3Storage) objectPrefix(directory string) string {
+	prefix := s.Prefix
+	if prefix == "" {
+		prefix = "var"
+	}
+	return filepathToS3(filepath.Join(prefix, directory))
 }
 
 /*
@@ -71,6 +99,8 @@ func (s *S3Storage) NamespaceExists(
 	ctx context.Context,
 	name string,
 ) (bool, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	if err := ctx.Err(); err != nil {
 		return false, err
 	}
@@ -78,10 +108,10 @@ func (s *S3Storage) NamespaceExists(
 		return false, nil
 	}
 
-	prefix := filepath.Join(config.MANIFEST_PATH, name) + "/"
+	prefix := filepath.Join(s.objectPrefix("manifests"), name) + "/"
 	objects := s.S3.ListObjects(
 		ctx,
-		config.BACKET_NAME,
+		s.bucketName(),
 		minio.ListObjectsOptions{
 			Prefix:    prefix,
 			Recursive: true,
@@ -110,13 +140,13 @@ CheckBlob проверяет наличие Blob в хранилище.
 	uuid - идентификатор Blob.
 */
 func (s *S3Storage) CheckBlob(uuid string) error {
-	key, err := blobKeyFromDigest(uuid)
+	key, err := s.blobKeyFromDigest(uuid)
 	if err != nil {
 		return err
 	}
-	if _, err := s.S3.StatObject(context.Background(), config.BACKET_NAME, key, minio.StatObjectOptions{}); err != nil {
+	if _, err := s.S3.StatObject(context.Background(), s.bucketName(), key, minio.StatObjectOptions{}); err != nil {
 		if isS3NotFound(err) {
-			return errors.New("Blob not found")
+			return ErrBlobNotFound
 		}
 		return err
 	}
@@ -124,61 +154,53 @@ func (s *S3Storage) CheckBlob(uuid string) error {
 }
 
 /*
-GetBlob возвращает Blob из хранилища в двоичном виде.
+GetBlob возвращает метаданные Blob без скачивания его содержимого.
 
 	digest - хэш Blob.
 */
 func (s *S3Storage) GetBlob(digest string) (config.Blob, error) {
+	return s.statBlob(context.Background(), digest)
+}
+
+/*
+statBlob возвращает метаданные S3 Blob без скачивания на локальный диск.
+*/
+func (s *S3Storage) statBlob(ctx context.Context, digest string) (config.Blob, error) {
 	var data config.Blob
-	key, err := blobKeyFromDigest(digest)
+	key, err := s.blobKeyFromDigest(digest)
 	if err != nil {
 		return data, err
 	}
 
-	reader, err := s.S3.GetObject(context.Background(), config.BACKET_NAME, key, minio.GetObjectOptions{})
+	info, err := s.S3.StatObject(ctx, s.bucketName(), key, minio.StatObjectOptions{})
 	if err != nil {
 		if isS3NotFound(err) {
-			return data, errors.New("Blob not found")
+			return data, ErrBlobNotFound
 		}
 		return data, err
 	}
-	defer reader.Close()
-
-	info, err := reader.Stat()
-	if err != nil {
-		if isS3NotFound(err) {
-			return data, errors.New("Blob not found")
-		}
-		return data, err
-	}
-
-	tmpName := digestValue(digest)
-	if err := os.MkdirAll(config.TMP_PATH, 0755); err != nil {
-		return data, err
-	}
-	tmpPath := filepath.Join(config.TMP_PATH, tmpName)
-	file, err := os.Create(tmpPath)
-	if err != nil {
-		return data, err
-	}
-	if _, err := io.Copy(file, reader); err != nil {
-		_ = file.Close()
-		return data, err
-	}
-	if err := file.Close(); err != nil {
-		return data, err
-	}
-
-	timer := time.NewTimer(5 * time.Second)
-	go func() {
-		<-timer.C
-		_ = os.Remove(tmpPath)
-	}()
-
 	data.Digest = digest
-	data.Path = tmpPath
 	data.Size = info.Size
 	return data, nil
+}
+
+/*
+OpenBlob открывает поток S3 Blob; вызывающий код обязан закрыть его.
+
+	ctx - контекст запроса, отменяющий обращения к S3.
+	digest - контрольная сумма Blob.
+*/
+func (s *S3Storage) OpenBlob(ctx context.Context, digest string) (io.ReadSeekCloser, config.Blob, error) {
+	info, err := s.statBlob(ctx, digest)
+	if err != nil {
+		return nil, info, err
+	}
+	key, err := s.blobKeyFromDigest(digest)
+	if err != nil {
+		return nil, info, err
+	}
+	object, err := s.S3.GetObject(ctx, s.bucketName(), key, minio.GetObjectOptions{})
+	return object, info, err
 }
 
 /*
@@ -187,11 +209,18 @@ SaveManifest сохраняет манифест в хранилище.
 	body - содержимое манифеста.
 */
 func (s *S3Storage) SaveManifest(meta config.Meta, body []byte, manifestPath string) error {
+	unlock, gateErr := s.maintenance.lock(context.Background(), false)
+	if gateErr != nil {
+		return gateErr
+	}
+	defer unlock()
+	// Путь из services относится к LocalStorage. S3 использует собственный prefix.
+	manifestPath = filepath.Join(s.objectPrefix("manifests"), meta.Repository, meta.Image, meta.Digest)
 	if _, err := s.putBytes(manifestPath, body); err != nil {
 		return err
 	}
 	if !strings.HasPrefix(meta.Tag, "sha256:") {
-		tagPath := filepath.Join(config.MANIFEST_PATH, meta.Repository, meta.Image, "tags", meta.Tag)
+		tagPath := filepath.Join(s.objectPrefix("manifests"), meta.Repository, meta.Image, "tags", meta.Tag)
 		if _, err := s.putBytes(tagPath, []byte(meta.Digest)); err != nil {
 			return err
 		}
@@ -208,15 +237,15 @@ GetManifest	возращает манифест из хранилища в дв�
 */
 func (s *S3Storage) GetManifest(repository, image, reference string) ([]byte, error) {
 	manifestPath := ""
-	tagPath := filepath.Join(config.MANIFEST_PATH, repository, image, "tags", reference)
+	tagPath := filepath.Join(s.objectPrefix("manifests"), repository, image, "tags", reference)
 	if strings.HasPrefix(reference, "sha256:") {
-		manifestPath = filepath.Join(config.MANIFEST_PATH, repository, image, reference)
+		manifestPath = filepath.Join(s.objectPrefix("manifests"), repository, image, reference)
 	} else {
 		tagData, err := s.ReadFile(tagPath)
 		if err != nil {
 			return nil, errors.New("Tag not found")
 		}
-		manifestPath = filepath.Join(config.MANIFEST_PATH, repository, image, string(tagData))
+		manifestPath = filepath.Join(s.objectPrefix("manifests"), repository, image, string(tagData))
 	}
 	data, err := s.ReadFile(manifestPath)
 	if err != nil {
@@ -234,7 +263,12 @@ AddRegistry добавляет новый реестр в хранилище.
 	registry - имя реестра.
 */
 func (s *S3Storage) AddCloud(name string) error {
-	_, err := s.putBytes(filepath.Join(config.MANIFEST_PATH, name, ".keep"), nil)
+	unlock, gateErr := s.maintenance.lock(context.Background(), false)
+	if gateErr != nil {
+		return gateErr
+	}
+	defer unlock()
+	_, err := s.putBytes(filepath.Join(s.objectPrefix("manifests"), name, ".keep"), nil)
 	return err
 }
 
@@ -244,49 +278,33 @@ DeleteRegistry удаляет реестр из хранилища.
 	registry - имя реестра.
 */
 func (s *S3Storage) DeleteCloud(name string) error {
-	return s.removePrefix(filepath.Join(config.MANIFEST_PATH, name) + "/")
+	unlock, gateErr := s.maintenance.lock(context.Background(), false)
+	if gateErr != nil {
+		return gateErr
+	}
+	defer unlock()
+	return s.removePrefix(filepath.Join(s.objectPrefix("manifests"), name) + "/")
 }
 
 /*
-DeleteImage удаляет образ из хранилища.
+DeleteManifest удаляет тег, сохраняя manifest до безопасной сборки мусора.
 
+	cloud - пространство registry.
 	repository - имя репозитория.
-	imageName - имя образа.
-	imageTag - тег образа.
-	imageHash - хеш образа.
+	tag - удаляемый тег.
 */
 func (s *S3Storage) DeleteManifest(cloud, repository, tag string) error {
-	tagPath := filepath.Join(config.MANIFEST_PATH, cloud, repository, "tags", tag)
-	data, err := s.ReadFile(tagPath)
-	if err != nil {
+	unlock, gateErr := s.maintenance.lock(context.Background(), false)
+	if gateErr != nil {
+		return gateErr
+	}
+	defer unlock()
+	tagPath := filepath.Join(s.objectPrefix("manifests"), cloud, repository, "tags", tag)
+	if _, err := s.ReadFile(tagPath); err != nil {
 		return err
 	}
-	manifestDigest := string(data)
-	manifestPath := filepath.Join(config.MANIFEST_PATH, cloud, repository, manifestDigest)
-
-	if err := s.S3.RemoveObject(context.Background(), config.BACKET_NAME, tagPath, minio.RemoveObjectOptions{}); err != nil {
-		return err
-	}
-
-	tags, err := s.listTagObjects(cloud, repository)
-	if err != nil {
-		return err
-	}
-	for _, item := range tags {
-		otherDigest, err := s.ReadFile(item.Key)
-		if err != nil {
-			logrus.WithField("tag", item.Key).WithError(err).Warn("не удалось прочитать tag-файл")
-			continue
-		}
-		if string(otherDigest) == manifestDigest {
-			return nil
-		}
-	}
-
-	if err := s.S3.RemoveObject(context.Background(), config.BACKET_NAME, manifestPath, minio.RemoveObjectOptions{}); err != nil && !isS3NotFound(err) {
-		return err
-	}
-	return nil
+	// Манифест может быть достижим через OCI index другого тега. Его удаляет GC.
+	return s.S3.RemoveObject(context.Background(), s.bucketName(), tagPath, minio.RemoveObjectOptions{})
 }
 
 /*
@@ -296,49 +314,26 @@ DeleteRepository удаляет репозиторий из хранилища.
 	image - имя образа.
 */
 func (s *S3Storage) DeleteRepository(name, image string) error {
-	return s.removePrefix(filepath.Join(config.MANIFEST_PATH, name, image) + "/")
+	unlock, gateErr := s.maintenance.lock(context.Background(), false)
+	if gateErr != nil {
+		return gateErr
+	}
+	defer unlock()
+	return s.removePrefix(filepath.Join(s.objectPrefix("manifests"), name, image) + "/")
 }
 
 /*
 GarbageCollection выполняет сборку мусора в хранилище.
 
-	Удаляет все образы и слои, которые не используются ни одним реестром.
+	Проверяет граф тегов и свежих manifests; удаляет недостижимые объекты старше 24 часов.
+	Запуск ограничен context и timeout; мутации хранилища на время GC блокируются.
 */
-func (s *S3Storage) GarbageCollection() error {
-	manifests, err := s.inventoryManifests()
-	if err != nil {
-		return err
-	}
-	usedBlobs, err := s.parseUsageBlobs(manifests)
-	if err != nil {
-		return err
-	}
-	usedBlobsMap := make(map[string]struct{}, len(usedBlobs))
-	for _, blob := range usedBlobs {
-		usedBlobsMap[blob] = struct{}{}
-	}
-
-	blobs, err := s.inventoryBlobs()
-	if err != nil {
-		return err
-	}
-	deleted := 0
-	for _, blob := range blobs {
-		if _, ok := usedBlobsMap[blob]; ok {
-			continue
-		}
-		if err := s.S3.RemoveObject(context.Background(), config.BACKET_NAME, blob, minio.RemoveObjectOptions{}); err != nil {
-			logrus.WithField("GarbageCollection", "error").WithError(err).Error()
-			continue
-		}
-		deleted++
-	}
-	logrus.WithField("GarbageCollection", "deleted").Infof("Удалено %d файлов", deleted)
-	return nil
+func (s *S3Storage) GarbageCollection(ctx context.Context) error {
+	return runGC(ctx, &s.maintenance, s)
 }
 
 func (s *S3Storage) ReadFile(path string) ([]byte, error) {
-	reader, err := s.S3.GetObject(context.Background(), config.BACKET_NAME, path, minio.GetObjectOptions{})
+	reader, err := s.S3.GetObject(context.Background(), s.bucketName(), path, minio.GetObjectOptions{})
 	if err != nil {
 		return []byte{}, err
 	}
@@ -359,7 +354,7 @@ func (s *S3Storage) GetManifestList(cloud, repository string) ([]string, error) 
 		return nil, err
 	}
 	tags := make([]string, 0, len(objects))
-	prefix := filepath.Join(config.MANIFEST_PATH, cloud, repository, "tags") + "/"
+	prefix := filepath.Join(s.objectPrefix("manifests"), cloud, repository, "tags") + "/"
 	for _, object := range objects {
 		tag := strings.TrimPrefix(object.Key, prefix)
 		if tag == "" || strings.Contains(tag, "/") {
@@ -373,7 +368,7 @@ func (s *S3Storage) GetManifestList(cloud, repository string) ([]string, error) 
 
 /* Возвращает список пространств */
 func (s *S3Storage) GetCloudList() ([]string, error) {
-	prefix := config.MANIFEST_PATH + "/"
+	prefix := s.objectPrefix("manifests") + "/"
 	objects, err := s.listObjects(prefix, false)
 	if err != nil {
 		return nil, err
@@ -396,7 +391,7 @@ func (s *S3Storage) GetCloudList() ([]string, error) {
 }
 
 func (s *S3Storage) GetRepositoriesList(cloud string) ([]string, error) {
-	prefix := filepath.Join(config.MANIFEST_PATH, cloud) + "/"
+	prefix := filepath.Join(s.objectPrefix("manifests"), cloud) + "/"
 	objects, err := s.listObjects(prefix, false)
 	if err != nil {
 		return nil, err
@@ -423,6 +418,9 @@ func (s *S3Storage) GetRepositoriesList(cloud string) ([]string, error) {
 }
 
 func (s *S3Storage) DeleteOlderTags(count int) error {
+	if count < 0 {
+		return errors.New("tag retention must not be negative")
+	}
 	deleted := 0
 	clouds, err := s.GetCloudList()
 	if err != nil {
@@ -470,184 +468,16 @@ func (s *S3Storage) DeleteOlderTags(count int) error {
 	return nil
 }
 
-func (s *S3Storage) inventoryBlobs() ([]string, error) {
-	objects, err := s.listObjects(config.BLOBS_PATH+"/", true)
-	if err != nil {
-		return nil, err
-	}
-	blobs := make([]string, 0, len(objects))
-	for _, object := range objects {
-		if object.Key == "" || strings.HasSuffix(object.Key, "/") {
-			continue
-		}
-		blobs = append(blobs, object.Key)
-	}
-	logrus.WithField("GarbageCollection", "blobs").Infof("Количество слоев: %d", len(blobs))
-	return blobs, nil
-}
-
-func (s *S3Storage) inventoryManifests() ([]string, error) {
-	objects, err := s.listObjects(config.MANIFEST_PATH+"/", true)
-	if err != nil {
-		return nil, err
-	}
-
-	type repoInventory struct {
-		tags      []minio.ObjectInfo
-		manifests []string
-	}
-	repos := make(map[string]*repoInventory)
-	for _, object := range objects {
-		if object.Key == "" || strings.HasSuffix(object.Key, "/") || filepath.Base(object.Key) == ".keep" {
-			continue
-		}
-		relative := strings.TrimPrefix(object.Key, config.MANIFEST_PATH+"/")
-		parts := strings.Split(relative, "/")
-		if len(parts) < 3 {
-			continue
-		}
-		repoKey := filepath.Join(parts[0], parts[1])
-		inventory := repos[repoKey]
-		if inventory == nil {
-			inventory = &repoInventory{}
-			repos[repoKey] = inventory
-		}
-		if len(parts) == 4 && parts[2] == "tags" {
-			inventory.tags = append(inventory.tags, object)
-			continue
-		}
-		if len(parts) == 3 {
-			inventory.manifests = append(inventory.manifests, object.Key)
-		}
-	}
-
-	var activeManifests []string
-	for repoKey, inventory := range repos {
-		if len(inventory.manifests) > 0 && len(inventory.tags) == 0 {
-			return nil, fmt.Errorf("не удалось прочитать директорию тегов %s: теги не найдены", filepath.Join(config.MANIFEST_PATH, repoKey, "tags"))
-		}
-
-		activeTags, err := s.parseActiveTags(filepath.Join(config.MANIFEST_PATH, repoKey), inventory.tags)
-		if err != nil {
-			return nil, err
-		}
-		activeTagSet := make(map[string]struct{}, len(activeTags))
-		for _, tag := range activeTags {
-			activeTagSet[tag] = struct{}{}
-		}
-
-		for _, manifest := range inventory.manifests {
-			digest := filepath.Base(manifest)
-			if _, found := activeTagSet[digest]; !found {
-				if err := s.S3.RemoveObject(context.Background(), config.BACKET_NAME, manifest, minio.RemoveObjectOptions{}); err != nil {
-					return nil, fmt.Errorf("не удалось удалить неиспользуемый манифест %s: %w", manifest, err)
-				}
-				continue
-			}
-			activeManifests = append(activeManifests, manifest)
-		}
-	}
-
-	logrus.WithField("GarbageCollection", "manifests").Infof("Количество манифестов: %d", len(activeManifests))
-	return activeManifests, nil
-}
-
-func (s *S3Storage) parseActiveTags(repoPath string, tags []minio.ObjectInfo) ([]string, error) {
-	var activeTags []string
-	for _, tag := range tags {
-		data, err := s.ReadFile(tag.Key)
-		if err != nil {
-			return nil, fmt.Errorf("не удалось прочитать tag-файл %s: %w", tag.Key, err)
-		}
-		digest := string(data)
-		manifestPath := filepath.Join(repoPath, digest)
-		manifestData, err := s.ReadFile(manifestPath)
-		if err != nil {
-			return nil, fmt.Errorf("не удалось прочитать манифест %s: %w", digest, err)
-		}
-		var body struct {
-			MediaType string `json:"mediaType"`
-		}
-		if err := json.Unmarshal(manifestData, &body); err != nil {
-			return nil, fmt.Errorf("не удалось распарсить mediaType манифеста %s: %w", digest, err)
-		}
-		switch body.MediaType {
-		case config.MANIFEST_TYPE["manifest"]:
-			activeTags = append(activeTags, digest)
-		case config.MANIFEST_TYPE["index"]:
-			var index config.Index
-			if err := json.Unmarshal(manifestData, &index); err != nil {
-				return nil, fmt.Errorf("не удалось распарсить index-манифест %s: %w", digest, err)
-			}
-			activeTags = append(activeTags, digest)
-			for _, manifest := range index.Manifests {
-				activeTags = append(activeTags, manifest.Digest)
-			}
-		default:
-			return nil, fmt.Errorf("неизвестный mediaType %q в манифесте %s", body.MediaType, digest)
-		}
-	}
-	return activeTags, nil
-}
-
-func (s *S3Storage) parseUsageBlobs(links []string) ([]string, error) {
-	var buffer []string
-	for _, link := range links {
-		file, err := s.ReadFile(link)
-		if err != nil {
-			return nil, fmt.Errorf("не удалось прочитать манифест %s: %w", link, err)
-		}
-		var body struct {
-			MediaType string `json:"mediaType"`
-		}
-		if err := json.Unmarshal(file, &body); err != nil {
-			return nil, fmt.Errorf("не удалось распарсить mediaType манифеста %s: %w", link, err)
-		}
-		switch body.MediaType {
-		case config.MANIFEST_TYPE["manifest"]:
-			var manifest config.Manifest
-			if err := json.Unmarshal(file, &manifest); err != nil {
-				return nil, fmt.Errorf("не удалось распарсить manifest %s: %w", link, err)
-			}
-			configBlob, err := blobPathFromDigest(manifest.Config.Digest)
-			if err != nil {
-				return nil, fmt.Errorf("некорректный config digest в %s: %w", link, err)
-			}
-			buffer = append(buffer, configBlob)
-			for _, layer := range manifest.Layers {
-				layerBlob, err := blobPathFromDigest(layer.Digest)
-				if err != nil {
-					return nil, fmt.Errorf("некорректный layer digest в %s: %w", link, err)
-				}
-				buffer = append(buffer, layerBlob)
-			}
-		case config.MANIFEST_TYPE["index"]:
-			continue
-		default:
-			return nil, fmt.Errorf("неизвестный mediaType %q в манифесте %s", body.MediaType, link)
-		}
-	}
-
-	uniqueBlobs := make(map[string]struct{}, len(buffer))
-	for _, blob := range buffer {
-		uniqueBlobs[blob] = struct{}{}
-	}
-	result := make([]string, 0, len(uniqueBlobs))
-	for blob := range uniqueBlobs {
-		result = append(result, blob)
-	}
-	logrus.WithField("GarbageCollection", "blobs").Infof("Количество используемых слоев: %d", len(result))
-	return result, nil
-}
-
 func (s *S3Storage) listTagObjects(cloud, repository string) ([]minio.ObjectInfo, error) {
-	return s.listObjects(filepath.Join(config.MANIFEST_PATH, cloud, repository, "tags")+"/", false)
+	return s.listObjects(filepath.Join(s.objectPrefix("manifests"), cloud, repository, "tags")+"/", false)
 }
 
 func (s *S3Storage) listObjects(prefix string, recursive bool) ([]minio.ObjectInfo, error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	var objects []minio.ObjectInfo
 	opts := minio.ListObjectsOptions{Prefix: prefix, Recursive: recursive}
-	for object := range s.S3.ListObjects(context.Background(), config.BACKET_NAME, opts) {
+	for object := range s.S3.ListObjects(ctx, s.bucketName(), opts) {
 		if object.Err != nil {
 			return nil, object.Err
 		}
@@ -660,28 +490,20 @@ func (s *S3Storage) listObjects(prefix string, recursive bool) ([]minio.ObjectIn
 }
 
 func (s *S3Storage) removePrefix(prefix string) error {
-	objectsCh := make(chan minio.ObjectInfo)
-	go func() {
-		defer close(objectsCh)
-		opts := minio.ListObjectsOptions{Prefix: prefix, Recursive: true}
-		for object := range s.S3.ListObjects(context.Background(), config.BACKET_NAME, opts) {
-			if object.Err != nil {
-				logrus.Error(object.Err)
-				continue
-			}
-			objectsCh <- object
-		}
-	}()
-	errCh := s.S3.RemoveObjects(context.Background(), config.BACKET_NAME, objectsCh, minio.RemoveObjectsOptions{})
-	for err := range errCh {
-		return err.Err
+	objects, err := s.listObjects(prefix, true)
+	if err != nil {
+		return err
 	}
-	return nil
+	var resultErr error
+	for _, object := range objects {
+		resultErr = errors.Join(resultErr, s.S3.RemoveObject(context.Background(), s.bucketName(), object.Key, minio.RemoveObjectOptions{}))
+	}
+	return resultErr
 }
 
 func (s *S3Storage) putBytes(key string, data []byte) (minio.UploadInfo, error) {
 	reader := bytes.NewReader(data)
-	return s.S3.PutObject(context.Background(), config.BACKET_NAME, key, reader, reader.Size(), minio.PutObjectOptions{ContentType: "application/octet-stream"})
+	return s.S3.PutObject(context.Background(), s.bucketName(), key, reader, reader.Size(), minio.PutObjectOptions{ContentType: "application/octet-stream"})
 }
 
 func firstKeyPart(value string) string {
@@ -692,23 +514,12 @@ func firstKeyPart(value string) string {
 	return strings.Split(value, "/")[0]
 }
 
-func blobKeyFromDigest(digest string) (string, error) {
-	algorithm, encoded, ok := strings.Cut(digest, ":")
-	if !ok {
-		encoded = digest
-		algorithm = "sha256"
+func (s *S3Storage) blobKeyFromDigest(digest string) (string, error) {
+	encoded, err := parseSHA256Digest(digest)
+	if err != nil {
+		return "", err
 	}
-	if algorithm != "sha256" || encoded == "" {
-		return "", fmt.Errorf("digest должен иметь формат sha256:<hex>, получено %q", digest)
-	}
-	return filepath.Join(config.BLOBS_PATH, encoded), nil
-}
-
-func digestValue(digest string) string {
-	if _, encoded, ok := strings.Cut(digest, ":"); ok {
-		return encoded
-	}
-	return digest
+	return filepath.Join(s.objectPrefix("blobs"), encoded), nil
 }
 
 func isS3NotFound(err error) bool {

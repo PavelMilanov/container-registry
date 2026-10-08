@@ -25,6 +25,7 @@ func TestInitRoutersRegistersPublicAndRegistryRoutes(t *testing.T) {
 		"GET /v2/",
 		"PUT /v2/:repository/:name/manifests/:reference",
 		"PATCH /v2/:repository/:name/blobs/uploads/:uuid",
+		"GET /v2/:repository/:name/blobs/uploads/:uuid",
 		"GET /api/cloud/list",
 		"POST /api/garbage/collection",
 	} {

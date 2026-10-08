@@ -174,6 +174,7 @@ func (h *Handler) InitRouters() *echo.Echo {
 		repository.GET("/blobs/:uuid", h.getBlob)
 		repository.HEAD("/blobs/:uuid", h.checkBlob)
 		repository.POST("/blobs/uploads/", h.startBlobUpload)
+		repository.GET("/blobs/uploads/:uuid", h.getBlobUpload)
 		repository.PATCH("/blobs/uploads/:uuid", h.uploadBlobPart)
 		repository.PUT("/blobs/uploads/:uuid", h.finalizeBlobUpload)
 		repository.DELETE("/blobs/uploads/:uuid", h.abortBlobUpload)

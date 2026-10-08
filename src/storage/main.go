@@ -47,7 +47,7 @@ type TagStore interface {
 GarbageCollector контракт для сборки мусора хранилища.
 */
 type GarbageCollector interface {
-	GarbageCollection() error
+	GarbageCollection(ctx context.Context) error
 }
 
 /*
@@ -96,9 +96,21 @@ type BlobStore interface {
 }
 
 /*
-BlobUploadStore контракт для загрузки blob.
+BlobReader предоставляет поток готового Blob с поддержкой HTTP Range.
+*/
+type BlobReader interface {
+	OpenBlob(ctx context.Context, digest string) (io.ReadSeekCloser, config.Blob, error)
+}
+
+/*
+BlobUploadStore контракт общего жизненного цикла загрузки Blob.
+
+GetBlobUpload является источником подтверждённого offset после ошибок.
+После начала финализации PATCH запрещён, повторный PUT допустим только
+с пустым телом и прежним digest. Ошибка очистки не отменяет публикацию.
 */
 type BlobUploadStore interface {
+	GetBlobUpload(ctx context.Context, uuid string) (BlobUploadStatus, error)
 	StartBlobUpload(
 		ctx context.Context,
 		uuid string,
@@ -122,6 +134,15 @@ type BlobUploadStore interface {
 		ctx context.Context,
 		uuid string,
 	) error
+}
+
+/*
+BlobUploadStatus содержит подтверждённый offset и состояние загрузки.
+*/
+type BlobUploadStatus struct {
+	Offset int64
+	Phase  string
+	Digest string
 }
 
 /*
@@ -191,5 +212,7 @@ func backendFromS3(s3 *S3Storage) Backend {
 		Tags:             s3,
 		GarbageCollector: s3,
 		TagPruner:        s3,
+		Uploads:          s3,
+		UploadCleaner:    s3,
 	}
 }

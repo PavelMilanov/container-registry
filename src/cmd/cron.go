@@ -86,8 +86,9 @@ func registerCronTasks(
 		{
 			name:     "garbage_collection",
 			schedule: garbageCollectionSchedule,
-			run: func(context.Context) (logrus.Fields, error) {
-				return nil, services.GarbageCollection(garbageCollector)
+			timeout:  10 * time.Minute,
+			run: func(ctx context.Context) (logrus.Fields, error) {
+				return nil, services.GarbageCollection(ctx, garbageCollector)
 			},
 		},
 		{
